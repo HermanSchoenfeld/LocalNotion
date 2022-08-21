@@ -1,0 +1,14 @@
+﻿<div id="{toggle_id}" class="accordion pb-2">
+    <div class="accordion-item ln-color-{color}">
+        <h2 data-toc-skip class="accordion-header" id="{toggle_id}_headingOne">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#{toggle_id}_collapseOne" aria-expanded="false" aria-controls="{toggle_id}_collapseOne">
+                {title}
+            </button>
+        </h2>
+        <div id="{toggle_id}_collapseOne" class="accordion-collapse collapse" aria-labelledby="{toggle_id}_headingOne" data-bs-parent="#{toggle_id}">
+            <div class="accordion-body">
+                {contents}
+            </div>
+        </div>
+    </div>
+</div>

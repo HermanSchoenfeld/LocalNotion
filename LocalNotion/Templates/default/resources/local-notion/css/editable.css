@@ -1,0 +1,15 @@
+/* Editable specific styles */
+
+.ln-logical-object:hover {
+    outline: dotted;
+}
+
+.ln-text:not(.ln-text-plain):hover {
+    outline: dotted;
+    outline-color: red;
+}
+
+.ln-icon:hover {
+    outline: dotted;
+    outline-color: purple;
+}
