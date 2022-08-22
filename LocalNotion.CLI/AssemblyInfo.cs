@@ -18,7 +18,7 @@ using System.Runtime.InteropServices;
 
 [assembly: Guid("860168e9-abe2-4e0c-ae02-e90a727746a9")]
 
-[assembly: AssemblyTitle("LocalNotion.CLI")]
+[assembly: AssemblyTitle("Local Notion")]
 [assembly: AssemblyDescription("Command-line interface for Local Notion")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Sphere 10 Software Pty Ltd")]
