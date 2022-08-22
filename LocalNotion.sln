@@ -17,9 +17,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.Data", "..\Hydroge
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notion.Client", "..\..\notion-sdk-net\Src\Notion.Client\Notion.Client.csproj", "{CB582BF8-5A78-4F05-905F-27E139485294}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion", "LocalNotion\LocalNotion.csproj", "{8AF2013A-C681-4638-AD78-292D8BDCB569}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion.Core", "LocalNotion.Core\LocalNotion.Core.csproj", "{8AF2013A-C681-4638-AD78-292D8BDCB569}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LocalNotion.CLI", "LocalNotion.CLI\LocalNotion.CLI.csproj", "{DE1D2590-0B79-491B-B876-26561D468221}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion.CLI", "LocalNotion.CLI\LocalNotion.CLI.csproj", "{DE1D2590-0B79-491B-B876-26561D468221}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

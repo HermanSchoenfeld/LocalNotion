@@ -23,4 +23,7 @@ public class LocalNotionPage : LocalNotionResource {
 	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
 	public CMSProperties CMSProperties { get; set; } = null;
 
+	[JsonProperty("last_edited_time")]
+	public DateTime LastEditedTime { get; set; }
+
 }

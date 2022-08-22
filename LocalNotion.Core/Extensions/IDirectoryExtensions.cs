@@ -20,7 +20,7 @@ namespace LocalNotion.Extensions {
 					provider.ExtractDirectory(sourcePath, Path.Combine(toRoot, destPath), overwrite, logger);
 				} else {
 					if (overwrite || !File.Exists(destPath)) {
-						logger.Info($"Extracting `{sourcePath}` -> {destPath}");
+						logger.Debug($"Extracting `{sourcePath}` -> {destPath}");
 						using var stream = item.CreateReadStream();
 						stream.WriteToFile(destPath, FileMode.Create);
 					}

@@ -10,64 +10,71 @@ namespace LocalNotion.CLI;
 
 public static partial class Program {
 	
-	[Verb("create", HelpText = "Create a Local Notion repository.")]
-	public class CreateRepositoryCommandArguments {
+	[Verb("init", HelpText = "Creates a Local Notion repository")]
+	public class InitRepositoryCommandArguments {
 
-		[Option('p', "path", HelpText = "Path to Local Notion repository.")]
+		[Option('p', "path", HelpText = "Path to Local Notion repository")]
 		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
 
 		[Option('k', "key", HelpText = "Notion API key to use when contacting notion (do not pass in low security environment)")]
 		public string APIKey { get; set; } = null;
 
-		[Option('m', "mode", HelpText = "Sets the Local Notion mode. Use \"offline\" for filesystem, use \"online\" for browsing content via a web server.")]
+		[Option('m', "mode", HelpText = "Sets the Local Notion mode. Use \"offline\" for filesystem, use \"online\" for browsing content via a web server")]
 		public LocalNotionMode Mode { get; set; }
 
-		[Option('u', "base-url", HelpText = $"Base Url pre-pended to generated content links (default is \"/\").")]
+		[Option('u', "base-url", HelpText = $"Base Url pre-pended to generated content links (default is \"/\")")]
 		public string BaseUrl { get; set; } = "/";
 
-		[Option('o', "objects-path", HelpText = $"Path to directory which stores Notion objects.")]
+		[Option('o', "objects-path", HelpText = $"Path to directory which stores Notion objects")]
 		public string ObjectsPath { get; set; } = null;
 
-		[Option('o', "pages-path", HelpText = $"Path to directory that stores rendered Notion pages.")]
+		[Option('o', "pages-path", HelpText = $"Path to directory that stores rendered Notion pages")]
 		public string PagesPath { get; set; } = null;
 
-		[Option('o', "files-path", HelpText = $"Path to directory that stores mirrored Notion files.")]
+		[Option('o', "files-path", HelpText = $"Path to directory that stores mirrored Notion files")]
 		public string FilesPath { get; set; } = null;
 
-		[Option('t', "themes-path", HelpText = $"Path to directory that stores Local Notion rendering themes.")]
+		[Option('t', "themes-path", HelpText = $"Path to directory that stores Local Notion rendering themes")]
 		public string ThemesPath { get; set; } = null;
 
-		[Option('l', "logs-path", HelpText = $"Path to directory that stores mirrored Notion files.")]
+		[Option('l', "logs-path", HelpText = $"Path to directory that stores mirrored Notion files")]
 		public string LogsPath { get; set; } = null;
 
-		[Option('v', "verbose", HelpText = $"When set includes debug logging to log files.")]
+		[Option('x', "log-level", Default = LogLevel.Info, HelpText = $"Logging level in log files (Debug, Info, Warning, Error)")]
+		public LogLevel LogLevel { get; set; }
+
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 	
 	}
 
-	[Verb("remove", HelpText = "Removes a Local Notion repository.")]
+	[Verb("remove", HelpText = "Removes a Local Notion repository")]
 	public class RemoveRepositoryCommandArguments {
 
 		[Option('r', "repo-path", HelpText = "Path to Local Notion repository (default current working dir)")]
 		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
 
-		[Option("confirm", Required = true, HelpText = "Mandatory option required to avoid accidental user removal.")]
+		[Option("confirm", Required = true, HelpText = "Mandatory option required to avoid accidental user removal")]
 		public bool Confirm { get; set; }
+
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+
 	}
 
-	[Verb("sync", HelpText = "Synchronizes a Local Notion repository with Notion.")]
-	public class SyncRepositoryCommandArguments {
+	[Verb("pull", HelpText = "Pulls Notion objects into a Local Notion repository")]
+	public class PullRepositoryCommandArguments {
 
-		[Option('o', "objects", Required = true, HelpText = "List of Notion object ID's to synchronize with Local Notion (i.e. pages, databases, workspaces).")]
+		[Option('o', "objects", Required = true, HelpText = "List of Notion objects to pull (i.e. pages, databases, workspaces)")]
 		public IEnumerable<string> Objects { get; set; } = null;
 		
 		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
 		public string APIKey { get; set; } = null;
 
-		[Option('p', "path", HelpText = "Path to Local Notion repository.")]
+		[Option('p', "path", HelpText = "Path to Local Notion repository")]
 		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
 
-		[Option('u', "updated-on", HelpText = "Ignores objects updated before this date.")]
+		[Option('u', "updated-on", HelpText = "Ignore objects updated before this date")]
 		public DateTime? FilterLastUpdatedOn { get; set; } = null;
 
 		//[Option("filter-source", HelpText = "Only sync CMS pages whose 'Source' property matches at least one from this list.")]
@@ -77,41 +84,58 @@ public static partial class Program {
 		//public IEnumerable<string> FilterRoots { get; set; } = Array.Empty<string>();
 
 
-		[Option("render", Default = (bool)true, HelpText = "Renders objects downloaded from Notion.")]
+		[Option("render", Default = (bool)true, HelpText = "Renders objects after pull")]
 		public bool Render { get; set; }
 
-		[Option("render-type", Default = PageRenderType.HTML, HelpText = "Render to use for object rendering (HTML, PDF).")]
+		[Option("render-type", Default = PageRenderType.HTML, HelpText = "Type of rendering to use (HTML, PDF)")]
 		public PageRenderType RenderType { get; set; }
 
-		[Option("render-mode", Default = RenderMode.ReadOnly, HelpText = "Mode to render object in (ReadOnly, Editable).")]
+		[Option("render-mode", Default = RenderMode.ReadOnly, HelpText = "Rendering mode for objects (ReadOnly, Editable)")]
 		public RenderMode RenderMode { get; set; }
 
-		[Option("fault-tolerant", Default = (bool)true, HelpText = "Continues processing on failure.")]
+		[Option("fault-tolerant", Default = (bool)true, HelpText = "Continues processing on failures")]
 		public bool FaultTolerant { get; set; }
+
+		[Option("force", HelpText = "Forces downloading of objects even if unchanged")]
+		public bool Force { get; set; } = false;
+
+
+
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+
 
 	}
 
-	[Verb("prune", HelpText = "Removes from a Local Notion repository databases, pages and files that are no longer in Notion.")]
+	[Verb("prune", HelpText = "Removes from a Local Notion repository databases, pages and files that are no longer in Notion")]
 	public class PruneCommandArguments {
 
-		[Option('r', "repo-path", HelpText = "Path to Local Notion repository (default current working dir).")]
+		[Option('r', "repo-path", HelpText = "Path to Local Notion repository (default current working dir)")]
 		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
 
-		[Option('o', "objects", HelpText = "List of object ID's to keep (i.e. page(s), database(s), workspace).")]
+		[Option('o', "objects", HelpText = "List of object ID's to keep (i.e. page(s), database(s), workspace)")]
 		public string[] ObjectID { get; set; } = null;
+
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+
 
 		// TODO: add usages
 
 	}
 			
-	[Verb("render", HelpText = "Renders a Local Notion object using it's local state only ")]
+	[Verb("render", HelpText = "Renders a Local Notion object using it's local state only")]
 	public class RenderCommandArguments {
 
 		[Option('r', "repo-path", HelpText = "Path to Local Notion repository.")]
 		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
 
-		[Option('o', "objects", HelpText = "List of object ID's to render (i.e. page(s), database(s), workspace).")]
+		[Option('o', "objects", HelpText = "List of object ID's to render (i.e. page(s), database(s), workspace)")]
 		public string[] ObjectID { get; set; } = null;
+
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+
 
 	}
 
@@ -124,9 +148,14 @@ public static partial class Program {
 		[Option('v', "verify", Hidden= true)]
 		public bool Verify { get; set; } = false;
 
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+
+
 	}
 
-	public static async Task<int> ExecuteCreateCommand(CreateRepositoryCommandArguments arguments) {
+	public static async Task<int> ExecuteInitCommand(InitRepositoryCommandArguments arguments) {
+		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
 		await LocalNotionRepository.CreateNew(
 			arguments.Path,
 			arguments.APIKey,
@@ -137,25 +166,27 @@ public static partial class Program {
 			arguments.LogsPath,
 			arguments.Mode,
 			arguments.BaseUrl,
-			arguments.Verbose ? LogLevel.Debug : LogLevel.Info,
-			logger: new ConsoleLogger()
+			arguments.LogLevel,
+			logger: consoleLogger
 		);
-		SystemLog.Info("Location Notion repository has been created");
+		consoleLogger.Info("Location Notion repository has been created");
 		return 0;
 	}
 
 	public static async Task<int> ExecuteRemoveCommand(RemoveRepositoryCommandArguments arguments) {
-		await LocalNotionRepository.Remove(arguments.Path, new ConsoleLogger());
-		Console.WriteLine("Local Notion repository has been removed");
+		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
+		await LocalNotionRepository.Remove(arguments.Path, consoleLogger);
+		consoleLogger.Info("Local Notion repository has been removed");
 		return 0;
 	}
 
-	public static async Task<int> ExecuteSyncCommand(SyncRepositoryCommandArguments arguments) {
-		var repo = await LocalNotionRepository.Open(arguments.Path, new ConsoleLogger());
+	public static async Task<int> ExecutePullCommand(PullRepositoryCommandArguments arguments) {
+		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
+		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
 
 		var apiKey =arguments.APIKey ?? repo.DefaultNotionApiKey;
 		if (string.IsNullOrWhiteSpace(apiKey)) {
-			Console.WriteLine("No API key was specified in argument or registered in repository");
+			consoleLogger.Info("No API key was specified in argument or registered in repository");
 			return -1;
 		}
 		var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
@@ -166,7 +197,7 @@ public static partial class Program {
 			var objType = await syncOrchestrator.QualifyObject(@obj);
 			switch (objType) {
 				case null:
-					Console.WriteLine($"Unrecognized object: {@obj}");
+					consoleLogger.Info($"Unrecognized object: {@obj}");
 					break;
 				case LocalNotionResourceType.Database:
 					await syncOrchestrator.DownloadDatabasePages(
@@ -175,14 +206,15 @@ public static partial class Program {
 						arguments.Render,
 						arguments.RenderType,
 						arguments.RenderMode,
-						arguments.FaultTolerant
+						arguments.FaultTolerant,
+						arguments.Force
 					);
 					break;
 				case LocalNotionResourceType.Page:
-					await syncOrchestrator.DownloadPage( @obj );
+					await syncOrchestrator.DownloadPage( @obj, arguments.Force );
 					break;
 				default:
-					Console.WriteLine($"Synchronizing objects of type {objType} is not supported yet");
+					consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
 					break;;
 			}
 		}
@@ -213,7 +245,8 @@ public static partial class Program {
 	}
 
 	public static async Task<int> ExecutePruneCommand(PruneCommandArguments arguments) {
-		SystemLog.Warning("Local Notion pruning is not currently implemented");
+		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
+		consoleLogger.Warning("Local Notion pruning is not currently implemented");
 		return 1;
 	}
 
@@ -235,18 +268,18 @@ public static partial class Program {
 		try {
 			HydrogenFramework.Instance.StartFramework();
 
-			return await CommandLine.Parser.Default.ParseArguments<
-				CreateRepositoryCommandArguments,
+			return await Parser.Default.ParseArguments<
+				InitRepositoryCommandArguments,
 				RemoveRepositoryCommandArguments,
-				SyncRepositoryCommandArguments,
+				PullRepositoryCommandArguments,
 				RenderCommandArguments,
 				PruneCommandArguments,
 				LicenseCommandArguments,
 				int
 			>(args).MapResult(
-				(CreateRepositoryCommandArguments commandArgs) => ExecuteCreateCommand(commandArgs),
+				(InitRepositoryCommandArguments commandArgs) => ExecuteInitCommand(commandArgs),
 				(RemoveRepositoryCommandArguments commandArgs) => ExecuteRemoveCommand(commandArgs),
-				(SyncRepositoryCommandArguments commandArgs) => ExecuteSyncCommand(commandArgs),
+				(PullRepositoryCommandArguments commandArgs) => ExecutePullCommand(commandArgs),
 				(RenderCommandArguments commandArgs) => ExecuteRenderCommand(commandArgs),
 				(PruneCommandArguments commandArgs) => ExecutePruneCommand(commandArgs),
 				(LicenseCommandArguments commandArgs) => ExecuteLicenseCommand(commandArgs),

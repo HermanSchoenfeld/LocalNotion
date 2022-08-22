@@ -72,7 +72,7 @@
 ////await PrintPage(ColumnBlockInfo);
 
 ////async Task PrintAllDatabase() {
-////	var notionClient = NotionClientFactory.ExecuteCreateCommand(new ClientOptions { AuthToken = APIKey });
+////	var notionClient = NotionClientFactory.ExecuteInitCommand(new ClientOptions { AuthToken = APIKey });
 ////	Console.WriteLine("Databases");
 ////	Console.WriteLine("=========");
 ////	var databases = await notionClient.Search.GetAllDatabases();

@@ -26,7 +26,7 @@
 //		Root = new CommandLineParameter {
 					
 					
-//					new("create", "ExecuteCreateCommand Local Notion repository",
+//					new("create", "ExecuteInitCommand Local Notion repository",
 //						new CommandLineParameter[] {
 //							new("key", "Notion API key", CommandLineParameterOptions.Mandatory | CommandLineParameterOptions.RequiresValue),
 //							new("path", "Absolute path to Local Notion repository (default is current working folder)", CommandLineParameterOptions.Optional | CommandLineParameterOptions.RequiresValue),
@@ -86,7 +86,7 @@
 //				}
 //	};
 
-//	public static async Task ExecuteCreateCommand(CommandLineResults createCommand) {
+//	public static async Task ExecuteInitCommand(CommandLineResults createCommand) {
 //		var path = createCommand.GetSingleArgumentValueOrDefault<string>("path", Environment.CurrentDirectory);
 //		var mode = createCommand.GetSingleArgumentValueOrDefault("mode", LocalNotionMode.Offline);
 //		var baseUrl = createCommand.GetSingleArgumentValueOrDefault<string>("base-url");
@@ -110,7 +110,7 @@
 //		SystemLog.Info("Location Notion repository has been created");
 //	}
 
-//	public static async Task ExecuteSyncCommand(CommandLineResults createCommand) {
+//	public static async Task ExecutePullCommand(CommandLineResults createCommand) {
 //		var key = createCommand.GetSingleArgumentValue<string>("key");
 //		var path = createCommand.GetSingleArgumentValueOrDefault<string>("path", Environment.CurrentDirectory);
 //		var workspace = createCommand.GetSingleArgumentValueOrDefault<string>("workspace");
@@ -199,10 +199,10 @@
 //					Parameters.PrintHelp();
 //					return;
 //				case "CREATE":
-//					await ExecuteCreateCommand(userArgs.SubCommand);
+//					await ExecuteInitCommand(userArgs.SubCommand);
 //					break;
 //				case "SYNC":
-//					await ExecuteSyncCommand(userArgs.SubCommand);
+//					await ExecutePullCommand(userArgs.SubCommand);
 //					break;
 //				case "RENDER":
 //					await ExecuteRenderCommand(userArgs.SubCommand);

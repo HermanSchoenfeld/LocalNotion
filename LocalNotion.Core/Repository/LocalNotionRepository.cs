@@ -138,7 +138,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	public string DefaultNotionApiKey => _registry.NotionApiKey;
 
 	public static async Task<LocalNotionRepository> CreateNew(
-		string repoFile = null,
+		string repoFile,
 		string notionApiKey = null,
 		string objectsPath = null,
 		string pagesPath = null,
@@ -151,8 +151,10 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		IDictionary<string, string> rootTemplates = null,
 		ILogger logger = null
 	) {
+		Guard.ArgumentNotNull(repoFile, nameof(repoFile));
+		Guard.FileNotExists(repoFile);
 		// normalize arguments
-		repoFile =  Tools.FileSystem.ToAbsolutePathIfRelative(repoFile ?? Constants.DefaultRepositoryFilename, Environment.CurrentDirectory);
+		repoFile =  Tools.FileSystem.ToAbsolutePathIfRelative(repoFile);
 		var repoParentFolder = Tools.FileSystem.GetParentDirectoryPath(repoFile);
 		objectsPath = Tools.FileSystem.ToAbsolutePathIfRelative(objectsPath ?? Constants.DefaultObjectsFolder, repoParentFolder);
 		pagesPath = Tools.FileSystem.ToAbsolutePathIfRelative(pagesPath ?? Constants.DefaultPagesFolder, repoParentFolder);

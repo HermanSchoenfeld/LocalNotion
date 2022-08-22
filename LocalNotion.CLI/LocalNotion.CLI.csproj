@@ -6,18 +6,14 @@
 	  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	  <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>locnot</AssemblyName>
+    <AssemblyName>localnotion</AssemblyName>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.9.1" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Application\Hydrogen.Application.csproj" />
     <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
     <ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
-    <ProjectReference Include="..\LocalNotion\LocalNotion.csproj" />
+    <ProjectReference Include="..\LocalNotion.Core\LocalNotion.Core.csproj" />
   </ItemGroup>
 
 </Project>
