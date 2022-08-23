@@ -147,14 +147,14 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.DeletePageGraph(pageId);
 	}
 
-	public override string ImportPageRender(string pageId, PageRenderType renderType, string renderedFile) {
+	public override string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile) {
 		using (EnterWriteScope())
-			return base.ImportPageRender(pageId, renderType, renderedFile);
+			return base.ImportPageRender(pageId, renderOutput, renderedFile);
 	}
 
-	public override void DeletePageRender(string pageId, PageRenderType renderType) {
+	public override void DeletePageRender(string pageId, RenderOutput renderOutput) {
 		using (EnterWriteScope()) 
-			base.DeletePageRender(pageId, renderType);
+			base.DeletePageRender(pageId, renderOutput);
 	}
 	
 	public override bool TryGetFile(string fileId, out LocalNotionFile localFile) {

@@ -24,6 +24,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("Sphere 10 Software Pty Ltd")]
 [assembly: AssemblyAuthor("Herman Schoenfeld <herman@sphere10.com>")]
 [assembly: AssemblyProduct("Local Notion")]
+[assembly: AssemblyProductDistribution(ProductDistribution.Alpha)]
 [assembly: AssemblyProductLink("www.sphere10.com/products/localnotion")]
 [assembly: AssemblyProductCode("A49ECEC9-1E83-436c-B432-BBF7B26055E7")]
 [assembly: AssemblyProductSecret("5d53d16efdf24ae18d5b8bac48974642ce60bbea978330a8c4154df13f9349dd")]
@@ -37,5 +38,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyVersion("0.1.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]

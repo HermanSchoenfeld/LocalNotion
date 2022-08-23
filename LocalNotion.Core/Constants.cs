@@ -28,14 +28,14 @@ public static class Constants {
 	public const string WorkspaceId = "00000000-0000-0000-0000-000000000000";
 
 	public const string DefaultRepositoryFilename = "local_notion.json";
-	public const string DefaultLogFileName = "local_notion.log";
+	public const string DefaultLogFileName = "localnotion.log";
 	public const string PageGraphFilename = ".page_graph.json";
 	public const string TemplateInfoJsonFilename = ".config.json";
 
-	public const string DefaultObjectsFolder = ".objects";
+	public const string DefaultObjectsFolder = ".localnotion/objects";
 	public const string DefaultPagesFolder = "pages";
 	public const string DefaultFilesFolder = "files";
-	public const string DefaultTemplatesFolder = ".templates";
-	public const string DefaultLogsFolder = ".logs";
+	public const string DefaultTemplatesFolder = ".localnotion/templates";
+	public const string DefaultLogsFolder = ".localnotion/logs";
 	public const string DefaultRepoFilename = "local_notion.json";
 }

@@ -20,9 +20,9 @@ public class OfflinePathResolver : IUrlResolver {
 		// about pages subfolder (i.e. "/pages/")
 
 		if (resource is LocalNotionPage localNotionPage) {
-			if (!localNotionPage.Renders.TryGetValue(PageRenderType.HTML, out var file)) {
+			if (!localNotionPage.Renders.TryGetValue(RenderOutput.HTML, out var file)) {
 				// try already rendered HTML
-				file = Repository.CalculatePageRenderFilename(resource.ID, PageRenderType.HTML); // default to future-rendered HTML
+				file = Repository.CalculatePageRenderFilename(resource.ID, RenderOutput.HTML); // default to future-rendered HTML
 				//file = Path.GetRelativePath(Repository.PagesPath, file);
 			}
 

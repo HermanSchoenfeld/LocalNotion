@@ -6,18 +6,18 @@ namespace LocalNotion;
 
 public static class PageRenderFactory {
 
-	public static IPageRenderer Create(PageRenderType rendererType, RenderMode renderMode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
-		switch(rendererType){
-			case PageRenderType.HTML: 
+	public static IPageRenderer Create(RenderOutput rendererOutput, RenderMode renderMode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
+		switch(rendererOutput){
+			case RenderOutput.HTML: 
 				var templateManager = new HtmlTemplateManager(repository.TemplatesPath, logger);
 				var template = page is LocalNotionPage { CMSProperties: not null } cmsPage && !string.IsNullOrWhiteSpace(cmsPage.CMSProperties.Root) && repository.RootTemplates.TryGetValue(cmsPage.CMSProperties.Root, out var rootTemplate) ?
 					rootTemplate :
 					repository.DefaultTemplate;
-				return new HtmlRenderer(renderMode, repository.Mode, page, pageGraph, pageObjects, repository.CreateUrlResolver(), templateManager, template);
-			case PageRenderType.PDF:
+				return new HtmlPageRenderer(renderMode, repository.Mode, page, pageGraph, pageObjects, repository.CreateUrlResolver(), templateManager, template);
+			case RenderOutput.PDF:
 				throw new NotImplementedException();
 			default:
-				throw new ArgumentOutOfRangeException(nameof(rendererType), rendererType, null);
+				throw new ArgumentOutOfRangeException(nameof(rendererOutput), rendererOutput, null);
 		}
 	}
 }

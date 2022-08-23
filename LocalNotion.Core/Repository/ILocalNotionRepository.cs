@@ -65,13 +65,13 @@ public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
 
 	void DeletePageGraph(string pageId);
 
-	string ImportPageRender(string pageId, PageRenderType renderType, string renderedFile);
+	string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile);
 
-	void DeletePageRender(string pageId, PageRenderType renderType);
+	void DeletePageRender(string pageId, RenderOutput renderOutput);
 
-	string CalculatePageRenderFilename(string pageID, PageRenderType renderType);
+	string CalculatePageRenderFilename(string pageID, RenderOutput renderOutput);
 
-	string CalculatePageRenderPath(string pageID, PageRenderType renderType);
+	string CalculatePageRenderPath(string pageID, RenderOutput renderOutput);
 
 	bool TryGetFile(string fileId, out LocalNotionFile notionFile);
 

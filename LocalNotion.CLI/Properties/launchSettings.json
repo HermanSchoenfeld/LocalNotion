@@ -2,7 +2,7 @@
   "profiles": {
     "LocalNotion.CLI": {
       "commandName": "Project",
-      "commandLineArgs": "sync -o 68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec"
+      "commandLineArgs": "pull -o bffe3340-e269-4f2a-9587-e793b70f5c3d --force"
     }
   }
 }

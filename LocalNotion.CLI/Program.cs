@@ -65,7 +65,7 @@ public static partial class Program {
 	[Verb("pull", HelpText = "Pulls Notion objects into a Local Notion repository")]
 	public class PullRepositoryCommandArguments {
 
-		[Option('o', "objects", Required = true, HelpText = "List of Notion objects to pull (i.e. pages, databases, workspaces)")]
+		[Option('o', "objects", HelpText = "List of Notion objects to pull (i.e. pages, databases, workspaces)")]
 		public IEnumerable<string> Objects { get; set; } = null;
 		
 		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
@@ -83,12 +83,11 @@ public static partial class Program {
 		//[Option("filter-root", HelpText = "Only sync CMS pages whose 'Root' property matches at least one from this list.")]
 		//public IEnumerable<string> FilterRoots { get; set; } = Array.Empty<string>();
 
-
 		[Option("render", Default = (bool)true, HelpText = "Renders objects after pull")]
 		public bool Render { get; set; }
 
-		[Option("render-type", Default = PageRenderType.HTML, HelpText = "Type of rendering to use (HTML, PDF)")]
-		public PageRenderType RenderType { get; set; }
+		[Option("render-output", Default = RenderOutput.HTML, HelpText = "Type of rendering to use (HTML, PDF)")]
+		public RenderOutput RenderOutput { get; set; }
 
 		[Option("render-mode", Default = RenderMode.ReadOnly, HelpText = "Rendering mode for objects (ReadOnly, Editable)")]
 		public RenderMode RenderMode { get; set; }
@@ -99,43 +98,61 @@ public static partial class Program {
 		[Option("force", HelpText = "Forces downloading of objects even if unchanged")]
 		public bool Force { get; set; } = false;
 
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
 
+	}
+
+	[Verb("sync", HelpText = "Synchronizes a Local Notion repository with Notion (until process manually terminated)")]
+	public class SyncRepositoryCommandArguments : PullRepositoryCommandArguments{
+
+		[Option('f', "poll-frequency", Default = 30, HelpText = "How often to poll Notion for changes")]
+		public int PollFrequency { get; set; } 
+
+	}
+
+			
+	[Verb("render", HelpText = "Renders a Local Notion object (using local state only)")]
+	public class RenderCommandArguments {
+
+		[Option('r', "repo-path", HelpText = "Path to Local Notion repository.")]
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
+
+		[Option('o', "objects", Required = false, HelpText = "List of object ID's to render (i.e. page(s), database(s), workspace)")]
+		public IEnumerable<string> Objects { get; set; } = null;
+
+		[Option('a', "all", HelpText = "Renders all objects in repository")]
+		public bool RenderAll { get; set; }
+
+		[Option("render-output", Default = RenderOutput.HTML, HelpText = "Type of rendering to use (HTML, PDF)")]
+		public RenderOutput RenderOutput { get; set; }
+
+		[Option("render-mode", Default = RenderMode.ReadOnly, HelpText = "Rendering mode for objects (ReadOnly, Editable)")]
+		public RenderMode RenderMode { get; set; }
+
+		[Option("fault-tolerant", Default = (bool)true, HelpText = "Continues processing on failures")]
+		public bool FaultTolerant { get; set; }
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 
-
 	}
 
-	[Verb("prune", HelpText = "Removes from a Local Notion repository databases, pages and files that are no longer in Notion")]
+
+	[Verb("prune", HelpText = "Removes objects from a Local Notion that no longer exist in Notion")]
 	public class PruneCommandArguments {
 
 		[Option('r', "repo-path", HelpText = "Path to Local Notion repository (default current working dir)")]
 		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
 
 		[Option('o', "objects", HelpText = "List of object ID's to keep (i.e. page(s), database(s), workspace)")]
-		public string[] ObjectID { get; set; } = null;
+		public IEnumerable<string> Objects { get; set; } = null;
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 
 
 		// TODO: add usages
-
-	}
-			
-	[Verb("render", HelpText = "Renders a Local Notion object using it's local state only")]
-	public class RenderCommandArguments {
-
-		[Option('r', "repo-path", HelpText = "Path to Local Notion repository.")]
-		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
-
-		[Option('o', "objects", HelpText = "List of object ID's to render (i.e. page(s), database(s), workspace)")]
-		public string[] ObjectID { get; set; } = null;
-
-		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
-		public bool Verbose { get; set; } = false;
-
 
 	}
 
@@ -150,7 +167,6 @@ public static partial class Program {
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
-
 
 	}
 
@@ -204,14 +220,14 @@ public static partial class Program {
 						@obj, 
 						arguments.FilterLastUpdatedOn,
 						arguments.Render,
-						arguments.RenderType,
+						arguments.RenderOutput,
 						arguments.RenderMode,
 						arguments.FaultTolerant,
 						arguments.Force
 					);
 					break;
 				case LocalNotionResourceType.Page:
-					await syncOrchestrator.DownloadPage( @obj, arguments.Force );
+					await syncOrchestrator.DownloadPage( @obj, arguments.Render, arguments.RenderOutput, arguments.RenderMode, arguments.FaultTolerant, arguments.Force);
 					break;
 				default:
 					consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
@@ -222,26 +238,31 @@ public static partial class Program {
 		return 0;
 	}
 
-	public static async Task<int> ExecuteRenderCommand(RenderCommandArguments arguments) {
+	public static async Task<int> ExecuteSyncCommand(SyncRepositoryCommandArguments arguments) {
+		// TODO: needs transactional files to avoid corrupting repo
+		while(true) {
+			await ExecutePullCommand(arguments);
+			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency));
+			arguments.FilterLastUpdatedOn = DateTime.UtcNow;
+		}
 		return 0;
-		//var path = createCommand.GetSingleArgumentValueOrDefault<string>("path", Environment.CurrentDirectory);
-		//var db = createCommand.GetSingleArgumentValueOrDefault<string>("db");
-		//var page = createCommand.GetSingleArgumentValueOrDefault<string>("page");
-		//var renderType = createCommand.GetSingleArgumentValueOrDefault<PageRenderType>("type");
-		//var renderMode = createCommand.GetSingleArgumentValueOrDefault<RenderMode>("mode");
+	}
 
-		//var repo = await LocalNotionRepository.Open(path, SystemLog.Logger);
 
-		//var renderer = new LocalNotionRenderer(repo, SystemLog.Logger);
+	public static async Task<int> ExecuteRenderCommand(RenderCommandArguments arguments) {
+		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
+		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+		var renderer = new LocalNotionRenderer(repo, consoleLogger);
+		var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects;
+		if (!toRender.Any()) {
+			consoleLogger.Warning("Nothing to render");
+			return 0;
+		}
 
-		//if (!string.IsNullOrWhiteSpace(db)) {
-		//	SystemLog.Warning("Synchronizing Notion databases is not currently implemented");
-		//}
-
-		//if (!string.IsNullOrWhiteSpace(page)) {
-		//	renderer.RenderLocalPage(page, renderType, renderMode);
-		//}
-
+		foreach (var resource in toRender) {
+			renderer.RenderLocalResource(resource, arguments.RenderOutput, arguments.RenderMode);
+		}
+		return 0;
 	}
 
 	public static async Task<int> ExecutePruneCommand(PruneCommandArguments arguments) {
@@ -266,12 +287,18 @@ public static partial class Program {
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
 		try {
+			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00"))  {
+				Console.WriteLine("Software has expired");
+				return -1;
+			}
+
 			HydrogenFramework.Instance.StartFramework();
 
 			return await Parser.Default.ParseArguments<
 				InitRepositoryCommandArguments,
 				RemoveRepositoryCommandArguments,
 				PullRepositoryCommandArguments,
+				SyncRepositoryCommandArguments,
 				RenderCommandArguments,
 				PruneCommandArguments,
 				LicenseCommandArguments,
@@ -280,6 +307,7 @@ public static partial class Program {
 				(InitRepositoryCommandArguments commandArgs) => ExecuteInitCommand(commandArgs),
 				(RemoveRepositoryCommandArguments commandArgs) => ExecuteRemoveCommand(commandArgs),
 				(PullRepositoryCommandArguments commandArgs) => ExecutePullCommand(commandArgs),
+				(SyncRepositoryCommandArguments commandArgs) => ExecuteSyncCommand(commandArgs),
 				(RenderCommandArguments commandArgs) => ExecuteRenderCommand(commandArgs),
 				(PruneCommandArguments commandArgs) => ExecutePruneCommand(commandArgs),
 				(LicenseCommandArguments commandArgs) => ExecuteLicenseCommand(commandArgs),
@@ -293,3 +321,4 @@ public static partial class Program {
 
 
 }
+

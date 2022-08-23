@@ -35,13 +35,13 @@
 ////await orchestrator.RegisterPage("cda5ecf6-9476-4933-9d1f-52a1031b4f16");
 
 ////foreach (var page in repo.Resources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
-////    orchestrator.RenderLocalPage(page.ID, PageRenderType.HTML, RenderMode.ReadOnly);
+////    orchestrator.RenderLocalResource(page.ID, RenderOutput.HTML, RenderMode.ReadOnly);
 ////}
 
 //try {
 ////    await orchestrator.DownloadPage(HowToArticleID);
-//  //  orchestrator.RenderLocalPage(HowToArticleID, PageRenderType.HTML, RenderMode.ReadOnly);
-//    //orchestrator.RenderLocalPage(EmbeddedArticleID, PageRenderType.HTML, RenderMode.ReadOnly);
+//  //  orchestrator.RenderLocalResource(HowToArticleID, RenderOutput.HTML, RenderMode.ReadOnly);
+//    //orchestrator.RenderLocalResource(EmbeddedArticleID, RenderOutput.HTML, RenderMode.ReadOnly);
 //} catch (Exception error) {
 //    logger.LogException(error);
 //}

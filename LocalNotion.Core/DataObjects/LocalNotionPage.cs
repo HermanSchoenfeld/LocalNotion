@@ -15,7 +15,7 @@ public class LocalNotionPage : LocalNotionResource {
 	public LocalNotionThumbnail Thumbnail { get; set; } = LocalNotionThumbnail.None;
 
 	[JsonProperty("renders", NullValueHandling = NullValueHandling.Ignore)]
-	public IDictionary<PageRenderType, string> Renders { get; set; } = new Dictionary<PageRenderType, string>();
+	public IDictionary<RenderOutput, string> Renders { get; set; } = new Dictionary<RenderOutput, string>();
 	
 	[JsonProperty("parent", NullValueHandling = NullValueHandling.Ignore)]
 	public string Parent { get; set; }

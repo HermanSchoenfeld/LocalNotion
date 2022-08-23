@@ -98,13 +98,13 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual void DeletePageGraph(string pageId) => throw new NotSupportedException();
 
-	public virtual string ImportPageRender(string pageId, PageRenderType renderType, string renderedFile) => throw new NotSupportedException();
+	public virtual string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile) => throw new NotSupportedException();
 
-	public virtual void DeletePageRender(string pageId, PageRenderType renderType) => throw new NotSupportedException();
+	public virtual void DeletePageRender(string pageId, RenderOutput renderOutput) => throw new NotSupportedException();
 
-	public string CalculatePageRenderFilename(string pageID, PageRenderType renderType) => InternalRepository.Value.CalculatePageRenderFilename(pageID, renderType);
+	public string CalculatePageRenderFilename(string pageID, RenderOutput renderOutput) => InternalRepository.Value.CalculatePageRenderFilename(pageID, renderOutput);
 
-	public string CalculatePageRenderPath(string pageID, PageRenderType renderType) => InternalRepository.Value.CalculatePageRenderPath(pageID, renderType);
+	public string CalculatePageRenderPath(string pageID, RenderOutput renderOutput) => InternalRepository.Value.CalculatePageRenderPath(pageID, renderOutput);
 
 	public virtual bool TryGetFile(string fileId, out LocalNotionFile notionFile) => InternalRepository.Value.TryGetFile(fileId, out notionFile);
 

@@ -83,13 +83,13 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual void DeletePageGraph(string pageId) => InternalRepository.DeletePageGraph(pageId);
 
-	public virtual string ImportPageRender(string pageId, PageRenderType renderType, string renderedFile) => InternalRepository.ImportPageRender(pageId, renderType, renderedFile);
+	public virtual string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile) => InternalRepository.ImportPageRender(pageId, renderOutput, renderedFile);
 
-	public virtual void DeletePageRender(string pageId, PageRenderType renderType) => InternalRepository.DeletePageRender(pageId, renderType);
+	public virtual void DeletePageRender(string pageId, RenderOutput renderOutput) => InternalRepository.DeletePageRender(pageId, renderOutput);
 
-	public string CalculatePageRenderFilename(string pageID, PageRenderType renderType) => InternalRepository.CalculatePageRenderFilename(pageID, renderType);
+	public string CalculatePageRenderFilename(string pageID, RenderOutput renderOutput) => InternalRepository.CalculatePageRenderFilename(pageID, renderOutput);
 
-	public string CalculatePageRenderPath(string pageID, PageRenderType renderType) => InternalRepository.CalculatePageRenderPath(pageID, renderType);
+	public string CalculatePageRenderPath(string pageID, RenderOutput renderOutput) => InternalRepository.CalculatePageRenderPath(pageID, renderOutput);
 
 	public virtual bool TryGetFile(string fileId, out LocalNotionFile notionFile) => InternalRepository.TryGetFile(fileId, out notionFile);
 

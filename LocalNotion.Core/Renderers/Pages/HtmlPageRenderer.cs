@@ -9,10 +9,10 @@ using AngleSharp.Html;
 
 namespace LocalNotion;
 
-public class HtmlRenderer : PageRendererBase<string> {
+public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IUrlResolver resolver, ITemplateManager templateManager, string template)
+	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IUrlResolver resolver, ITemplateManager templateManager, string template)
 		: base(page, pageGraph, pageObjects, resolver, File.WriteAllText) {
 		Guard.ArgumentNotNull(templateManager, nameof(templateManager));
 		Guard.ArgumentNotNullOrWhitespace(template, nameof(template));
@@ -339,13 +339,13 @@ public class HtmlRenderer : PageRendererBase<string> {
 						ThumbnailType.Emoji => RenderTemplate(
 							this.Page.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
 							new NotionObjectTokens {
-								["thumbnail_emoji"] = this.Page.Thumbnail,
+								["thumbnail_emoji"] = this.Page.Thumbnail.Data,
 							}
 						),
 						ThumbnailType.Image => RenderTemplate(
 							this.Page.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
 							new NotionObjectTokens {
-								["thumbnail_url"] = this.Page.Thumbnail
+								["thumbnail_url"] = this.Page.Thumbnail.Data
 							}
 						),
 					},

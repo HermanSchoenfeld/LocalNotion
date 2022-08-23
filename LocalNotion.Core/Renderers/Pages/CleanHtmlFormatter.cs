@@ -10,7 +10,7 @@ using System.Linq;
 /// <summary>
 /// A version of <see cref="PrettyMarkupFormatter"/> that correctly handles pre-formatted tags.
 /// </summary>
-public class CleanHtmlFormatter : HtmlMarkupFormatter {
+internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 	#region Fields
 
 	private String _indentString;

@@ -217,14 +217,29 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		logger.Info("Removing objects");
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.ObjectsPath, true);
+		if (Tools.FileSystem.IsDirectoryEmpty(Tools.FileSystem.GetParentDirectoryPath(repo.ObjectsPath)))
+			await Tools.FileSystem.DeleteDirectoryAsync(Tools.FileSystem.GetParentDirectoryPath(repo.ObjectsPath));
+
 		logger.Info("Removing files");
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.FilesPath, true);
+		if (Tools.FileSystem.IsDirectoryEmpty(Tools.FileSystem.GetParentDirectoryPath(repo.FilesPath)))
+			await Tools.FileSystem.DeleteDirectoryAsync(Tools.FileSystem.GetParentDirectoryPath(repo.FilesPath));
+
 		logger.Info("Removing pages");
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.PagesPath, true);
+		if (Tools.FileSystem.IsDirectoryEmpty(Tools.FileSystem.GetParentDirectoryPath(repo.PagesPath)))
+			await Tools.FileSystem.DeleteDirectoryAsync(Tools.FileSystem.GetParentDirectoryPath(repo.PagesPath));
+
 		logger.Info("Removing templates");
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.TemplatesPath, true);
+		if (Tools.FileSystem.IsDirectoryEmpty(Tools.FileSystem.GetParentDirectoryPath(repo.TemplatesPath)))
+			await Tools.FileSystem.DeleteDirectoryAsync(Tools.FileSystem.GetParentDirectoryPath(repo.TemplatesPath));
+
 		logger.Info("Removing logs");
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.LogsPath, true);
+		if (Tools.FileSystem.IsDirectoryEmpty(Tools.FileSystem.GetParentDirectoryPath(repo.LogsPath)))
+			await Tools.FileSystem.DeleteDirectoryAsync(Tools.FileSystem.GetParentDirectoryPath(repo.LogsPath));
+
 		logger.Info("Removing repo");
 		await Tools.FileSystem.DeleteFileAsync(repoFile);
 
@@ -498,49 +513,49 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		File.Delete(renderPath);
 	}
 
-	public virtual string ImportPageRender(string pageId, PageRenderType renderType, string renderedFile) {
+	public virtual string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile) {
 		Guard.ArgumentNotNull(pageId, nameof(pageId));
 		Guard.ArgumentNotNull(renderedFile, nameof(renderedFile));
 		Guard.FileExists(renderedFile);
 		CheckLoaded();
 		var page = this.GetPage(pageId);
-		if (page.Renders.ContainsKey(renderType)) {
-			var file = page.Renders[renderType];
+		if (page.Renders.ContainsKey(renderOutput)) {
+			var file = page.Renders[renderOutput];
 			if (File.Exists(file))
 				File.Delete(file);
-			page.Renders.Remove(renderType);
+			page.Renders.Remove(renderOutput);
 		}
 
-		var renderFilename = CalculatePageRenderFilename(pageId, renderType);
+		var renderFilename = CalculatePageRenderFilename(pageId, renderOutput);
 		var filePath = Path.Combine(PagesPath, page.LocalPath, renderFilename);
 		Tools.FileSystem.CopyFile(renderedFile, filePath, true, true);
-		page.Renders[renderType] = renderFilename;
+		page.Renders[renderOutput] = renderFilename;
 		RequiresSave = true;
 		return filePath;
 	}
 
-	public virtual void DeletePageRender(string pageId, PageRenderType renderType) {
+	public virtual void DeletePageRender(string pageId, RenderOutput renderOutput) {
 		CheckLoaded();
 		string fileToDelete;
 		var page = this.GetPage(pageId);
-		if (page.Renders.TryGetValue(renderType, out var relPath)) {
+		if (page.Renders.TryGetValue(renderOutput, out var relPath)) {
 			fileToDelete = Path.GetFullPath(relPath, DetermineResourceTypeFolder(LocalNotionResourceType.Page, FileSystemPathType.Absolute));
 			if (File.Exists(fileToDelete))
 				File.Delete(fileToDelete);
-			page.Renders.Remove(renderType);
+			page.Renders.Remove(renderOutput);
 			RequiresSave = true;
 		} 
 	}
 
-	public virtual string CalculatePageRenderFilename(string pageID, PageRenderType renderType) {
+	public virtual string CalculatePageRenderFilename(string pageID, RenderOutput renderOutput) {
 		var page = this.GetPage(pageID);
-		var ext = renderType.GetAttribute<FileExtensionAttribute>().FileExtension;
+		var ext = renderOutput.GetAttribute<FileExtensionAttribute>().FileExtension;
 		var pageFilename = Tools.FileSystem.ToValidFolderOrFilename(page.Title.ToNullWhenWhitespace() ?? Constants.DefaultResourceTitle) + $".{ext.TrimStart('.')}";
 		return pageFilename;
 	}
 
-	public virtual string CalculatePageRenderPath(string pageID, PageRenderType renderType)
-		=> Path.Combine(PagesPath, pageID, CalculatePageRenderFilename(pageID, renderType));
+	public virtual string CalculatePageRenderPath(string pageID, RenderOutput renderOutput)
+		=> Path.Combine(PagesPath, pageID, CalculatePageRenderFilename(pageID, renderOutput));
 
 	public virtual bool TryGetFile(string fileId, out LocalNotionFile localFile) {
 		CheckLoaded();

@@ -57,7 +57,7 @@ public class NotionSyncOrchestrator {
 	/// <param name="updatedOnFilter">Filter out pages updated before date</param>
 	/// <param name="faultTolerant">Continues processing other items when failing on any individual item</param>
 	/// <returns></returns>
-	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, PageRenderType renderType = PageRenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderOutput renderOutput = RenderOutput.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
 		try {
 			// Fetch updated notion pages and transform into articles
 			var cmsPages = await QueryDatabasePages(cmsDatabaseID,  updatedOnFilter);
@@ -66,7 +66,7 @@ public class NotionSyncOrchestrator {
 			var downloadedResources = new List<LocalNotionResource>();
 			foreach (var page in cmsPages) {
 				try {
-					var downloads = await DownloadPage(page.Id, forceRefresh);
+					var downloads = await DownloadPage(page.Id, render: false, forceRefresh: forceRefresh); // rendering deferred to below
 					downloadedResources.AddRange(downloads);
 				} catch (Exception error) {
 					Logger.Error($"Failed to process page '{page.Id}'. {error.ToDisplayString()}");
@@ -80,7 +80,7 @@ public class NotionSyncOrchestrator {
 				var renderer = new LocalNotionRenderer(Repository, Logger);
 				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
 					try {
-						renderer.RenderLocalPage(page.ID, renderType, renderMode);
+						renderer.RenderLocalResource(page.ID, renderOutput, renderMode);
 					} catch (Exception error) {
 						Logger.Error($"Failed to process page  '{page.Title}' ({page.ID}). {error.ToDisplayString()}");
 						if (!faultTolerant)
@@ -96,7 +96,7 @@ public class NotionSyncOrchestrator {
 
 	}
 
-	public async Task<LocalNotionResource[]> DownloadPage(string pageId, bool forceRefresh = false) {
+	public async Task<LocalNotionResource[]> DownloadPage(string pageId, bool render = true, RenderOutput renderOutput = RenderOutput.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
 		Guard.ArgumentNotNullOrWhitespace(pageId, nameof(pageId));
 		var downloadedResources = new List<LocalNotionResource>();
 
@@ -185,9 +185,24 @@ public class NotionSyncOrchestrator {
 				.ToArray();
 
 		foreach (var childPage in childPages) {
-			var subPageDownloads = await DownloadPage(childPage.Id, forceRefresh);
+			var subPageDownloads = await DownloadPage(childPage.Id, render, renderOutput, renderMode, faultTolerant, forceRefresh);
 			downloadedResources.AddRange(subPageDownloads);
 		}
+
+		// Render page
+		if (render) {
+			var renderer = new LocalNotionRenderer(Repository, Logger);
+			foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
+				try {
+					renderer.RenderLocalResource(page.ID, renderOutput, renderMode);
+				} catch (Exception error) {
+					Logger.Error($"Failed to process page  '{page.Title}' ({page.ID}). {error.ToDisplayString()}");
+					if (!faultTolerant)
+						throw;
+				}
+			}
+		}
+
 		return downloadedResources.ToArray();
 	}
 

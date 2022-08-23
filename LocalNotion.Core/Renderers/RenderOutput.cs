@@ -3,7 +3,7 @@ using Hydrogen;
 
 namespace LocalNotion;
 
-public enum PageRenderType {
+public enum RenderOutput {
 	[EnumMember(Value = "html")]
 	[FileExtension(".html")]
 	HTML,
