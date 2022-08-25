@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using Hydrogen;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public enum RenderOutput {
 	[EnumMember(Value = "html")]

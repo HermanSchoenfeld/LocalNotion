@@ -1,6 +1,6 @@
 ﻿using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 

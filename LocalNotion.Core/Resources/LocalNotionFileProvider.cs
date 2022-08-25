@@ -7,7 +7,7 @@ using Hydrogen;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Primitives;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 
 //public abstract class FileSystemObjectListing {

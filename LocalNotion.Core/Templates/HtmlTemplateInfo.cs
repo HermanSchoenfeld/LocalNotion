@@ -4,7 +4,7 @@ using Hydrogen.Data;
 using JsonSubTypes;
 using Newtonsoft.Json;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class HtmlTemplateInfo : TemplateInfo {
 

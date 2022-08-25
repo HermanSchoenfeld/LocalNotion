@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class LocalNotionFile : LocalNotionResource {
 

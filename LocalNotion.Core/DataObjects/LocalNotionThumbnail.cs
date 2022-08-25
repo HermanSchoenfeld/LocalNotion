@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class LocalNotionThumbnail {
 

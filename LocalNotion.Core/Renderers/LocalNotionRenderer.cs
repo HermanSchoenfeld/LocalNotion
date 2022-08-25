@@ -7,7 +7,7 @@ using Hydrogen;
 using LocalNotion.Core.Repository;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class LocalNotionRenderer : IRenderer {
 	private readonly ILocalNotionRepository _repository;
@@ -44,8 +44,6 @@ public class LocalNotionRenderer : IRenderer {
 	}
 
 	public string RenderLocalPage(string pageID, RenderOutput renderOutput, RenderMode renderMode) {
-		
-		
 		var page = _repository.GetPage(pageID);
 		var pageGraph = _repository.GetPageGraph(pageID);
 		var pageObjects = _repository.FetchObjects(pageGraph);

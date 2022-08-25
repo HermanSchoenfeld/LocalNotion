@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Html;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;

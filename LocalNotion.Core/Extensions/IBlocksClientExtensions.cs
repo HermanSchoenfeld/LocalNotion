@@ -1,7 +1,7 @@
 ﻿using Notion.Client;
 
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public static class IBlocksClientExtensions {
 

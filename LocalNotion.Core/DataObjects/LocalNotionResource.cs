@@ -2,7 +2,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 [JsonConverter(typeof(JsonSubtypes), "type")]
 [JsonSubtypes.KnownSubType(typeof(LocalNotionFile), LocalNotionResourceType.File)]

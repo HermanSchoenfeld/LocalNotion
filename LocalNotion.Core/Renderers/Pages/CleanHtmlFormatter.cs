@@ -1,6 +1,6 @@
 ﻿using AngleSharp.Html;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 using AngleSharp.Dom;
 using AngleSharp.Text;

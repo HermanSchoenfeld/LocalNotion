@@ -1,7 +1,7 @@
 ﻿using Hydrogen;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public static class RichTextExtensions {
 	public static string ToPlainText(this IEnumerable<RichTextBase> notiontext)

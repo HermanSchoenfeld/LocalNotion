@@ -2,12 +2,11 @@
 using Hydrogen.Data;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 
 // Make ThreadSafe
 public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAsyncSaveable {
-
 
 	public event EventHandlerEx<object> Loading;
 	public event EventHandlerEx<object> Loaded;
@@ -153,9 +152,13 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	) {
 		Guard.ArgumentNotNull(repoFile, nameof(repoFile));
 		Guard.FileNotExists(repoFile);
+
 		// normalize arguments
 		repoFile =  Tools.FileSystem.ToAbsolutePathIfRelative(repoFile);
 		var repoParentFolder = Tools.FileSystem.GetParentDirectoryPath(repoFile);
+		if (!Directory.Exists(repoParentFolder))
+			Directory.CreateDirectory(repoParentFolder);
+
 		objectsPath = Tools.FileSystem.ToAbsolutePathIfRelative(objectsPath ?? Constants.DefaultObjectsFolder, repoParentFolder);
 		pagesPath = Tools.FileSystem.ToAbsolutePathIfRelative(pagesPath ?? Constants.DefaultPagesFolder, repoParentFolder);
 		filesPath = Tools.FileSystem.ToAbsolutePathIfRelative(filesPath ?? Constants.DefaultFilesFolder, repoParentFolder);
@@ -171,7 +174,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		if (Directory.Exists(pagesPath))
 			await Tools.FileSystem.DeleteDirectoryAsync(pagesPath);
-
+		 
 		if (Directory.Exists(filesPath))
 			await Tools.FileSystem.DeleteDirectoryAsync(filesPath);
 
@@ -210,10 +213,13 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 	public static async Task Remove(string repoFile, ILogger logger = null) {
 		// normalize arguments
-		repoFile =  Tools.FileSystem.ToAbsolutePathIfRelative(repoFile ?? Constants.DefaultRepositoryFilename, Environment.CurrentDirectory);
+		repoFile =  Tools.FileSystem.ToAbsolutePathIfRelative(repoFile ?? Path.Combine(Constants.DefaultRegistryFolder, Constants.DefaultRepositoryFilename), Environment.CurrentDirectory);
 		logger ??= new NoOpLogger();
 
 		var repo = await LocalNotionRepository.Open(repoFile, logger);
+
+		logger.Info("Removing repo");
+		await Tools.FileSystem.DeleteFileAsync(repoFile);
 
 		logger.Info("Removing objects");
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.ObjectsPath, true);
@@ -239,9 +245,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		await Tools.FileSystem.DeleteDirectoryAsync(repo.LogsPath, true);
 		if (Tools.FileSystem.IsDirectoryEmpty(Tools.FileSystem.GetParentDirectoryPath(repo.LogsPath)))
 			await Tools.FileSystem.DeleteDirectoryAsync(Tools.FileSystem.GetParentDirectoryPath(repo.LogsPath));
-
-		logger.Info("Removing repo");
-		await Tools.FileSystem.DeleteFileAsync(repoFile);
 
 		// TODO: need to remove system logger logger when repo closes
 	}
@@ -289,7 +292,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		// Prepare repository logger
 		_logger.Add(
-			new ThreadIdLogger(new TimestampLogger(new RollingFileLogger(Path.Combine(LogsPath, Constants.DefaultLogFileName)))) {
+			new ThreadIdLogger(new TimestampLogger(new RollingFileLogger(Path.Combine(LogsPath, Constants.DefaultLogFilename)))) {
 				Options = _registry.LogLevel.ToLogOptions()
 			}
 		);

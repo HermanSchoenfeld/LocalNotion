@@ -1,4 +1,4 @@
-﻿namespace LocalNotion;
+﻿namespace LocalNotion.Core;
 
 public interface IBookmarkBuilder {
 

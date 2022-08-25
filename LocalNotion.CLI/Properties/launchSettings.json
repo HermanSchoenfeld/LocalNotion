@@ -2,7 +2,7 @@
   "profiles": {
     "LocalNotion.CLI": {
       "commandName": "Project",
-      "commandLineArgs": "pull -o bffe3340-e269-4f2a-9587-e793b70f5c3d --force"
+      "commandLineArgs": "init -k YOUR_NOTION_API_KEY_HERE"
     }
   }
 }

@@ -2,7 +2,7 @@
 using Hydrogen;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 internal class LocalNotionHelper {
 
 	public static bool TryCovertObjectIdToGuid(string objectID, out Guid guid)

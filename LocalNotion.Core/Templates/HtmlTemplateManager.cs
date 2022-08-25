@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.FileProviders;
 using LocalNotion.Extensions;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class HtmlTemplateManager : ITemplateManager {
 

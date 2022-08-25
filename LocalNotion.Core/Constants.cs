@@ -1,6 +1,6 @@
 ﻿#pragma warning disable CS8618
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public static class Constants {
 	public const string EmptyArticleName = "Unnamed Page";
@@ -27,15 +27,16 @@ public static class Constants {
 	public const string DefaultOnlineBaseUrl = "/";
 	public const string WorkspaceId = "00000000-0000-0000-0000-000000000000";
 
-	public const string DefaultRepositoryFilename = "local_notion.json";
-	public const string DefaultLogFileName = "localnotion.log";
+	public const string DefaultRepositoryFilename = "registry.json";
+	public const string DefaultLogFilename = "localnotion.log";
 	public const string PageGraphFilename = ".page_graph.json";
 	public const string TemplateInfoJsonFilename = ".config.json";
 
+	public const string DefaultRegistryFolder = ".localnotion";
 	public const string DefaultObjectsFolder = ".localnotion/objects";
-	public const string DefaultPagesFolder = "pages";
-	public const string DefaultFilesFolder = "files";
+	public const string DefaultPagesFolder = "";
+	public const string DefaultFilesFolder = "";
 	public const string DefaultTemplatesFolder = ".localnotion/templates";
 	public const string DefaultLogsFolder = ".localnotion/logs";
-	public const string DefaultRepoFilename = "local_notion.json";
+	public const string DefaultRepoFilename = ".localnotion/local_notion.json";
 }

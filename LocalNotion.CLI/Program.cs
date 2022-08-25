@@ -9,12 +9,31 @@ using System.IO;
 namespace LocalNotion.CLI;
 
 public static partial class Program {
+	public const int ERRORCODE_OK = 0;
+	public const int ERRORCODE_COMMANDLINE_ERROR = -1;
+	public const int ERRORCODE_REPO_NOT_FOUND = -2;
+	public const int ERRORCODE_REPO_ERROR = -3;
+	public const int ERRORCODE_REPO_NO_APIKEY = -4;
+	public const int ERRORCODE_NOT_IMPLEMENTED = -5;
+	public const int ERRORCODE_LICENSE_ERROR = -6;
+	
+	
+	[Verb("status", HelpText = "Provides status of the Local Notion repository")]
+	public class StatusRepositoryCommandArguments {
+		[Option('p', "path", HelpText = "Path to Local Notion repository")]
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRegistryFolder,  Constants.DefaultRepositoryFilename);
+
+		
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+	}
+
 	
 	[Verb("init", HelpText = "Creates a Local Notion repository")]
 	public class InitRepositoryCommandArguments {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository")]
-		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRegistryFolder,  Constants.DefaultRepositoryFilename);
 
 		[Option('k', "key", HelpText = "Notion API key to use when contacting notion (do not pass in low security environment)")]
 		public string APIKey { get; set; } = null;
@@ -52,7 +71,7 @@ public static partial class Program {
 	public class RemoveRepositoryCommandArguments {
 
 		[Option('r', "repo-path", HelpText = "Path to Local Notion repository (default current working dir)")]
-		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRegistryFolder, Constants.DefaultRepositoryFilename);
 
 		[Option("confirm", Required = true, HelpText = "Mandatory option required to avoid accidental user removal")]
 		public bool Confirm { get; set; }
@@ -72,7 +91,7 @@ public static partial class Program {
 		public string APIKey { get; set; } = null;
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository")]
-		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRegistryFolder, Constants.DefaultRepositoryFilename);
 
 		[Option('u', "updated-on", HelpText = "Ignore objects updated before this date")]
 		public DateTime? FilterLastUpdatedOn { get; set; } = null;
@@ -116,7 +135,7 @@ public static partial class Program {
 	public class RenderCommandArguments {
 
 		[Option('r', "repo-path", HelpText = "Path to Local Notion repository.")]
-		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRegistryFolder, Constants.DefaultRepositoryFilename);
 
 		[Option('o', "objects", Required = false, HelpText = "List of object ID's to render (i.e. page(s), database(s), workspace)")]
 		public IEnumerable<string> Objects { get; set; } = null;
@@ -143,16 +162,13 @@ public static partial class Program {
 	public class PruneCommandArguments {
 
 		[Option('r', "repo-path", HelpText = "Path to Local Notion repository (default current working dir)")]
-		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRepositoryFilename);
+		public string Path { get; set; } = System.IO.Path.Combine(Environment.CurrentDirectory, Constants.DefaultRegistryFolder, Constants.DefaultRepositoryFilename);
 
 		[Option('o', "objects", HelpText = "List of object ID's to keep (i.e. page(s), database(s), workspace)")]
 		public IEnumerable<string> Objects { get; set; } = null;
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
-
-
-		// TODO: add usages
 
 	}
 
@@ -170,8 +186,22 @@ public static partial class Program {
 
 	}
 
+	public static async Task<int> ExecuteStatusCommand(StatusRepositoryCommandArguments arguments) {
+		var consoleLogger = new ConsoleLogger { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
+
+		if (!File.Exists(arguments.Path)) {
+			consoleLogger.Error($"Repository not found: {arguments.Path}");
+			return ERRORCODE_REPO_NOT_FOUND;
+		}
+
+		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+		consoleLogger.Info("Location Notion repository has been created");
+		return ERRORCODE_OK;
+
+	}
+
 	public static async Task<int> ExecuteInitCommand(InitRepositoryCommandArguments arguments) {
-		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
+		var consoleLogger = new ConsoleLogger { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
 		await LocalNotionRepository.CreateNew(
 			arguments.Path,
 			arguments.APIKey,
@@ -186,14 +216,14 @@ public static partial class Program {
 			logger: consoleLogger
 		);
 		consoleLogger.Info("Location Notion repository has been created");
-		return 0;
+		return ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecuteRemoveCommand(RemoveRepositoryCommandArguments arguments) {
 		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
 		await LocalNotionRepository.Remove(arguments.Path, consoleLogger);
 		consoleLogger.Info("Local Notion repository has been removed");
-		return 0;
+		return ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecutePullCommand(PullRepositoryCommandArguments arguments) {
@@ -245,7 +275,7 @@ public static partial class Program {
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency));
 			arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 		}
-		return 0;
+		return ERRORCODE_OK;
 	}
 
 
@@ -256,29 +286,29 @@ public static partial class Program {
 		var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects;
 		if (!toRender.Any()) {
 			consoleLogger.Warning("Nothing to render");
-			return 0;
+			return ERRORCODE_OK;
 		}
 
 		foreach (var resource in toRender) {
 			renderer.RenderLocalResource(resource, arguments.RenderOutput, arguments.RenderMode);
 		}
-		return 0;
+		return ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecutePruneCommand(PruneCommandArguments arguments) {
 		var consoleLogger = new ConsoleLogger() { Options = (arguments.Verbose ? LogLevel.Debug : LogLevel.Info).ToLogOptions() };
 		consoleLogger.Warning("Local Notion pruning is not currently implemented");
-		return 1;
+		return ERRORCODE_NOT_IMPLEMENTED;
 	}
 
 	public static async Task<int> ExecuteLicenseCommand(LicenseCommandArguments arguments) {
 		SystemLog.Warning("Local Notion DRM is not currently implemented");
-		return 1;
+		return ERRORCODE_NOT_IMPLEMENTED;
 	}
 
 	public static async Task<int> ProcessCommandLineErrors(IEnumerable<Error> errors) {
 		System.Threading.Thread.Sleep(200); // give time for output to flush to parent process
-		return 1;
+		return ERRORCODE_COMMANDLINE_ERROR;
 	}
 
 	/// <summary>
@@ -289,12 +319,13 @@ public static partial class Program {
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00"))  {
 				Console.WriteLine("Software has expired");
-				return -1;
+				return ERRORCODE_LICENSE_ERROR;
 			}
 
 			HydrogenFramework.Instance.StartFramework();
 
-			return await Parser.Default.ParseArguments<
+			return await Parser.Default.ParseArguments< 
+				StatusRepositoryCommandArguments,
 				InitRepositoryCommandArguments,
 				RemoveRepositoryCommandArguments,
 				PullRepositoryCommandArguments,
@@ -304,6 +335,7 @@ public static partial class Program {
 				LicenseCommandArguments,
 				int
 			>(args).MapResult(
+				(StatusRepositoryCommandArguments commandArgs) => ExecuteStatusCommand(commandArgs),
 				(InitRepositoryCommandArguments commandArgs) => ExecuteInitCommand(commandArgs),
 				(RemoveRepositoryCommandArguments commandArgs) => ExecuteRemoveCommand(commandArgs),
 				(PullRepositoryCommandArguments commandArgs) => ExecutePullCommand(commandArgs),

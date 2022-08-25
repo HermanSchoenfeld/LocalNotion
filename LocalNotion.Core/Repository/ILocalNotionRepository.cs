@@ -1,7 +1,7 @@
 ﻿using Hydrogen;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
 

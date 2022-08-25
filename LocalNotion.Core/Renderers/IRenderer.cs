@@ -2,7 +2,7 @@
 using LocalNotion.Core.Repository;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public interface IRenderer {
 	/// <summary>

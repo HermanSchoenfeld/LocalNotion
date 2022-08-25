@@ -3,7 +3,7 @@ using Hydrogen;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class LocalNotionRegistry {
 	private IList<LocalNotionResource> _resources = new List<LocalNotionResource>();
@@ -58,7 +58,6 @@ public class LocalNotionRegistry {
 		Resources
 		.Where(x => x.Type == LocalNotionResourceType.Page && x is LocalNotionPage { CMSProperties: not null })
 		.Cast<LocalNotionPage>();
-
 
 	public void Add(LocalNotionResource resource) {
 		_resources.Add(resource);

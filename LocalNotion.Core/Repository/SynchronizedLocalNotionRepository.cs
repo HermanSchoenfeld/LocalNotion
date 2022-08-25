@@ -2,7 +2,7 @@
 using Hydrogen.Data;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator, ISynchronizedObject {
 	private readonly SynchronizedObject _syncObj;

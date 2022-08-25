@@ -1,6 +1,6 @@
 ﻿using Hydrogen;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class OfflinePathResolver : IUrlResolver {
 	

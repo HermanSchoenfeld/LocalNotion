@@ -6,7 +6,7 @@ using System.Security.AccessControl;
 using Hydrogen;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 // Add Scoping to ResourceRepository
 

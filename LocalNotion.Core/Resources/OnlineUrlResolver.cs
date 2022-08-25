@@ -1,6 +1,6 @@
 ﻿using Hydrogen;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class OnlineUrlResolver : IUrlResolver {
 	public const string DefaultLinkTemplate = "{slug}";

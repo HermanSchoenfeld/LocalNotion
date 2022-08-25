@@ -3,7 +3,7 @@ using HtmlAgilityPack;
 using Hydrogen;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public static class HtmlAgilityPackExtensions {
 

@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 
 [JsonConverter(typeof(JsonSubtypes), "type")]

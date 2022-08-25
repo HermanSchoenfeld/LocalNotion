@@ -1,7 +1,7 @@
 ﻿using Hydrogen;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public interface IUrlResolver {
 	bool TryResolve(string resourceId, out string resourceUrl, out LocalNotionResource resource);

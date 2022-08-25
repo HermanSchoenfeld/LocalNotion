@@ -3,7 +3,7 @@ using Hydrogen;
 using Newtonsoft.Json;
 using Notion.Client;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public class LocalNotionBookmark {
 

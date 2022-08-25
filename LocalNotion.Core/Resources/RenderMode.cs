@@ -1,6 +1,6 @@
 ﻿using System.Runtime.Serialization;
 
-namespace LocalNotion;
+namespace LocalNotion.Core;
 
 public enum RenderMode {
 
