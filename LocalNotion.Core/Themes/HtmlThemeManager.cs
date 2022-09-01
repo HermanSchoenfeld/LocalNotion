@@ -8,33 +8,31 @@ using LocalNotion.Extensions;
 
 namespace LocalNotion.Core;
 
-public class HtmlTemplateManager : ITemplateManager {
+public class HtmlThemeManager : IThemeManager {
 
-	public HtmlTemplateManager(string templateFolder, ILogger logger = null) {
-		Guard.ArgumentNotNull(templateFolder, nameof(templateFolder));
+	public HtmlThemeManager(string themeFolder, ILogger logger = null) {
+		Guard.ArgumentNotNull(themeFolder, nameof(themeFolder));
 		Logger = logger ?? new NoOpLogger();
-		if (!Directory.Exists(templateFolder)) {
-			Directory.CreateDirectory(templateFolder);
+		if (!Directory.Exists(themeFolder)) {
+			Directory.CreateDirectory(themeFolder);
 			// Spit out the templates
 		}
-		TemplateDirectoryPath = templateFolder;
-	
-		ExtractEmbeddedTemplates(TemplateDirectoryPath, false, Logger);
+		ThemeDirectoryPath = themeFolder;
 	}
 
-	public string TemplateDirectoryPath { get; }
+	public string ThemeDirectoryPath { get; }
 
 	private ILogger Logger { get; }
 
-	public string FetchTemplateFolderPath(string template) 
-		=> Path.Combine(TemplateDirectoryPath, template) ;
+	public string FetchTemplateFolderPath(string theme) 
+		=> Path.Combine(ThemeDirectoryPath, theme) ;
 
-	public bool TryLoadTemplate(string template, out TemplateInfo templateInfo) {
+	public bool TryLoadTemplate(string template, out ThemeInfo themeInfo) {
 		var fetched = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
-		return TryGetTemplateInfoInternal(template, out templateInfo, fetched);
+		return TryGetTemplateInfoInternal(template, out themeInfo, fetched);
 
 
-		bool TryGetTemplateInfoInternal(string template, out TemplateInfo templateInfo, HashSet<string> alreadyFetched) {
+		bool TryGetTemplateInfoInternal(string template, out ThemeInfo templateInfo, HashSet<string> alreadyFetched) {
 			templateInfo = null;
 
 			if (alreadyFetched.Contains(template))
@@ -42,43 +40,43 @@ public class HtmlTemplateManager : ITemplateManager {
 
 			var templatePath = FetchTemplateFolderPath(template);
 
-			var templateInfoPath = Path.Combine(templatePath, Constants.TemplateInfoJsonFilename);
+			var templateInfoPath = Path.Combine(templatePath, Constants.TemplateInfoFilename);
 			if (!File.Exists(templateInfoPath)) {
 				templateInfo = null;
 				return false;
 			}
-			var htmlTemplateInfo = Tools.Json.ReadFromFile<HtmlTemplateInfo>(templateInfoPath);
+			var htmlTemplateInfo = Tools.Json.ReadFromFile<HtmlThemeInfo>(templateInfoPath);
 			htmlTemplateInfo.TemplatePath = templatePath;
 			templateInfo = htmlTemplateInfo;
 			alreadyFetched.Add(template);
 
-			// Setup all the template tokens for the files
+			// Setup all the theme tokens for the files
 			foreach (var templateFile in Tools.FileSystem.GetFiles(templatePath, recursive: true).Select(x => x.ToUnixPath())) {
 				var templateFileLocalPath =  Path.Combine(templatePath, templateFile).ToUnixPath();
 				var templateFileRemotePath = $"{htmlTemplateInfo.OnlineUrl.TrimEnd("/")}/{templateFile}".ToUnixPath();
 				var fileContents = Tools.Values.Future.AlwaysLoad(() => File.ReadAllText(templateFileLocalPath));
 
 				// Add the "url" token for each file
-				htmlTemplateInfo.Tokens.Add($"template://{templateFile}", new HtmlTemplateInfo.Token { Local = templateFileLocalPath, Remote = templateFileRemotePath });
+				htmlTemplateInfo.Tokens.Add($"theme://{templateFile}", new HtmlThemeInfo.Token { Local = templateFileLocalPath, Remote = templateFileRemotePath });
 
 				// Include token is a future to the file contents (loaded every time)
-				htmlTemplateInfo.Tokens.Add($"include://{templateFile}", new HtmlTemplateInfo.Token { Local = fileContents, Remote = fileContents });
+				htmlTemplateInfo.Tokens.Add($"include://{templateFile}", new HtmlThemeInfo.Token { Local = fileContents, Remote = fileContents });
 			}
 
-			// Load base template if applicable
+			// Load base theme if applicable
 			if (!string.IsNullOrWhiteSpace(htmlTemplateInfo.Base)) {
 				 if (!TryGetTemplateInfoInternal(htmlTemplateInfo.Base, out var baseTemplateInfo, alreadyFetched))
 					return false;
-				 htmlTemplateInfo.BaseTemplate = (HtmlTemplateInfo)baseTemplateInfo;
+				 htmlTemplateInfo.BaseTheme = (HtmlThemeInfo)baseTemplateInfo;
 			}
 			return true;
 		}
 	}
 
-	public static void ExtractEmbeddedTemplates(string folder, bool overwrite, ILogger logger) {
+	public static void ExtractEmbeddedThemes(string folder, bool overwrite, ILogger logger) {
 		Guard.ArgumentNotNull(folder, nameof(folder));
 		new ManifestEmbeddedFileProvider(Assembly.GetExecutingAssembly())
-			.ExtractDirectory("/Templates", folder, overwrite, logger);
+			.ExtractDirectory("/Themes", folder, overwrite, logger);
 	}
 
 }

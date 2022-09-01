@@ -6,18 +6,20 @@ namespace LocalNotion.Core;
 
 public static class PageRenderFactory {
 
-	public static IPageRenderer Create(RenderOutput rendererOutput, RenderMode renderMode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
-		switch(rendererOutput){
-			case RenderOutput.HTML: 
-				var templateManager = new HtmlTemplateManager(repository.TemplatesPath, logger);
-				var template = page is LocalNotionPage { CMSProperties: not null } cmsPage && !string.IsNullOrWhiteSpace(cmsPage.CMSProperties.Root) && repository.RootTemplates.TryGetValue(cmsPage.CMSProperties.Root, out var rootTemplate) ?
+	public static IPageRenderer Create(LocalNotionPage page, RenderType renderType, RenderMode renderMode, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
+		switch(renderType){
+			case RenderType.HTML: 
+				var themeManager = new HtmlThemeManager(repository.Paths.GetThemesFolderPath(FileSystemPathType.Absolute), logger);
+				var template = page is { CMSProperties: not null } && !string.IsNullOrWhiteSpace(page.CMSProperties.Root) && repository.ThemeMaps.TryGetValue(page.CMSProperties.Root, out var rootTemplate) ?
 					rootTemplate :
 					repository.DefaultTemplate;
-				return new HtmlPageRenderer(renderMode, repository.Mode, page, pageGraph, pageObjects, repository.CreateUrlResolver(), templateManager, template);
-			case RenderOutput.PDF:
-				throw new NotImplementedException();
+				var urlGenerator = UrlGeneratorFactory.Create(repository);
+				var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
+				return new HtmlPageRenderer(renderMode, repository.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager, template);
+			case RenderType.PDF:
+			case RenderType.File:
 			default:
-				throw new ArgumentOutOfRangeException(nameof(rendererOutput), rendererOutput, null);
+				throw new NotImplementedException(renderType.ToString());
 		}
 	}
 }

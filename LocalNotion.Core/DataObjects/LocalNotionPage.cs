@@ -1,6 +1,6 @@
-﻿using System.Dynamic;
+﻿using Hydrogen;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+using Notion.Client;
 
 namespace LocalNotion.Core;
 
@@ -13,12 +13,15 @@ public class LocalNotionPage : LocalNotionResource {
 
 	[JsonProperty("thumbnail")]
 	public LocalNotionThumbnail Thumbnail { get; set; } = LocalNotionThumbnail.None;
-
-	[JsonProperty("renders", NullValueHandling = NullValueHandling.Ignore)]
-	public IDictionary<RenderOutput, string> Renders { get; set; } = new Dictionary<RenderOutput, string>();
 	
 	[JsonProperty("parent", NullValueHandling = NullValueHandling.Ignore)]
 	public string Parent { get; set; }
+	
+	[JsonProperty("properties")]
+	public IDictionary<string, string> Properties { get; set; }
+
+	[JsonIgnore]
+	public IFuture<IReadOnlyDictionary<string, IPropertyItemObject>> PropertyObjects { get; internal set; }
 
 	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
 	public CMSProperties CMSProperties { get; set; } = null;

@@ -6,15 +6,15 @@ using Newtonsoft.Json;
 
 namespace LocalNotion.Core;
 
-public class HtmlTemplateInfo : TemplateInfo {
+public class HtmlThemeInfo : ThemeInfo {
 
-	public override TemplateType Type => TemplateType.Html;
+	public override ThemeType Type => ThemeType.Html;
 
 	[JsonProperty("base")]
 	public string Base { get; set; }
 
 	[JsonIgnore]
-	public HtmlTemplateInfo BaseTemplate { get; set; } = null;
+	public HtmlThemeInfo BaseTheme { get; set; } = null;
 
 
 	[JsonProperty("online_url", NullValueHandling = NullValueHandling.Ignore)]

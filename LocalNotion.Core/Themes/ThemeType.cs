@@ -2,7 +2,7 @@
 
 namespace LocalNotion.Core;
 
-public enum TemplateType {
+public enum ThemeType {
 	[EnumMember(Value = "html")]
 	Html,
 

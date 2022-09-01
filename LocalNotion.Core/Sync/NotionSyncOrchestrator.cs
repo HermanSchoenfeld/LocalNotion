@@ -57,7 +57,7 @@ public class NotionSyncOrchestrator {
 	/// <param name="updatedOnFilter">Filter out pages updated before date</param>
 	/// <param name="faultTolerant">Continues processing other items when failing on any individual item</param>
 	/// <returns></returns>
-	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderOutput renderOutput = RenderOutput.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
 		try {
 			// Fetch updated notion pages and transform into articles
 			var cmsPages = await QueryDatabasePages(cmsDatabaseID,  updatedOnFilter);
@@ -77,10 +77,10 @@ public class NotionSyncOrchestrator {
 
 			// Render
 			if (render) {
-				var renderer = new LocalNotionRenderer(Repository, Logger);
+				var renderer = new ResourceRenderer(Repository, Logger);
 				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
 					try {
-						renderer.RenderLocalResource(page.ID, renderOutput, renderMode);
+						renderer.RenderLocalResource(page.ID, renderType, renderMode);
 					} catch (Exception error) {
 						Logger.Error($"Failed to process page  '{page.Title}' ({page.ID}). {error.ToDisplayString()}");
 						if (!faultTolerant)
@@ -96,21 +96,21 @@ public class NotionSyncOrchestrator {
 
 	}
 
-	public async Task<LocalNotionResource[]> DownloadPage(string pageId, bool render = true, RenderOutput renderOutput = RenderOutput.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<LocalNotionResource[]> DownloadPage(string pageId, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
 		Guard.ArgumentNotNullOrWhitespace(pageId, nameof(pageId));
 		var downloadedResources = new List<LocalNotionResource>();
 
 		// Fetch page from Notion
 		Logger.Info($"Fetching page '{pageId}'");
-		var notionPage = await NotionClient.Pages.RetrieveAsync(pageId);
+		var notionPage = await NotionClient.Pages.RetrieveWithPropertiesAsync(pageId);
 
-		if (!forceRefresh && this.Repository.TryGetPage(pageId, out var localPage) && localPage.LastEditedTime >= notionPage.LastEditedTime) {
+		if (!forceRefresh && Repository.TryGetPage(pageId, out var localPage) && localPage.LastEditedTime >= notionPage.LastEditedTime) {
 			Logger.Info($"No changes detected");
 			return Array.Empty<LocalNotionResource>();
 		}
 
 		// Parse into a LocalNotion page
-		var localNotionPage = LocalNotionHelper.ParsePage(notionPage, Path.GetFileName(Repository.PagesPath));
+		var localNotionPage = LocalNotionHelper.ParsePage(notionPage);
 
 		// Fetch page object graph
 		Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({pageId})");
@@ -133,29 +133,31 @@ public class NotionSyncOrchestrator {
 		}
 
 		// Save page abstraction 
-		if (Repository.ContainsPage(pageId))
-			Repository.DeletePage(pageId);
-		Repository.AddPage(localNotionPage);
+		if (Repository.ContainsResource(pageId))
+			Repository.DeleteResource(pageId);
+		Repository.AddResource(localNotionPage);
 		downloadedResources.Add(localNotionPage);
 
 		// Save the page graph (json file describing the object graph)
 		if (Repository.ContainsPageGraph(pageId))
-			Repository.DeletePageGraph(pageId);
-		Repository.AddPageGraph(pageId, objectGraph);
+			Repository.DeleteResourceGraph(pageId);
+		Repository.AddResourceGraph(pageId, objectGraph);
 
-		var linkResolver = Repository.CreateUrlResolver();
+		var linkResolver = UrlGeneratorFactory.Create(Repository);
 
 		// Download cover/thumbnails
 		if (localNotionPage.Cover != null && LocalNotionHelper.TryParseNotionFileUrl(localNotionPage.Cover, out var coverResourceID, out _)) {
+			// Cover is a Notion file
 			var file = await DownloadFile(localNotionPage.Cover, notionPage.Id, forceRefresh);
-			localNotionPage.Cover = linkResolver.Resolve(coverResourceID, out _);
+			localNotionPage.Cover = linkResolver.Resolve(LocalNotionResourceType.Page, pageId, coverResourceID, RenderType.File, out _);
 			((UploadedFile)notionPage.Cover).File.Url = localNotionPage.Cover;
 			downloadedResources.Add(file);
 		}
 
 		if (localNotionPage.Thumbnail.Type == ThumbnailType.Image && LocalNotionHelper.TryParseNotionFileUrl(localNotionPage.Thumbnail.Data, out var thumbnailResourceID, out _)) {
+			// Thumbnail is a Notion file
 			var file = await DownloadFile(localNotionPage.Thumbnail.Data, notionPage.Id, forceRefresh);
-			localNotionPage.Thumbnail.Data = linkResolver.Resolve(thumbnailResourceID, out _);
+			localNotionPage.Thumbnail.Data = linkResolver.Resolve(LocalNotionResourceType.Page, pageId, thumbnailResourceID, RenderType.File, out _);
 			((UploadedFile)notionPage.Icon).File.Url = localNotionPage.Thumbnail.Data; // update the locally stored NotionObject with local url
 			downloadedResources.Add(file);
 		}
@@ -185,16 +187,16 @@ public class NotionSyncOrchestrator {
 				.ToArray();
 
 		foreach (var childPage in childPages) {
-			var subPageDownloads = await DownloadPage(childPage.Id, render, renderOutput, renderMode, faultTolerant, forceRefresh);
+			var subPageDownloads = await DownloadPage(childPage.Id, render, renderType, renderMode, faultTolerant, forceRefresh);
 			downloadedResources.AddRange(subPageDownloads);
 		}
 
 		// Render page
 		if (render) {
-			var renderer = new LocalNotionRenderer(Repository, Logger);
+			var renderer = new ResourceRenderer(Repository, Logger);
 			foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
 				try {
-					renderer.RenderLocalResource(page.ID, renderOutput, renderMode);
+					renderer.RenderLocalResource(page.ID, renderType, renderMode);
 				} catch (Exception error) {
 					Logger.Error($"Failed to process page  '{page.Title}' ({page.ID}). {error.ToDisplayString()}");
 					if (!faultTolerant)
@@ -212,11 +214,11 @@ public class NotionSyncOrchestrator {
 			throw new InvalidOperationException($"Url is not a recognized notion file url '{notionFileUrl}' ({resourceID})");
 
 		if (Repository.TryGetFile(resourceID, out var file)) {
-			if (!force && Repository.ContainsFileContent(resourceID)) {
+			if (!force && Repository.ContainsResourceRender(resourceID, RenderType.File)) {
 				Logger.Info($"Skipped downloading already existing file '{resourceID}/{filename}'");
 				return file;
 			}
-			Repository.DeleteFile(resourceID);
+			Repository.DeleteResource(resourceID);
 		}
 
 		Logger.Info($"Downloading file '{resourceID}/{filename}'");
@@ -224,7 +226,10 @@ public class NotionSyncOrchestrator {
 		var tmpFile = Tools.FileSystem.GetTempFileName();
 		try {
 			await webClient.DownloadFileTaskAsync(notionFileUrl, tmpFile);
-			file = Repository.AddFile(resourceID, filename, tmpFile, parentID);
+			file = LocalNotionFile.Parse(resourceID,filename);
+			Repository.AddResource(file);
+			Repository.ImportResourceRender(resourceID, RenderType.File, tmpFile);
+			//file = Repository.AddFile(resourceID, filename, tmpFile, parentID);
 		} catch (Exception error) {
 			Logger.LogException(error);
 		} finally {

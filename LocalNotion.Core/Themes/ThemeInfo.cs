@@ -7,12 +7,12 @@ namespace LocalNotion.Core;
 
 
 [JsonConverter(typeof(JsonSubtypes), "type")]
-[JsonSubtypes.KnownSubType(typeof(HtmlTemplateInfo), TemplateType.Html)]
-public abstract class TemplateInfo {
+[JsonSubtypes.KnownSubType(typeof(HtmlThemeInfo), ThemeType.Html)]
+public abstract class ThemeInfo {
 
 	[JsonProperty("type")]
 	[JsonConverter(typeof(StringEnumConverter))]
-	public virtual TemplateType Type { get; set; }
+	public virtual ThemeType Type { get; set; }
 
 
 	[JsonIgnore]

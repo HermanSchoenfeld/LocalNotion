@@ -35,13 +35,6 @@ internal class LocalNotionHelper {
 		return true;
 	}
 
-	public static LocalNotionFile ParseFile( string resourceID, string filename, string slugPrefix = "files")
-		=> new() {
-			ID = resourceID,
-			MimeType = Tools.Network.GetMimeType(filename),
-			Title = filename,
-			DefaultSlug = SanitizeSlug($"{slugPrefix}/{resourceID}") + $"/{filename}"
-		};
 
 	public static bool IsCMSPage(Page page)
 		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
@@ -61,18 +54,17 @@ internal class LocalNotionHelper {
 		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedOnPropertyName);
 
-	public static LocalNotionPage ParsePage(Page page, string slugPrefix = "pages") {
+	public static LocalNotionPage ParsePage(Page page) {
 		var result = new LocalNotionPage();
-		ParsePage(page, result, slugPrefix);
+		ParsePage(page, result);
 		return result;
 	}
 
-	public static void ParsePage(Page page, LocalNotionPage dest, string slugPrefix = "pages") {
+	public static void ParsePage(Page page, LocalNotionPage dest) {
 		dest.ID = page.Id;
 		dest.Parent = page.Parent.GetParentId();
 		dest.LastEditedTime = page.LastEditedTime;
 		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
-		dest.DefaultSlug = SanitizeSlug($"{slugPrefix}/{page.Id}/{dest.Title}");
 		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;
 		if (page.Icon != null) {
 			dest.Thumbnail = new() {
@@ -116,19 +108,18 @@ internal class LocalNotionHelper {
 			Constants.TagsPropertyName,
 			Constants.SummaryPropertyName
 		);
-		
 
-		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
-		result.Status = Tools.Parser.SafeParse(page.GetPropertyTitle(Constants.StatusPropertyName), CMSItemStatus.Hidden);
-		result.Location = page.GetPropertyTitle(Constants.LocationPropertyName).ToNullWhenWhitespace();
-		result.Slug = page.GetPropertyTitle(Constants.SlugPropertyName).ToNullWhenWhitespace();
-		result.Root = page.GetPropertyTitle(Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
-		result.Category1 = page.GetPropertyTitle(Constants.Category1PropertyName).ToNullWhenWhitespace();
-		result.Category2 = page.GetPropertyTitle(Constants.Category2PropertyName).ToNullWhenWhitespace();
-		result.Category3 = page.GetPropertyTitle(Constants.Category3PropertyName).ToNullWhenWhitespace();
-		result.Category4 = page.GetPropertyTitle(Constants.Category4PropertyName).ToNullWhenWhitespace();
-		result.Category5 = page.GetPropertyTitle(Constants.Category5PropertyName).ToNullWhenWhitespace();
-		result.Summary = page.GetPropertyTitle(Constants.SummaryPropertyName).ToNullWhenWhitespace();
+		result.PublishOn = page.GetPropertyDateValue(Constants.PublishOnPropertyName);
+		result.Status = Tools.Parser.SafeParse(page.GetPropertyPlainTextValue(Constants.StatusPropertyName), CMSItemStatus.Hidden);
+		result.Location = page.GetPropertyPlainTextValue(Constants.LocationPropertyName).ToNullWhenWhitespace();
+		result.Slug = page.GetPropertyPlainTextValue(Constants.SlugPropertyName).ToNullWhenWhitespace();
+		result.Root = page.GetPropertyPlainTextValue(Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
+		result.Category1 = page.GetPropertyPlainTextValue(Constants.Category1PropertyName).ToNullWhenWhitespace();
+		result.Category2 = page.GetPropertyPlainTextValue(Constants.Category2PropertyName).ToNullWhenWhitespace();
+		result.Category3 = page.GetPropertyPlainTextValue(Constants.Category3PropertyName).ToNullWhenWhitespace();
+		result.Category4 = page.GetPropertyPlainTextValue(Constants.Category4PropertyName).ToNullWhenWhitespace();
+		result.Category5 = page.GetPropertyPlainTextValue(Constants.Category5PropertyName).ToNullWhenWhitespace();
+		result.Summary = page.GetPropertyPlainTextValue(Constants.SummaryPropertyName).ToNullWhenWhitespace();
 		NormalizeCategories(result);
 		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.Slug = CalculateCMSSlug(pageTitle, result);
@@ -238,7 +229,7 @@ internal class LocalNotionHelper {
 		return summary;
 	}
 
-	private static string SanitizeSlug(string slug) {
+	public static string SanitizeSlug(string slug) {
 		return
 			slug
 				.Trim()

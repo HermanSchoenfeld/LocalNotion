@@ -3,28 +3,40 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
+
 public static class PageExtensions {
 
-	public static string GetTitle(this Page page) 
-		=> (page.Properties.Values.FirstOrDefault(x => x is TitlePropertyValue) as TitlePropertyValue)?.Title.ToPlainText() ?? string.Empty;
-
-	public static string GetPropertyTitle(this Page page, string propertyName) {
-		if (!page.Properties.TryGetValue(propertyName, out var propertyValue))
-			throw new InvalidOperationException($"Property '{propertyName}' not found");
-		return
-			TypeSwitch<string>.For(propertyValue,
-				TypeSwitch<string>.Case<RichTextPropertyValue>(x => x.RichText.ToPlainText()),
-				TypeSwitch<string>.Case<TitlePropertyValue>(x => x.Title.ToPlainText()),
-				TypeSwitch<string>.Case<SelectPropertyValue>(x => x.Select?.Name ?? string.Empty)
-			);
+	public static string? GetTitle(this Page page) {
+		Guard.ArgumentNotNull(page, nameof(page));
+		Guard.Ensure(page.FetchedProperties != null, "Properties have not been fetched");
+		return (page.FetchedProperties.FirstOrDefault(x => x.Key == "title").Value as ListPropertyItem)?
+			.Results
+			.Cast<TitlePropertyItem>()
+			.Select(x => x.Title)
+			.ToPlainText();
 	}
 
-	public static DateTime? GetPropertyDate(this Page page, string propertyName) {
-		if (!page.Properties.TryGetValue(propertyName, out var propertyValue))
-			throw new InvalidOperationException($"Property '{propertyName}' not found");
-		var datePropertyValue = propertyValue as DatePropertyValue;
-		Guard.Ensure(datePropertyValue != null, $"Property '{propertyName}' was not a date");
-		return datePropertyValue.Date?.Start;
+	public static string? GetPropertyPlainTextValue(this Page page, string propertyName) 
+		=> page.GetPropertyObject(propertyName).ToPlainText();
+
+	public static DateTime? GetPropertyDateValue(this Page page, string propertyName) {
+		var dateProp = page.GetPropertyObject<DatePropertyItem>(propertyName);
+		return dateProp.Date.Start ?? dateProp.Date.End;
+	}
+
+	public static TProperty GetPropertyObject<TProperty>(this Page page, string propertyName) where TProperty : class, IPropertyItemObject
+		=> page.GetPropertyObject(propertyName) as TProperty ?? throw new InvalidOperationException($"Property '{propertyName}' not a '{typeof(TProperty).Name}' property");
+
+	public static IPropertyItemObject GetPropertyObject(this Page page, string propertyName) {
+		Guard.ArgumentNotNull(page, nameof(page));
+		Guard.Ensure(page.FetchedProperties != null, "Properties have not been fetched");
+		if (!page.Properties.TryGetValue(propertyName, out var propId))
+			throw new ArgumentException($"Property '{propertyName}' not found", nameof(propertyName));
+
+		if (!page.FetchedProperties.TryGetValue(propId.Id, out var propObj))
+			throw new InvalidOperationException($"Property object '{propId.Id}' not found");
+
+		return propObj;
 	}
 
 	public static void ValidatePropertiesExist(this Page page, params string[] propertyNames)
@@ -36,12 +48,11 @@ public static class PageExtensions {
 	public static void ValidatePropertyExist(this Page page, string propertyName)
 		=> Guard.Ensure(page.Properties.ContainsKey(propertyName), $"Missing property '{propertyName}'");
 
-
-	public static ChildPageBlock AsChildPageBlock(this Page page) 
+	public static ChildPageBlock AsChildPageBlock(this Page page)
 		=> new() {
 			Id = page.Id,
-			CreatedTime = page.CreatedTime.ToString("yyyy-MM-dd HH:mm:ss.fff"),
-			LastEditedTime = page.LastEditedTime.ToString("yyyy-MM-dd HH:mm:ss.fff"), // .ToNotionDateTimeString
+			CreatedTime = page.CreatedTime,
+			LastEditedTime = page.LastEditedTime,
 			HasChildren = true,
 			ChildPage = new ChildPageBlock.Info {
 				Title = page.GetTitle()

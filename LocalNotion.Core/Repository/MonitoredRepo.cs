@@ -10,54 +10,56 @@ using Notion.Client;
 namespace LocalNotion.Repository;
 
 /// <summary>
-/// A readonly <see cref="ILocalNotionRepository"/> implementation that monitors a Local Notion repo file and refreshes itself when the file is updated.  This is suitable for scenarios when the consumer needs
-/// to read a repository that is being actively updated by another process. Since opening/closing a repository is expensive, using this class is better since it only re-opens it whenever a change is detected.
-/// </summary>
+/// A readonly <see cref="ILocalNotionRepository"/> implementation that monitors a Local Notion repository via <see cref="FileSystemWatcher"/> and reloads itself when it changes. This is suitable for scenarios where the application
+/// relies on a repository as a read-only data-store but doesn't want to open/close the repo every time it needs a resource (since this is expensive). Instead it loads it once, and on next resource request, it will reload itself if changed.
 public class MonitoredRepo : ILocalNotionRepository {
 	public event EventHandlerEx<object> Loading { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object> Loaded { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object>? Changing { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object>? Changed; // the only event implemented
 	public event EventHandlerEx<object> Saving { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object> Saved { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object> Clearing { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object> Cleared { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object, string> ResourceAdding { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object, LocalNotionResource> ResourceAdded { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object, string>? ResourceUpdating { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object, LocalNotionResource>? ResourceUpdated { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object, string>? ResourceRemoving { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
+	public event EventHandlerEx<object, LocalNotionResource>? ResourceRemoved { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 
 	public MonitoredRepo(string repoFile) {
 		Guard.ArgumentNotNullOrEmpty(repoFile, nameof(repoFile));
 		Guard.FileExists(repoFile);
+		InternalRepository = Tools.Values.Future.Reloadable(() =>  (ILocalNotionRepository) LocalNotionRepository.Open(repoFile).ResultSafe());
 		var fileMonitor = new FileSystemWatcher(repoFile);
 		fileMonitor.Changed += (object sender, FileSystemEventArgs args) => {
 			if (args.ChangeType.HasFlag(WatcherChangeTypes.Changed)) {
-			
+				InternalRepository.Invalidate();
+				Changed?.Invoke(this);
 			}
-
 		};
 	}
 
-	protected IFuture<ILocalNotionRepository> InternalRepository { get; private set; }
+	private Reloadable<ILocalNotionRepository> InternalRepository { get; }
 	
 	public virtual int Version => InternalRepository.Value.Version;
-	public ILogger Logger => InternalRepository.Value.Logger;
+	
+	public virtual ILogger Logger => InternalRepository.Value.Logger;
 
 	public virtual string DefaultTemplate => InternalRepository.Value.DefaultTemplate;
 
 	public virtual LocalNotionMode Mode => InternalRepository.Value.Mode;
 
-	public virtual IReadOnlyDictionary<string, string> RootTemplates => InternalRepository.Value.RootTemplates;
-
-	public virtual string BaseUrl {
-		get => InternalRepository.Value.BaseUrl;
-		set => throw new NotSupportedException();
-	}
-
-	public virtual string ObjectsPath => InternalRepository.Value.ObjectsPath;
-
-	public virtual string TemplatesPath => InternalRepository.Value.TemplatesPath;
-
-	public virtual string FilesPath => InternalRepository.Value.FilesPath;
-
-	public virtual string PagesPath => InternalRepository.Value.PagesPath;
+	public virtual IReadOnlyDictionary<string, string> ThemeMaps => InternalRepository.Value.ThemeMaps;
+	
+	public virtual ILocalNotionPathResolver Paths => InternalRepository.Value.Paths;
 
 	public virtual string DefaultNotionApiKey => InternalRepository.Value.DefaultNotionApiKey;
 
 	public virtual IEnumerable<string> Objects => InternalRepository.Value.Objects;
+	
+	public virtual IEnumerable<string> Graphs => InternalRepository.Value.Graphs;
 
 	public virtual IEnumerable<LocalNotionResource> Resources => InternalRepository.Value.Resources;
 
@@ -69,7 +71,9 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual Task Save() => throw new NotSupportedException();
 
-	public virtual IUrlResolver CreateUrlResolver() => InternalRepository.Value.CreateUrlResolver();
+	public virtual Task Clear() => throw new NotSupportedException();
+
+	public virtual Task Clean() => throw new NotSupportedException();
 
 	public virtual bool TryGetObject(string objectId, out IFuture<IObject> @object) => InternalRepository.Value.TryGetObject(objectId, out @object);
 
@@ -77,50 +81,27 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual void DeleteObject(string objectId) => throw new NotSupportedException();
 
-	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceId, out resource);
+	public virtual bool ContainsResource(string resourceID) => InternalRepository.Value.ContainsResource(resourceID);
 
-	public virtual bool TryLookupResourceBySlug(string slug, out string resourceID) => InternalRepository.Value.TryLookupResourceBySlug(slug, out resourceID);
+	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceId, out resource);
 
 	public virtual IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId) => InternalRepository.Value.GetResourceAncestry(resourceId);
 
+	public bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
+
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.Value.AddResource(resource);
 
-	public virtual void DeleteResource(string resourceId) => throw new NotSupportedException();
+	public virtual void DeleteResource(string resourceID) => throw new NotSupportedException();
 
-	public virtual bool TryGetPage(string pageId, out LocalNotionPage page) => InternalRepository.Value.TryGetPage(pageId, out page);
+	public virtual bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page) => InternalRepository.Value.TryGetResourceGraph(resourceID, out page);
 
-	public virtual void AddPage(LocalNotionPage page) => throw new NotSupportedException();
+	public virtual void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) => InternalRepository.Value.AddResourceGraph(resourceID, pageGraph);
 
-	public virtual void DeletePage(string pageId) => throw new NotSupportedException();
+	public virtual void DeleteResourceGraph(string resourceID) => throw new NotSupportedException();
 
-	public virtual bool TryGetPageGraph(string pageId, out IFuture<NotionObjectGraph> page) => InternalRepository.Value.TryGetPageGraph(pageId, out page);
+	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) => throw new NotSupportedException();
 
-	public virtual void AddPageGraph(string pageId, NotionObjectGraph pageGraph) => InternalRepository.Value.AddPageGraph(pageId, pageGraph);
+	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) => throw new NotSupportedException();
 
-	public virtual void DeletePageGraph(string pageId) => throw new NotSupportedException();
-
-	public virtual string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile) => throw new NotSupportedException();
-
-	public virtual void DeletePageRender(string pageId, RenderOutput renderOutput) => throw new NotSupportedException();
-
-	public string CalculatePageRenderFilename(string pageID, RenderOutput renderOutput) => InternalRepository.Value.CalculatePageRenderFilename(pageID, renderOutput);
-
-	public string CalculatePageRenderPath(string pageID, RenderOutput renderOutput) => InternalRepository.Value.CalculatePageRenderPath(pageID, renderOutput);
-
-	public virtual bool TryGetFile(string fileId, out LocalNotionFile notionFile) => InternalRepository.Value.TryGetFile(fileId, out notionFile);
-
-	public virtual LocalNotionFile RegisterFile(string fileId, string filename) => throw new NotSupportedException();
-
-	public virtual bool TryGetFileContents(string fileID, out string internalFile) => InternalRepository.Value.TryGetFileContents(fileID, out internalFile);
-
-	public virtual void ImportFileContents(string fileId, string localFilePath) => InternalRepository.Value.ImportFileContents(fileId, localFilePath);
-
-	public virtual void DeleteFile(string fileId) => throw new NotSupportedException();
-
-	public virtual IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories) => InternalRepository.Value.GetNotionCMSPages(root, categories);
-
-	public virtual string[] GetRoots() => InternalRepository.Value.GetRoots();
-
-	public virtual string[] GetSubCategories(string root, params string[] categories) => InternalRepository.Value.GetSubCategories(root, categories);
 }
 

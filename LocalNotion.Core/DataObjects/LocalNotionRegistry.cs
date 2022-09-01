@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using Hydrogen;
+﻿using Hydrogen;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -18,29 +17,14 @@ public class LocalNotionRegistry {
 	[JsonConverter(typeof(StringEnumConverter))]
 	public LocalNotionMode Mode { get; set; } = LocalNotionMode.Offline;
 
-	[JsonProperty("default_template")]
-	public string DefaultTemplate { get; set; } = "default";
+	[JsonProperty("default_theme")]
+	public string DefaultTheme { get; set; } = "default";
 
-	[JsonProperty("root_templates", NullValueHandling = NullValueHandling.Ignore)]
-	public IDictionary<string, string> RootTemplates { get; set; } = new Dictionary<string, string>();
+	[JsonProperty("theme_maps", NullValueHandling = NullValueHandling.Ignore)]
+	public IDictionary<string, string> ThemeMaps { get; set; } = new Dictionary<string, string>();
 
-	[JsonProperty("base_url")]
-	public string BaseUrl { get; set; }
-
-	[JsonProperty("objects_rel_path")]
-	public string ObjectsRelPath { get; set; }
-
-	[JsonProperty("templates_rel_path")]
-	public string TemplatesRelPath { get; set; }
-
-	[JsonProperty("files_rel_path")]
-	public string FilesRelPath { get; set; }
-
-	[JsonProperty("pages_rel_path")]
-	public string PagesRelPath { get; set; }
-
-	[JsonProperty("logs_rel_path")]
-	public string LogsRelPath { get; set; }
+	[JsonProperty("paths")]
+	public LocalNotionRepositoryPathProfile Paths { get; set; } = LocalNotionRepositoryPathProfile.Default;
 
 	[JsonProperty("log_level")]
 	[JsonConverter(typeof(StringEnumConverter))]
@@ -51,7 +35,6 @@ public class LocalNotionRegistry {
 		get => _resources.ToArray();
 		set => _resources = (value ?? Array.Empty<LocalNotionResource>()).ToList();
 	}
-	
 
 	[JsonIgnore]
 	public IEnumerable<LocalNotionPage> Articles =>
@@ -66,4 +49,5 @@ public class LocalNotionRegistry {
 	public void Remove(LocalNotionResource resource) {
 		_resources.Remove(resource);
 	}
+
 }

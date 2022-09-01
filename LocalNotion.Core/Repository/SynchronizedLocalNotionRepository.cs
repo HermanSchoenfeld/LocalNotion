@@ -1,5 +1,4 @@
 ﻿using Hydrogen;
-using Hydrogen.Data;
 using Notion.Client;
 
 namespace LocalNotion.Core;
@@ -19,11 +18,66 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 
 	public ReaderWriterLockSlim ThreadLock => _syncObj.ThreadLock;
 
+	public override int Version {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.Version;
+		}
+	}
 	
+	public override ILogger Logger {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.Logger;
+		}
+	}
+
+	public override string DefaultTemplate {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.DefaultTemplate;
+		}
+	}
+
+	public override LocalNotionMode Mode {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.Mode;
+		}
+	}
+	
+	public override IReadOnlyDictionary<string, string> ThemeMaps {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.ThemeMaps;
+		}
+	}
+	
+	public override ILocalNotionPathResolver Paths {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.Paths;
+		}
+	}
+
+	public override string DefaultNotionApiKey {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.DefaultNotionApiKey;
+		}
+	}
+
 	public override IEnumerable<string> Objects {
 		get {
 			using (EnterReadScope())
-				return base.Objects;
+				return InternalRepository.Objects;
+		}
+	}
+	
+	public override IEnumerable<string> Graphs {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.Graphs;
 		}
 	}
 
@@ -34,48 +88,39 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		}
 	}
 
-	public override string BaseUrl {
+	public override bool RequiresLoad { 
 		get {
 			using (EnterReadScope())
-				return base.BaseUrl;
-		}
-		set {
-			using (EnterWriteScope()) 
-				base.BaseUrl = value;
+				return InternalRepository.RequiresLoad;
 		}
 	}
 
-	public override string ObjectsPath {
+	public override bool RequiresSave { 
 		get {
 			using (EnterReadScope())
-				return base.ObjectsPath;
+				return InternalRepository.RequiresSave;
 		}
 	}
 
-	public override string TemplatesPath {
-		get {
-			using (EnterReadScope())
-				return base.TemplatesPath;
-		}
+	public override async Task Load() {
+		using (EnterWriteScope())
+			await InternalRepository.Load();
 	}
 
-	public override string FilesPath {
-		get {
-			using (EnterReadScope())
-				return base.FilesPath;
-		}
+	public override async Task Save() {
+		using (EnterWriteScope())
+			await InternalRepository.Save();
 	}
 
-	public override string PagesPath {
-		get {
-			using (EnterReadScope())
-				return base.PagesPath;
-		}
+	public override async Task Clear() {
+		using (EnterWriteScope())
+			await InternalRepository.Clear();
 	}
 
-	public Scope EnterReadScope() => _syncObj.EnterReadScope();
-
-	public Scope EnterWriteScope() => _syncObj.EnterWriteScope();
+	public override async Task Clean() {
+		using (EnterWriteScope())
+			await InternalRepository.Clean();
+	}
 
 	public override bool TryGetObject(string objectId, out IFuture<IObject> @object) {
 		using (EnterReadScope()) 
@@ -92,19 +137,24 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.DeleteObject(objectId);
 	}
 
+	public override bool ContainsResource(string resourceID) {
+		using (EnterReadScope())
+			return base.ContainsResource(resourceID);
+	}
+
 	public override bool TryGetResource(string resourceID, out LocalNotionResource localNotionResource) {
 		using (EnterReadScope()) 
 			return base.TryGetResource(resourceID, out localNotionResource);
 	}
 
-	public override bool TryLookupResourceBySlug(string slug, out string resourceID) {
-		using (EnterReadScope()) 
-			return base.TryLookupResourceBySlug(slug, out resourceID);
-	}
-
 	public override IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId) {
 		using (EnterReadScope()) 
 			return base.GetResourceAncestry(resourceId).ToArray(); // note: inefficient
+	}
+
+	public override bool ContainsResourceRender(string resourceID, RenderType renderType) {
+		using (EnterReadScope())
+			return base.ContainsResourceRender(resourceID, renderType);
 	}
 
 	public override void AddResource(LocalNotionResource resource) {
@@ -117,84 +167,33 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.DeleteResource(resourceID);
 	}
 
-	public override bool TryGetPage(string pageId, out LocalNotionPage page) {
+	public override bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page) {
 		using (EnterReadScope()) 
-			return base.TryGetPage(pageId, out page);
+			return TryGetResourceGraph(resourceID, out page);
 	}
 
-	public override void AddPage(LocalNotionPage page) {
+	public override void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) {
+		using (EnterWriteScope()) 
+			base.AddResourceGraph(resourceID, pageGraph);
+	}
+
+	public override void DeleteResourceGraph(string resourceID) {
+		using (EnterWriteScope()) 
+			base.DeleteResourceGraph(resourceID);
+	}
+
+	public override string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {
 		using (EnterWriteScope())
-			base.AddPage(page);
+			return base.ImportResourceRender(resourceID, renderType, renderedFile);
 	}
 
-	public override void DeletePage(string pageId) {
+	public override void DeleteResourceRender(string resourceID, RenderType renderType) {
 		using (EnterWriteScope()) 
-			base.DeletePage(pageId);
+			base.DeleteResourceRender(resourceID, renderType);
 	}
 
-	public override bool TryGetPageGraph(string pageId, out IFuture<NotionObjectGraph> page) {
-		using (EnterReadScope()) 
-			return TryGetPageGraph(pageId, out page);
-	}
+	public Scope EnterReadScope() => _syncObj.EnterReadScope();
 
-	public override void AddPageGraph(string pageId, NotionObjectGraph pageGraph) {
-		using (EnterWriteScope()) 
-			base.AddPageGraph(pageId, pageGraph);
-	}
+	public Scope EnterWriteScope() => _syncObj.EnterWriteScope();
 
-	public override void DeletePageGraph(string pageId) {
-		using (EnterWriteScope()) 
-			base.DeletePageGraph(pageId);
-	}
-
-	public override string ImportPageRender(string pageId, RenderOutput renderOutput, string renderedFile) {
-		using (EnterWriteScope())
-			return base.ImportPageRender(pageId, renderOutput, renderedFile);
-	}
-
-	public override void DeletePageRender(string pageId, RenderOutput renderOutput) {
-		using (EnterWriteScope()) 
-			base.DeletePageRender(pageId, renderOutput);
-	}
-	
-	public override bool TryGetFile(string fileId, out LocalNotionFile localFile) {
-		using (EnterReadScope()) 
-			return base.TryGetFile(fileId, out localFile);
-	}
-
-	public override LocalNotionFile RegisterFile(string fileId, string filename) {
-		using (EnterWriteScope())
-			return base.RegisterFile(fileId, filename);
-	}
-
-	public override bool TryGetFileContents(string fileID, out string internalFile) {
-		using (EnterReadScope()) 
-			return base.TryGetFileContents(fileID, out internalFile);
-	}
-
-	public override void ImportFileContents(string fileId, string localFilePath) {
-		using (EnterWriteScope()) 
-			base.ImportFileContents(fileId, localFilePath);
-	}
-
-	public override void DeleteFile(string fileId) {
-		using (EnterWriteScope()) 
-			base.DeleteFile(fileId);
-	}
-
-	public override IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories) {
-		using (EnterReadScope()) 
-			return base.GetNotionCMSPages(root, categories).ToArray(); // inefficient
-	}
-
-	public override string[] GetRoots() {
-		using (EnterReadScope()) 
-			return base.GetRoots();
-	}
-
-	public override string[] GetSubCategories(string root, params string[] categories) {
-		using (EnterReadScope()) 
-			return base.GetSubCategories(root, categories);
-	}
-	
 }

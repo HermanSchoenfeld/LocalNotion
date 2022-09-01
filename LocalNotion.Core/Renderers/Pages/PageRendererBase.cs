@@ -1,21 +1,23 @@
 ﻿using Hydrogen;
-using Hydrogen.Data;
+using LocalNotion.Core;
 using Notion.Client;
 
 namespace LocalNotion.Core;
 
 public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
-	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects,IUrlResolver resolver, Action<string, TOutput> fileSerializer) {
+	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IUrlResolver resolver,  IBreadCrumbGenerator breadCrumbGenerator, Action<string, TOutput> fileSerializer) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
 		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
 		Guard.ArgumentNotNull(resolver, nameof(resolver));
+		Guard.ArgumentNotNull(breadCrumbGenerator, nameof(breadCrumbGenerator));
 		Guard.ArgumentNotNull(fileSerializer, nameof(fileSerializer));
 		Page = page;
 		PageGraph = pageGraph;
 		PageObjects = pageObjects;
 		Resolver = resolver;
+		BreadCrumbGenerator = breadCrumbGenerator;
 		Serializer = fileSerializer;
 		RenderingStack = new StackList<NotionObjectGraph>();
 	}
@@ -27,6 +29,8 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected IDictionary<string, IObject> PageObjects { get; set; }
 
 	protected IUrlResolver Resolver { get; }
+
+	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
 	protected Action<string, TOutput> Serializer { get; }
 	
@@ -174,7 +178,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				return RenderVideoEmbed(block, externalFile.External.Url);
 			}
 			case UploadedFile uploadedFile: {
-				var url = Resolver.ResolveUploadedFileUrl(uploadedFile, out _);
+				var url = Resolver.ResolveUploadedFileUrl(LocalNotionResourceType.Page, Page.ID, uploadedFile, out _);
 				return RenderVideoEmbed(block, url);
 			}
 			default:
@@ -301,8 +305,10 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected abstract TOutput Render(BookmarkBlock block);
 
-	protected abstract TOutput Render(BreadcrumbBlock block);
+	protected virtual TOutput Render(BreadcrumbBlock block) 
+		=> Render(block, BreadCrumbGenerator.CalculateBreadcrumb(Page.ID));
 
+	protected abstract TOutput Render(BreadcrumbBlock block, BreadCrumb breadcrumb);
 	protected virtual TOutput Render(IEnumerable<BulletedListItemBlock> bullets) 
 		=> Merge(bullets.Select((b, i) => Render(i+1, b)));
 

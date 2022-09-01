@@ -1,39 +1,41 @@
-﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using Hydrogen;
+﻿using Hydrogen;
 using Notion.Client;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
-using AngleSharp.Html;
 
 namespace LocalNotion.Core;
 
 public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IUrlResolver resolver, ITemplateManager templateManager, string template)
-		: base(page, pageGraph, pageObjects, resolver, File.WriteAllText) {
-		Guard.ArgumentNotNull(templateManager, nameof(templateManager));
-		Guard.ArgumentNotNullOrWhitespace(template, nameof(template));
-		TemplateManager = templateManager;
-		Template = (HtmlTemplateInfo)TemplateManager.LoadTemplate(template);
+	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionPathResolver pathResolver, IUrlResolver resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
+		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
+		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
+		Guard.ArgumentNotNullOrWhitespace(theme, nameof(theme));
+		ThemeManager = themeManager;
+		Theme = (HtmlThemeInfo)ThemeManager.LoadTemplate(theme);
 		Mode = mode;
+		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderMode = renderMode;
 		_tokens =
-			GetModeCorrectedTokens(Template)
+			GetModeCorrectedTokens(Theme)
 			.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
 
-		DictionaryChain<string, object> GetModeCorrectedTokens(HtmlTemplateInfo template) {
+		
+		DictionaryChain<string, object> GetModeCorrectedTokens(HtmlThemeInfo theme) {
+			// This method provides a "chain of responsibility" style dictionary of all the theme tokens
+			// Also it resolves a theme:// tokens which are aliases for links to a theme resource.
 			var dictionary = new DictionaryChain<string, object>(
-				template.Tokens.ToDictionary(x => x.Key, x => mode switch { LocalNotionMode.Offline => ToLocalPathIfApplicable(x.Key, x.Value.Local), LocalNotionMode.Online => x.Value.Remote, _ => throw new NotSupportedException(mode.ToString()) }),
-				template.BaseTemplate != null ? GetModeCorrectedTokens(template.BaseTemplate) : null
+				theme.Tokens.ToDictionary(x => x.Key, x => mode switch { LocalNotionMode.Offline => ToLocalPathIfApplicable(x.Key, x.Value.Local), LocalNotionMode.Online => x.Value.Remote, _ => throw new NotSupportedException(mode.ToString()) }),
+				theme.BaseTheme != null ? GetModeCorrectedTokens(theme.BaseTheme) : null
 			);
 
 			object ToLocalPathIfApplicable(string key, object value) {
-				if (key.StartsWith("template://")) {
+				if (key.StartsWith("theme://")) {
 					Guard.Ensure(value != null, $"Unexpected null value for key '{key}'");
-					return "../" + Path.GetRelativePath(Resolver.Repository.PagesPath, value.ToString()).ToUnixPath();
+					var thisRendersExpectedParentFolder = pathResolver.GetResourceFolderPath(LocalNotionResourceType.Page, Page.ID, FileSystemPathType.Absolute);
+					return "../" + Path.GetRelativePath(thisRendersExpectedParentFolder, value.ToString()).ToUnixPath();
 				}
 				return value;
 			}
@@ -41,11 +43,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		}
 	}
 
-	protected ITemplateManager TemplateManager { get; }
+	protected IThemeManager ThemeManager { get; }
 
-	protected HtmlTemplateInfo Template { get; }
+	protected HtmlThemeInfo Theme { get; }
 
 	protected LocalNotionMode Mode { get; }
+	
+	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
 	protected RenderMode RenderMode { get; }
 
@@ -61,7 +65,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> externalFile.External.Url;
 
 	protected override string Render(UploadedFile uploadedFile)
-		 => Resolver.ResolveUploadedFileUrl(uploadedFile, out _);
+		 => Resolver.ResolveUploadedFileUrl(LocalNotionResourceType.Page, Page.ID, uploadedFile, out _);
 
 	protected override string Render(Link link)
 		=> RenderTemplate(
@@ -73,7 +77,6 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 
 	protected override string Render(Date date) {
-		var sb = new StringBuilder();
 		var start = Render(date.Start);
 		var end = Render(date.End);
 		return date.End == null ? start : $"{start} - {end}";
@@ -83,10 +86,10 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> date != null ? date.ToString("yyyy-MM-dd HH:mm:ss.fff") : "Empty";
 
 	protected override string Render(bool? val)
-		=> !val.HasValue ? "Empty Bool" : val.Value ? "[X]" : "[ ]";
+		=> !val.HasValue ? string.Empty : val.Value ? "[X]" : "[ ]";
 
 	protected override string Render(double? val)
-		=> !val.HasValue ? "Empty Number" : $"{val.Value:G}";
+		=> !val.HasValue ? string.Empty : $"{val.Value:G}";
 
 	#endregion
 
@@ -148,8 +151,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"page" => RenderTemplate(
 				"text_link",   // should be page_link (use svg's)
 				new NotionObjectTokens {
-					["url"] = Resolver.TryResolve(text.Mention.Page.Id, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
-					["text"] = Resolver.TryResolve(text.Mention.Page.Id, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
+					["url"] = Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
+					["text"] = Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
 				}
 			),
 			"database" => $"[{text.Mention.Type}]{text.Mention.Database.Id}",
@@ -158,7 +161,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		};
 
 	protected override string Render(RichTextText text) {
-		return RenderInternal(text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color, text.Text?.Content ?? text.PlainText ?? string.Empty);
+		return RenderInternal(text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, text.Text?.Content ?? text.PlainText ?? string.Empty);
 
 		string RenderInternal(string link, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, string content) {
 
@@ -405,10 +408,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(BookmarkBlock block)
 		=> RenderUnsupported(block);
 
-	protected override string Render(BreadcrumbBlock block)
-		=> Render(block, CalculateBreadcrumb(Page.ID));
-
-	protected virtual string Render(BreadcrumbBlock block, BreadCrumb breadcrumb) {
+	protected override string Render(BreadcrumbBlock block, BreadCrumb breadcrumb) {
 		return RenderTemplate(
 		   "breadcrumb",
 		   new NotionObjectTokens(block) {
@@ -458,7 +458,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			new NotionObjectTokens(block) {
 				["number"] = number,
 				["contents"] = Render(block.BulletedListItem.RichText),
-				["color"] = ToColorString(block.BulletedListItem.Color)
+				["color"] = ToColorString(block.BulletedListItem.Color.Value)
 			}
 		);
 
@@ -482,7 +482,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						_ => throw new ArgumentOutOfRangeException()
 					},
 					["text"] = Render(block.Callout.RichText),
-					["color"] = ToColorString(block.Callout.Color)
+					["color"] = ToColorString(block.Callout.Color.Value)
 				}
 			);
 
@@ -490,7 +490,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderUnsupported(block);
 
 	protected override string Render(ChildPageBlock block) {
-		if (!Resolver.TryResolve(block.Id, out var childPageUrl, out var resource))
+		if (!Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved child page {block.Id}";
 
 
@@ -663,7 +663,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"heading_1",
 				new NotionObjectTokens(block) {
 					["text"] = Render(block.Heading_1.RichText),
-					["color"] = ToColorString(block.Heading_1.Color)
+					["color"] = ToColorString(block.Heading_1.Color.Value)
 				}
 			);
 
@@ -672,7 +672,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"heading_2",
 				new NotionObjectTokens(block) {
 					["text"] = Render(block.Heading_2.RichText),	
-					["color"] = ToColorString(block.Heading_2.Color)
+					["color"] = ToColorString(block.Heading_2.Color.Value)
 				}
 			);
 
@@ -681,7 +681,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"heading_3",
 				new NotionObjectTokens(block) {
 					["text"] = Render(block.Heading_3.RichText),
-					["color"] = ToColorString(block.Heading_3.Color)
+					["color"] = ToColorString(block.Heading_3.Color.Value)
 				}
 			);
 
@@ -695,7 +695,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 
 	protected override string Render(LinkToPageBlock block) {
-		if (!Resolver.TryResolve(block.LinkToPage.GetParentId(), out var childPageUrl, out var resource))
+		if (!Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, block.LinkToPage.GetParentId(), RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved page {block.LinkToPage.GetParentId()}";
 
 		return RenderTemplate(
@@ -729,7 +729,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			new NotionObjectTokens(block) {
 				["number"] = number,
 				["contents"] = Render(block.NumberedListItem.RichText),
-				["color"] = ToColorString(block.NumberedListItem.Color)
+				["color"] = ToColorString(block.NumberedListItem.Color.Value)
 			}
 		);
 
@@ -755,7 +755,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"paragraph",
 				new NotionObjectTokens(block) {
 					["contents"] = Render(block.Paragraph.RichText),
-					["color"] = ToColorString(block.Paragraph.Color)
+					["color"] = ToColorString(block.Paragraph.Color.Value)
 				}
 			);
 
@@ -764,7 +764,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"quote",
 			new NotionObjectTokens(block) {
 				["text"] = Render(block.Quote.RichText),
-				["color"] = ToColorString(block.Quote.Color)
+				["color"] = ToColorString(block.Quote.Color.Value)
 			}
 		);
 
@@ -774,7 +774,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(TableOfContentsBlock block)
 		=> RenderTemplate("table_of_contents", 
 			new NotionObjectTokens(block) {
-				["color"] = ToColorString(block.TableOfContents.Color)
+				["color"] = ToColorString(block.TableOfContents.Color.Value)
 			}
 		);
 
@@ -787,7 +787,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			new NotionObjectTokens(block) {
 				["text"] = Render(block.ToDo.RichText),
 				["checked"] = block.ToDo.IsChecked ? "checked" : string.Empty,
-				["color"] = ToColorString(block.ToDo.Color)
+				["color"] = ToColorString(block.ToDo.Color.Value)
 			}
 		);
 
@@ -797,7 +797,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			new NotionObjectTokens(block) {
 				["toggle_id"] = $"toggle_{++_toggleCount}",
 				["title"] = Render(block.Toggle.RichText),
-				["color"] = ToColorString(block.Toggle.Color),
+				["color"] = ToColorString(block.Toggle.Color.Value),
 				["contents"] = RenderChildItems(),
 			}
 		);
@@ -841,119 +841,6 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 	#region Aux
 
-	protected virtual BreadCrumb CalculateBreadcrumb(string resourceID) {
-		const string DefaultUrl = "#";
-
-		var ancestors = this.Resolver.Repository.GetResourceAncestry(Page.ID).TakeUntilInclusive(x => x is LocalNotionPage { CMSProperties: not null }).ToArray();
-		if (ancestors.Length == 0)
-			return BreadCrumb.Empty;
-
-		var trail = new List<BreadCrumbItem>();
-
-		foreach (var (item, i) in ancestors.WithIndex()) {
-			BreadCrumbItemTraits traits = 0;
-
-			if (i == 0)
-				traits.SetFlags(BreadCrumbItemTraits.IsCurrentPage, true);
-
-			if (item.Type == LocalNotionResourceType.Page)
-				traits.SetFlags(BreadCrumbItemTraits.IsPage, true);
-
-			var isCmsPage = item is LocalNotionPage { CMSProperties: not null };
-			if (isCmsPage) {
-				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
-			}
-
-
-			//IsFile			= 1 << 3,
-			//IsDatabase		= 1 << 4,
-			//IsCategory		= 1 << 5,
-			//IsRoot			= 1 << 6,
-			//IsWorkspace		= 1 << 7,
-
-			var hasUrl = Resolver.TryResolve(item.ID, out var url, out var resource);
-			traits.SetFlags(BreadCrumbItemTraits.HasUrl, hasUrl);
-			if (!hasUrl)
-				url = DefaultUrl;
-
-			var data = string.Empty;
-			if (resource is LocalNotionPage localNotionPage) {
-				data = localNotionPage.Thumbnail.Data;
-				switch (localNotionPage.Thumbnail.Type) {
-					case ThumbnailType.None:
-						break;
-					case ThumbnailType.Emoji:
-						traits.SetFlags(BreadCrumbItemTraits.HasIcon, true);
-						traits.SetFlags(BreadCrumbItemTraits.HasEmojiIcon, true);
-						break;
-					case ThumbnailType.Image:
-						traits.SetFlags(BreadCrumbItemTraits.HasIcon, true);
-						traits.SetFlags(BreadCrumbItemTraits.HasImageIcon, true);
-						break;
-					default:
-						throw new ArgumentOutOfRangeException();
-				}
-			}
-
-
-			//HasIcon			= 1 << 9,
-
-			var breadCrumbItem = new BreadCrumbItem() {
-				Type = item.Type,
-				Text = item.Title,
-				Data = data,
-				Traits = traits,
-				Url = url
-			};
-
-			trail.Add(breadCrumbItem);
-
-			// if current item is a CMS item, the remainder of trail is extracted from he slug
-			if (isCmsPage) {
-				var cmsPage = (LocalNotionPage)item;
-				var slugParts = cmsPage.CMSProperties.Slug.Split('/');
-
-				foreach (var slugAncestor in slugParts.Reverse().WithDescriptions()) {
-					if (slugAncestor.Index == 0)
-						continue; ;
-
-					traits = BreadCrumbItemTraits.HasUrl;
-
-					if (slugAncestor.Description.HasFlag(EnumeratedItemDescription.Last))
-						traits.SetFlags(BreadCrumbItemTraits.IsRoot, true);
-					else
-						traits.SetFlags(BreadCrumbItemTraits.IsCategory, true);
-
-					url = slugParts.Take(slugParts.Length - slugAncestor.Index).ToDelimittedString("/");
-
-					trail.Add(new BreadCrumbItem {
-						Type = LocalNotionResourceType.Page,
-						Text = SelectCMSCategory(cmsPage.CMSProperties, slugParts.Length - slugAncestor.Index - 1),
-						Data = string.Empty,
-						Traits = traits,
-						Url = url
-
-					});
-				}
-				break;
-			}
-		}
-		trail.Reverse();
-		return new BreadCrumb {
-			Trail = trail.ToArray()
-		};
-
-		string SelectCMSCategory(CMSProperties cmsProperties, int index)
-			=> index switch {
-				0 => cmsProperties.Root,
-				1 => cmsProperties.Category1,
-				2 => cmsProperties.Category2,
-				3 => cmsProperties.Category3,
-				4 => cmsProperties.Category4,
-				5 => cmsProperties.Category5,
-			};
-	}
-
 
 	protected virtual string RenderTemplate(string widgetType)
 		=> RenderTemplate(widgetType, new NotionObjectTokens());
@@ -981,7 +868,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (!_tokens.TryGetValue(rootedWidgetTemplateName, out widgetValue))
 				if (!_tokens.TryGetValue(widgetTemplateName, out widgetValue))
 					if (!_tokens.TryGetValue(widgetWithModeTemplate, out widgetValue))
-						throw new InvalidOperationException($"Widget `{widgetname}` not found in template `{Template}`.");
+						throw new InvalidOperationException($"Widget `{widgetname}` not found in theme `{Theme}`.");
 
 		return Regex.Replace(widgetValue.ToString(), "^<!--.*?-->", string.Empty, RegexOptions.Singleline);
 	}
@@ -1081,41 +968,6 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 	}
 
-	protected class BreadCrumb {
-
-		public BreadCrumbItem[] Trail { get; init; } = Array.Empty<BreadCrumbItem>();
-
-		public static BreadCrumb Empty { get; } = new() { Trail = Array.Empty<BreadCrumbItem>() };
-	}
-
-	protected class BreadCrumbItem {
-
-		public LocalNotionResourceType Type { get; set; }
-
-		public BreadCrumbItemTraits Traits { get; set; }
-
-		public string Data { get; set; }
-
-		public string Text { get; set; }
-
-		public string Url { get; set; }
-	}
-
-	[Flags]
-	protected enum BreadCrumbItemTraits : uint {
-		IsCurrentPage = 1 << 0,
-		IsPage = 1 << 1,
-		IsCMSPage = 1 << 2,
-		IsFile = 1 << 3,
-		IsDatabase = 1 << 4,
-		IsCategory = 1 << 5,
-		IsRoot = 1 << 6,
-		IsWorkspace = 1 << 7,
-		HasUrl = 1 << 8,
-		HasIcon = 1 << 9,
-		HasEmojiIcon = 1 << 10,
-		HasImageIcon = 1 << 11
-	}
 
 	#endregion
 }

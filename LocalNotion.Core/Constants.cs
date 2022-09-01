@@ -27,16 +27,20 @@ public static class Constants {
 	public const string DefaultOnlineBaseUrl = "/";
 	public const string WorkspaceId = "00000000-0000-0000-0000-000000000000";
 
-	public const string DefaultRepositoryFilename = "registry.json";
+	public const string DefaultRegistryFoldername = ".localnotion";
+	public const string DefaultRegistryFilePath = DefaultRegistryFoldername + "/" + "registry.json";
+	public const string TemplateInfoFilename = ".config.json";
+	public const string DefaultObjectsFolderPath = DefaultRegistryFoldername + "/" + "objects";
+	public const string DefaultGraphsFolderPath = DefaultRegistryFoldername + "/" + "graphs";
+	public const string DefaultThemesFolderPath = DefaultRegistryFoldername + "/" + "themes";
+	public const string DefaultPagesFolderPath = "pages";
+	public const string DefaultFilesFolderPath = "files";
+	public const string DefaultDatabasesFolderPath = "databases";
+	public const string DefaultWorkspacesFolderPath = "workspaces";
+	public const string DefaultLogsFolderPath = DefaultRegistryFoldername + "/" + "logs";
 	public const string DefaultLogFilename = "localnotion.log";
-	public const string PageGraphFilename = ".page_graph.json";
-	public const string TemplateInfoJsonFilename = ".config.json";
+	public const bool DefaultUseObjectIDFolders = true;
+	public const string DefaultTheme = "default";
 
-	public const string DefaultRegistryFolder = ".localnotion";
-	public const string DefaultObjectsFolder = ".localnotion/objects";
-	public const string DefaultPagesFolder = "";
-	public const string DefaultFilesFolder = "";
-	public const string DefaultTemplatesFolder = ".localnotion/templates";
-	public const string DefaultLogsFolder = ".localnotion/logs";
-	public const string DefaultRepoFilename = ".localnotion/local_notion.json";
+
 }

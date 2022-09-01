@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Hydrogen;
+﻿using Hydrogen;
 
-namespace LocalNotion.Core.Repository;
+namespace LocalNotion.Core;
 	public class ObjectNotFoundException : SoftwareException{
-		public ObjectNotFoundException(string objectID) : base($"Object '{objectID}' was not foun d") {
+		public ObjectNotFoundException(string objectID) : base($"Object '{objectID}' was not found") {
 		}
 	}
 
