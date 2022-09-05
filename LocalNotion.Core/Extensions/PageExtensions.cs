@@ -1,27 +1,28 @@
-﻿using Hydrogen;
+﻿using System.Xml.Schema;
+using Hydrogen;
 using Notion.Client;
 
 namespace LocalNotion.Core;
 
-
 public static class PageExtensions {
 
-	public static string? GetTitle(this Page page) {
-		Guard.ArgumentNotNull(page, nameof(page));
-		Guard.Ensure(page.FetchedProperties != null, "Properties have not been fetched");
-		return (page.FetchedProperties.FirstOrDefault(x => x.Key == "title").Value as ListPropertyItem)?
-			.Results
-			.Cast<TitlePropertyItem>()
-			.Select(x => x.Title)
-			.ToPlainText();
+	public static bool ContainsFetchedProperty(this Page page, string propertyName) 
+		=> page.Properties.TryGetValue(propertyName, out var propID) && page.FetchedProperties.ContainsKey(propID.Id);
+
+	public static bool TryGetFetchedProperty(this Page page, string propertyName, out IPropertyItemObject propertyItemObject) {
+		propertyItemObject = null;
+		return page.Properties.TryGetValue(propertyName, out var propID) && page.FetchedProperties.TryGetValue(propID.Id, out propertyItemObject);
 	}
 
-	public static string? GetPropertyPlainTextValue(this Page page, string propertyName) 
+	public static string GetTitle(this Page page) 
+		=> page.GetPropertyObjectByID("title").ToPlainText();
+
+	public static string GetPropertyPlainTextValue(this Page page, string propertyName) 
 		=> page.GetPropertyObject(propertyName).ToPlainText();
 
 	public static DateTime? GetPropertyDateValue(this Page page, string propertyName) {
 		var dateProp = page.GetPropertyObject<DatePropertyItem>(propertyName);
-		return dateProp.Date.Start ?? dateProp.Date.End;
+		return dateProp.Date?.Start ?? dateProp.Date?.End;
 	}
 
 	public static TProperty GetPropertyObject<TProperty>(this Page page, string propertyName) where TProperty : class, IPropertyItemObject
@@ -31,11 +32,15 @@ public static class PageExtensions {
 		Guard.ArgumentNotNull(page, nameof(page));
 		Guard.Ensure(page.FetchedProperties != null, "Properties have not been fetched");
 		if (!page.Properties.TryGetValue(propertyName, out var propId))
-			throw new ArgumentException($"Property '{propertyName}' not found", nameof(propertyName));
+			throw new ArgumentException($"Property '{nameof(propertyName)}' not found");
+		return page.GetPropertyObjectByID(propId.Id);
+	}
 
-		if (!page.FetchedProperties.TryGetValue(propId.Id, out var propObj))
-			throw new InvalidOperationException($"Property object '{propId.Id}' not found");
-
+	public static IPropertyItemObject GetPropertyObjectByID(this Page page, string propertyID) {
+		Guard.ArgumentNotNull(page, nameof(page));
+		Guard.ArgumentNotNull(page, nameof(propertyID));
+		if (!page.FetchedProperties.TryGetValue(propertyID, out var propObj))
+			throw new InvalidOperationException($"Property object '{propertyID}' not found");
 		return propObj;
 	}
 

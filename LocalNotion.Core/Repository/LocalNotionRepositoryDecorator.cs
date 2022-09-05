@@ -31,12 +31,10 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual ILogger Logger => InternalRepository.Logger;
 
 	public virtual string DefaultTemplate => InternalRepository.DefaultTemplate;
-
-	public virtual LocalNotionMode Mode => InternalRepository.Mode;
 	
 	public virtual IReadOnlyDictionary<string, string> ThemeMaps => InternalRepository.ThemeMaps;
 	
-	public virtual ILocalNotionPathResolver Paths => InternalRepository.Paths;
+	public virtual IPathResolver Paths => InternalRepository.Paths;
 
 	public virtual string DefaultNotionApiKey => InternalRepository.DefaultNotionApiKey;
 

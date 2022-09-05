@@ -3,7 +3,9 @@
 
 namespace LocalNotion.Core;
 
-public interface ILocalNotionPathResolver {
+public interface IPathResolver {
+
+	LocalNotionMode Mode { get; }
 
 	/// <summary>
 	/// Gets the path to the registry file. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to

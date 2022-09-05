@@ -7,7 +7,7 @@ namespace LocalNotion.Core;
 public static class UrlGeneratorFactory {
 
 	public static IUrlResolver Create(ILocalNotionRepository repository) 
-		=> Create(repository, repository.Mode);
+		=> Create(repository, repository.Paths.Mode);
 
 	public static IUrlResolver Create(ILocalNotionRepository repository, LocalNotionMode mode) 
 		=> mode switch {

@@ -24,13 +24,23 @@ public abstract class LocalNotionResource {
 
 	public bool TryGetRender(out RenderEntry render, RenderType? renderType = null) {
 		render = null;
-		if (renderType != null && !Renders.TryGetValue(renderType.Value, out render)) {
+
+		// No best match render found
+		if (renderType == null) {
+			if (Renders.Count <= 0)
+				return false;
+		
+			// Get best match
+			render = Renders.MinBy(x => x.Key).Value;
+			return true;
+		}
+
+		// Specifically requested render not found
+		if (!Renders.TryGetValue(renderType.Value, out render)) 
 			return false;
-		} else if (Renders.Count > 0) {
-			// Client didn't specify render, select first render 
-			render = Renders.OrderBy(x => x.Key).First().Value;
-		} else return false;
-		return false;
+
+		return true;
+
 	}
 }
 

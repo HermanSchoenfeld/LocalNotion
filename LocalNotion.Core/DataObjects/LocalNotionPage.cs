@@ -17,11 +17,11 @@ public class LocalNotionPage : LocalNotionResource {
 	[JsonProperty("parent", NullValueHandling = NullValueHandling.Ignore)]
 	public string Parent { get; set; }
 	
-	[JsonProperty("properties")]
-	public IDictionary<string, string> Properties { get; set; }
+	//[JsonProperty("properties")]
+	//public IDictionary<string, string> Properties { get; set; }
 
-	[JsonIgnore]
-	public IFuture<IReadOnlyDictionary<string, IPropertyItemObject>> PropertyObjects { get; internal set; }
+	//[JsonIgnore]
+	//public IFuture<IReadOnlyDictionary<string, IPropertyItemObject>> PropertyObjects { get; internal set; }
 
 	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
 	public CMSProperties CMSProperties { get; set; } = null;

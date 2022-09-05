@@ -4,7 +4,7 @@ namespace LocalNotion.Core;
 
 public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 
-	public LocalResourceBookmarkBuilder(ILocalNotionRepository repository, IUrlResolver resolver ) {
+	public LocalResourceBookmarkBuilder(ILocalNotionRepository repository, IUrlResolver resolver) {
 		Repository = repository;
 		Resolver = resolver;
 	}
@@ -20,7 +20,7 @@ public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 		var pageGraph = Repository.GetPageGraph(pageID);
 
 		// Load the page objects
-		var pageObjects = await Task.Run( () => Repository.FetchObjects(pageGraph));
+		var pageObjects = await Task.Run(() => Repository.FetchObjects(pageGraph));
 
 
 		var page = pageObjects[pageGraph.ObjectID] as Page;

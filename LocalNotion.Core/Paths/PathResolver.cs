@@ -2,20 +2,23 @@
 
 namespace LocalNotion.Core;
 
-public class LocalNotionPathResolver : ILocalNotionPathResolver {
+public class PathResolver : IPathResolver {
 
-	public LocalNotionPathResolver(string repoPath, LocalNotionRepositoryPathProfile pathProfile) {
+	public PathResolver(string repoPath, LocalNotionPathProfile pathProfile) {
 		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
 		Guard.ArgumentNotNull(pathProfile, nameof(pathProfile));
 		Guard.DirectoryExists(repoPath);
 		RepositoryPath = Tools.FileSystem.GetCaseCorrectDirectoryPath(repoPath);
 		PathProfile = pathProfile;
-		Guard.Argument(Path.GetFullPath(pathProfile.RepositoryPathR, repoPath) == repoPath, nameof(pathProfile), $"Path profile does not resolve to '{repoPath}'");
+		// ensure path profile's reference to repo dir is same as passed in repo dir
+		Guard.Ensure(Path.GetFullPath(pathProfile.RepositoryPathR, Path.GetDirectoryName( Path.Combine(repoPath, pathProfile.RegistryPathR))).TrimEnd(new[] {'/','\\'}) == repoPath.TrimEnd(new[] {'/','\\'}), $"Path profile does not resolve to '{repoPath}'");
 	}
 
 	protected string RepositoryPath { get; }
 
-	protected LocalNotionRepositoryPathProfile PathProfile { get; }
+	protected LocalNotionPathProfile PathProfile { get; }
+
+	public LocalNotionMode Mode => PathProfile.Mode;
 
 	public string GetRegistryFilePath(FileSystemPathType pathType)
 		=> pathType switch {
@@ -79,8 +82,8 @@ public class LocalNotionPathResolver : ILocalNotionPathResolver {
 
 	public string GetLogsFolderPath(FileSystemPathType pathType)
 		=> pathType switch {
-			FileSystemPathType.Relative => PathProfile.RepositoryPathR,
-			FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.RepositoryPathR, RepositoryPath),
+			FileSystemPathType.Relative => PathProfile.LogsPathR,
+			FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.LogsPathR, RepositoryPath),
 			_ => throw new NotSupportedException($"{pathType}")
 		};
 
@@ -137,6 +140,14 @@ public class LocalNotionPathResolver : ILocalNotionPathResolver {
 	}
 
 	public string GetRemoteHostedBaseUrl() => PathProfile.BaseUrl;
+	
+	public static string ResolveDefaultRegistryFilePath() 
+		=> ResolveDefaultRegistryFilePath(Environment.CurrentDirectory);
 
+	public static string ResolveDefaultRegistryFilePath(string repoPath) {
+		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
+		Guard.DirectoryExists(repoPath);
+		return Path.Join(repoPath, Constants.DefaultRegistryFilePath).ToUnixPath();
+	}
 
 }

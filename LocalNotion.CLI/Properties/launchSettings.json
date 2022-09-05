@@ -1,8 +1,7 @@
 {
   "profiles": {
     "LocalNotion.CLI": {
-      "commandName": "Project",
-      "commandLineArgs": "init -k YOUR_NOTION_API_KEY_HERE"
+      "commandName": "Project"
     }
   }
 }

@@ -8,7 +8,7 @@ public static class Constants {
 	public const string PublishOnPropertyName = "Publish On";
 	public const string StatusPropertyName = "Status";
 	public const string LocationPropertyName = "Location";
-	public const string SlugPropertyName = "Slug";
+	public const string SlugPropertyName = "Custom Slug";
 	public const string RootCategoryPropertyName = "Root";
 	public const string Category1PropertyName = "Category1";
 	public const string Category2PropertyName = "Category2";

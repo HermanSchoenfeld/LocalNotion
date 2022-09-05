@@ -15,7 +15,7 @@ public static class PageRenderFactory {
 					repository.DefaultTemplate;
 				var urlGenerator = UrlGeneratorFactory.Create(repository);
 				var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
-				return new HtmlPageRenderer(renderMode, repository.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager, template);
+				return new HtmlPageRenderer(renderMode, repository.Paths.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager, template);
 			case RenderType.PDF:
 			case RenderType.File:
 			default:

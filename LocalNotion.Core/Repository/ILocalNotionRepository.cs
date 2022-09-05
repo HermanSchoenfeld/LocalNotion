@@ -24,11 +24,9 @@ public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
 
 	string DefaultTemplate { get; }
 
-	public LocalNotionMode Mode { get; }
-
 	IReadOnlyDictionary<string, string> ThemeMaps { get; }
 
-	public ILocalNotionPathResolver Paths { get; }	
+	public IPathResolver Paths { get; }	
 
 	string DefaultNotionApiKey { get; }
 

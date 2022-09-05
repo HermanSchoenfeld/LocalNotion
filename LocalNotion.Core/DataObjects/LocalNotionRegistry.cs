@@ -13,10 +13,6 @@ public class LocalNotionRegistry {
 	[JsonProperty("notion_api_key", NullValueHandling = NullValueHandling.Ignore)]
 	public string NotionApiKey { get; set; } = null;
 
-	[JsonProperty("mode")]
-	[JsonConverter(typeof(StringEnumConverter))]
-	public LocalNotionMode Mode { get; set; } = LocalNotionMode.Offline;
-
 	[JsonProperty("default_theme")]
 	public string DefaultTheme { get; set; } = "default";
 
@@ -24,7 +20,7 @@ public class LocalNotionRegistry {
 	public IDictionary<string, string> ThemeMaps { get; set; } = new Dictionary<string, string>();
 
 	[JsonProperty("paths")]
-	public LocalNotionRepositoryPathProfile Paths { get; set; } = LocalNotionRepositoryPathProfile.Default;
+	public LocalNotionPathProfile Paths { get; set; } = LocalNotionPathProfile.Backup;
 
 	[JsonProperty("log_level")]
 	[JsonConverter(typeof(StringEnumConverter))]

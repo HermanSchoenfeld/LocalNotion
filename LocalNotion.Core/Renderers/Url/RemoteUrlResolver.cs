@@ -19,7 +19,7 @@ public class RemoteUrlResolver : IUrlResolver {
 			return false;
 
 		if (toResource is LocalNotionPage { CMSProperties: not null } lnp) {
-			url = lnp.CMSProperties.Slug;
+			url = lnp.CMSProperties.CustomSlug;
 		} else {
 			if (!toResource.TryGetRender(out var render, renderType))
 				return false;

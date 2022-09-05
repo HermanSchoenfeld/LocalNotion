@@ -7,12 +7,12 @@ using Hydrogen;
 using Microsoft.Win32;
 
 namespace LocalNotion.Core {
-	public class LocalNotionCMS : ILocalNotionCMS {
+	public class NotionCms : INotionCMS {
 		private readonly ICache<string, string> _resourceBySlug;
 		private readonly ICache<string, string[]> _articlesByCategorySlug;
 		private readonly ICache<string, string[]> _categoriesByCategorySlug;
 
-		public LocalNotionCMS(ILocalNotionRepository repository) {
+		public NotionCms(ILocalNotionRepository repository) {
 			Repository = repository;
 			Repository.Changed += _ => FlushCache();
 
@@ -24,7 +24,7 @@ namespace LocalNotion.Core {
 							result[resourceRender.Slug] = resource.ID;
 						}
 						if (resource is LocalNotionPage { CMSProperties: not null } lnp)
-							result[lnp.CMSProperties.Slug] = resource.ID;
+							result[lnp.CMSProperties.CustomSlug] = resource.ID;
 					}
 					return result;
 				},
@@ -35,7 +35,7 @@ namespace LocalNotion.Core {
 				() => {
 					var result = new LookupEx<string, string>(StringComparer.InvariantCultureIgnoreCase);
 					foreach (var article in Repository.Resources.Where(r => r.Type == LocalNotionResourceType.Page).Cast<LocalNotionPage>()) {
-						var categoryKey = LocalNotionHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, article.CMSProperties.Category4, article.CMSProperties.Category5);
+						var categoryKey = NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, article.CMSProperties.Category4, article.CMSProperties.Category5);
 						result.Add(categoryKey, article.ID);
 					}
 					return result.ToDictionary();
@@ -53,23 +53,23 @@ namespace LocalNotion.Core {
 
 						if (string.IsNullOrWhiteSpace(article.CMSProperties.Category1))
 							continue;
-						result.Add(LocalNotionHelper.CreateCategorySlug(article.CMSProperties.Root, null, null, null, null, null), article.CMSProperties.Category1);
+						result.Add(NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, null, null, null, null, null), article.CMSProperties.Category1);
 
 						if (string.IsNullOrWhiteSpace(article.CMSProperties.Category2))
 							continue;
-						result.Add(LocalNotionHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, null, null, null, null), article.CMSProperties.Category2);
+						result.Add(NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, null, null, null, null), article.CMSProperties.Category2);
 
 						if (string.IsNullOrWhiteSpace(article.CMSProperties.Category3))
 							continue;
-						result.Add(LocalNotionHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, null, null, null), article.CMSProperties.Category3);
+						result.Add(NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, null, null, null), article.CMSProperties.Category3);
 
 						if (string.IsNullOrWhiteSpace(article.CMSProperties.Category4))
 							continue;
-						result.Add(LocalNotionHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, null, null), article.CMSProperties.Category4);
+						result.Add(NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, null, null), article.CMSProperties.Category4);
 
 						if (string.IsNullOrWhiteSpace(article.CMSProperties.Category5))
 							continue;
-						result.Add(LocalNotionHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, article.CMSProperties.Category4, null), article.CMSProperties.Category5);
+						result.Add(NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, article.CMSProperties.Category4, null), article.CMSProperties.Category5);
 
 					}
 					return result.ToDictionary();
@@ -81,7 +81,7 @@ namespace LocalNotion.Core {
 		public ILocalNotionRepository Repository { get; }
 
 		public IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories) {
-			return _articlesByCategorySlug[LocalNotionHelper.CreateCategorySlug(root, categories)].Select(nid => Repository.GetResource(nid)).Cast<LocalNotionPage>();
+			return _articlesByCategorySlug[NotionCMSHelper.CreateCategorySlug(root, categories)].Select(nid => Repository.GetResource(nid)).Cast<LocalNotionPage>();
 		}
 
 		public string[] GetRoots() {
@@ -89,7 +89,7 @@ namespace LocalNotion.Core {
 		}
 
 		public string[] GetSubCategories(string root, params string[] categories) {
-			return _categoriesByCategorySlug[LocalNotionHelper.CreateCategorySlug(root, categories)];
+			return _categoriesByCategorySlug[NotionCMSHelper.CreateCategorySlug(root, categories)];
 		}
 		
 		public bool TryLookupResourceBySlug(string slug, out string resourceID) {

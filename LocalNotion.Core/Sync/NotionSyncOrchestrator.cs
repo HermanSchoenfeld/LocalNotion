@@ -15,7 +15,6 @@ public class NotionSyncOrchestrator {
 	public NotionSyncOrchestrator(INotionClient notionClient, ILocalNotionRepository repository) {
 		Guard.ArgumentNotNull(notionClient, nameof(notionClient));
 		Guard.ArgumentNotNull(repository, nameof(repository));
-
 		NotionClient = notionClient;
 		Repository = repository;
 		Logger = Repository.Logger ?? new NoOpLogger(); ;
@@ -28,25 +27,23 @@ public class NotionSyncOrchestrator {
 	protected  ILocalNotionRepository Repository { get; }
 
 	public async Task<LocalNotionResourceType?> QualifyObject(string objectId) {
-			LocalNotionResourceType? objType = null;
-			if (LocalNotionHelper.TryCovertObjectIdToGuid(objectId, out _)) {
-				try {
-					var block = await NotionClient.Blocks.RetrieveAsync(objectId);
-					switch(block.Type) {
-						case BlockType.ChildDatabase:
-							objType = LocalNotionResourceType.Database;
+		LocalNotionResourceType? objType = null;
+		if (LocalNotionHelper.TryCovertObjectIdToGuid(objectId, out _)) {
+			try {
+				var block = await NotionClient.Blocks.RetrieveAsync(objectId);
+				switch (block.Type) {
+					case BlockType.ChildDatabase:
+						objType = LocalNotionResourceType.Database;
 						break;
-						case BlockType.ChildPage:
-							objType = LocalNotionResourceType.Page;
-						break;;
-					}
-				} catch {
+					case BlockType.ChildPage:
+						objType = LocalNotionResourceType.Page;
+						break; ;
 				}
+			} catch {
 			}
-			return objType;
+		}
+		return objType;
 	}
-		
-
 
 	/// <summary>
 	/// Downloads and renders pages from a NotionCMS Database.
@@ -57,10 +54,10 @@ public class NotionSyncOrchestrator {
 	/// <param name="updatedOnFilter">Filter out pages updated before date</param>
 	/// <param name="faultTolerant">Continues processing other items when failing on any individual item</param>
 	/// <returns></returns>
-	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, string updatedOnColumnName = "Edited On", DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
 		try {
 			// Fetch updated notion pages and transform into articles
-			var cmsPages = await QueryDatabasePages(cmsDatabaseID,  updatedOnFilter);
+			var cmsPages = await QueryDatabasePages(cmsDatabaseID, updatedOnColumnName, updatedOnFilter);
 
 			// Download
 			var downloadedResources = new List<LocalNotionResource>();
@@ -91,9 +88,9 @@ public class NotionSyncOrchestrator {
 
 			return cmsPages;
 		} finally {
-			await Repository.Save().IgnoringExceptions();
+			if (Repository.RequiresSave)
+				await Repository.Save().IgnoringExceptions();
 		}
-
 	}
 
 	public async Task<LocalNotionResource[]> DownloadPage(string pageId, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
@@ -111,6 +108,10 @@ public class NotionSyncOrchestrator {
 
 		// Parse into a LocalNotion page
 		var localNotionPage = LocalNotionHelper.ParsePage(notionPage);
+
+		// Parse NotionCMS properties (if applicable)
+		if (NotionCMSHelper.IsCMSPage(notionPage))
+			localNotionPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
 
 		// Fetch page object graph
 		Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({pageId})");
@@ -132,7 +133,7 @@ public class NotionSyncOrchestrator {
 			Repository.AddObject(obj);
 		}
 
-		// Save page abstraction 
+		// Save local notion page resource 
 		if (Repository.ContainsResource(pageId))
 			Repository.DeleteResource(pageId);
 		Repository.AddResource(localNotionPage);
@@ -199,11 +200,15 @@ public class NotionSyncOrchestrator {
 					renderer.RenderLocalResource(page.ID, renderType, renderMode);
 				} catch (Exception error) {
 					Logger.Error($"Failed to process page  '{page.Title}' ({page.ID}). {error.ToDisplayString()}");
+					Logger.Info(error.ToDiagnosticString());
 					if (!faultTolerant)
 						throw;
 				}
 			}
 		}
+		
+		if (Repository.RequiresSave)
+			await Repository.Save();
 
 		return downloadedResources.ToArray();
 	}
@@ -231,10 +236,14 @@ public class NotionSyncOrchestrator {
 			Repository.ImportResourceRender(resourceID, RenderType.File, tmpFile);
 			//file = Repository.AddFile(resourceID, filename, tmpFile, parentID);
 		} catch (Exception error) {
-			Logger.LogException(error);
+			Logger.Exception(error);
 		} finally {
 			File.Delete(tmpFile);
 		}
+
+		if (Repository.RequiresSave)
+			await Repository.Save();
+
 		return file;
 	}
 
@@ -247,9 +256,12 @@ public class NotionSyncOrchestrator {
 		throw new NotImplementedException();
 	}
 
-	public async Task<Page[]> QueryDatabasePages(string databaseID, DateTime? updatedOnOrAfter = null) {
+	public async Task<Page[]> QueryDatabasePages(string databaseID, string lastUpdateOnColumnName,  DateTime? updatedOnOrAfter = null) {
 		Logger.Info($"Fetching updated pages for database '{databaseID}'{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
-		var notionUpdateOnFilter = updatedOnOrAfter != null ? new DateFilter("Edited On", onOrAfter: updatedOnOrAfter) : null;
+		var notionUpdateOnFilter = 
+			lastUpdateOnColumnName != null && updatedOnOrAfter != null ?
+			new DateFilter(lastUpdateOnColumnName, onOrAfter: updatedOnOrAfter) :
+			null;
 		var results = await NotionClient.Databases.GetAllDatabaseRows(
 			databaseID,
 			new DatabasesQueryParameters {

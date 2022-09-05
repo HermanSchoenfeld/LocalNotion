@@ -43,25 +43,25 @@ public static class PlainTextExtensions {
 
 	public static string ToPlainText(this IPropertyItemObject propertyItemObject) 
 		=> propertyItemObject switch {
-			ListPropertyItem lpi => lpi.Results.Select(ToPlainText).ToDelimittedString(" "),
+			ListPropertyItem lpi => lpi.Results.Select(ToPlainText).ToDelimittedString(string.Empty),
 			NumberPropertyItem pi => pi.Number.ToPlainText(),
 			UrlPropertyItem pi => $"{pi.Url}",
-			SelectPropertyItem pi => $"{pi.Select.Name}",
-			MultiSelectPropertyItem pi => $"{pi.MultiSelect.Select(x => x.Name).ToDelimittedString(", ")}",
-			DatePropertyItem pi => $"{pi.Date.ToPlainText()}",
+			SelectPropertyItem pi => $"{pi.Select?.Name}",
+			MultiSelectPropertyItem pi => $"{pi.MultiSelect?.Select(x => x.Name).ToDelimittedString(", ")}",
+			DatePropertyItem pi => $"{pi.Date?.ToPlainText()}",
 			EmailPropertyItem pi => $"{pi.Email}",
 			PhoneNumberPropertyItem pi => $"{pi.PhoneNumber}",
 			CheckboxPropertyItem pi => pi.Checkbox.ToPlainText(),
-			FilesPropertyItem pi => $"{pi.Files.Select(x => x.Name).ToDelimittedString(", ")}",
-			CreatedByPropertyItem pi => $"{pi.CreatedBy.Name}",
+			FilesPropertyItem pi => $"{pi.Files?.Select(x => x.Name).ToDelimittedString(", ")}",
+			CreatedByPropertyItem pi => $"{pi.CreatedBy?.Name}",
 			CreatedTimePropertyItem pi => pi.CreatedTime.ToPlainText(),
-			LastEditedByPropertyItem pi => $"{pi.LastEditedBy.Name}",
+			LastEditedByPropertyItem pi => $"{pi.LastEditedBy?.Name}",
 			LastEditedTimePropertyItem pi => $"{pi.LastEditedTime.ToPlainText()}",
-			FormulaPropertyItem pi => $"{pi.Formula.ToPlainText()}",
-			TitlePropertyItem pi => $"{pi.Title.PlainText}",
-			RichTextPropertyItem pi => $"{pi.RichText.PlainText}",
-			PeoplePropertyItem pi => $"{pi.People.Name}",
-			RelationPropertyItem pi => $"{pi.Relation.Id}",
+			FormulaPropertyItem pi => $"{pi.Formula?.ToPlainText()}",
+			TitlePropertyItem pi => $"{pi.Title?.PlainText}",
+			RichTextPropertyItem pi => $"{pi.RichText?.PlainText}",
+			PeoplePropertyItem pi => $"{pi.People?.Name}",
+			RelationPropertyItem pi => $"{pi.Relation?.Id}",
 		};
 
 }

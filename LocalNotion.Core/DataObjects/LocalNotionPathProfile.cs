@@ -1,9 +1,16 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
 namespace LocalNotion.Core;
 
-public class LocalNotionRepositoryPathProfile {
+public class LocalNotionPathProfile {
 
+	/// <summary>
+	/// The mode which determines how links are generated.
+	/// </summary>
+	[JsonProperty("mode")]
+	[JsonConverter(typeof(StringEnumConverter))]
+	public LocalNotionMode Mode { get; set; } = LocalNotionMode.Offline;
 
 	/// <summary>
 	/// The path to the repository relative to the **REGISTRY FILE**.
@@ -98,12 +105,12 @@ public class LocalNotionRepositoryPathProfile {
 	/// <summary>
 	/// Directory profile for standard Local Notion repository.
 	/// </summary>
-	public static LocalNotionRepositoryPathProfile Default => new ();
+	public static LocalNotionPathProfile Backup => new ();
 
 	/// <summary>
 	/// Creates a Local Notion path profile suitable for publishing (renders in same folder and no object id subfolders)
 	/// </summary>
-	public static LocalNotionRepositoryPathProfile PublishingProfile => new () {
+	public static LocalNotionPathProfile PublishingProfile => new () {
 		PagesPathR = string.Empty,
 		FilesPathR = string.Empty,
 		DatabasesPathR = string.Empty,
@@ -117,7 +124,7 @@ public class LocalNotionRepositoryPathProfile {
 	/// <summary>
 	/// Creates a Local Notion path profile suitable for hosting website content (renders in same folder but uses object-id subfolders) with a url-prefix.
 	/// </summary>
-	public static LocalNotionRepositoryPathProfile HostingProfile => new () {
+	public static LocalNotionPathProfile HostingProfile => new () {
 		BaseUrl = "/",
 		PagesPathR = string.Empty,
 		FilesPathR = string.Empty,

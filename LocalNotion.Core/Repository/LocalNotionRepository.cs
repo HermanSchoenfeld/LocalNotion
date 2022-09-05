@@ -1,5 +1,6 @@
 ﻿using Hydrogen;
 using Hydrogen.Data;
+using Microsoft.Win32;
 using Notion.Client;
 
 namespace LocalNotion.Core;
@@ -54,11 +55,9 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 	public string DefaultTemplate => _registry.DefaultTheme;
 
-	public LocalNotionMode Mode => _registry.Mode;
-
 	public IReadOnlyDictionary<string, string> ThemeMaps => _registry.ThemeMaps.AsReadOnly();
 
-	public ILocalNotionPathResolver Paths { get; private set; }
+	public IPathResolver Paths { get; private set; }
 
 	public string DefaultNotionApiKey => _registry.NotionApiKey;
 
@@ -77,32 +76,30 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	public static async Task<LocalNotionRepository> CreateNew(
 		string repoPath,
 		string notionApiKey = null,
-		LocalNotionMode mode = LocalNotionMode.Offline,
 		string theme = null,
 		LogLevel logLevel = LogLevel.Info,
-		LocalNotionRepositoryPathProfile pathProfile = null,
+		LocalNotionPathProfile pathProfile = null,
 		IDictionary<string, string> rootTemplates = null,
 		ILogger logger = null
 	) {
 		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
 		Guard.DirectoryExists(repoPath);
 	
-		// Default theme
+		// Backup theme
 		theme ??= Constants.DefaultTheme;
 
 		// The registry file is computed from the profile
-		pathProfile ??= LocalNotionRepositoryPathProfile.Default;
+		pathProfile ??= LocalNotionPathProfile.Backup;
 
 		var registryFile = Path.GetFullPath(pathProfile.RegistryPathR, repoPath);
 		Guard.FileNotExists(registryFile);
 
 		// Remove dangling files
-		await Remove(repoPath, pathProfile, logger);
+		await Remove(repoPath, logger);
 
 		// create registry objects
 		var registry = new LocalNotionRegistry {
 			NotionApiKey = notionApiKey,
-			Mode = mode,
 			DefaultTheme = theme,
 			Paths = pathProfile,
 			LogLevel = logLevel,
@@ -114,11 +111,11 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		
 		// Create folders
-		var pathResolver = new LocalNotionPathResolver(repoPath, pathProfile);
+		var pathResolver = new PathResolver(repoPath, pathProfile);
 
 		var registryParentFolder = Tools.FileSystem.GetParentDirectoryPath(registryFile);
 		if (!Directory.Exists(registryParentFolder)) {
-			if (Path.GetDirectoryName(registryParentFolder) == Constants.DefaultRegistryFoldername)
+			if (Path.GetFileName(registryParentFolder) == Constants.DefaultRegistryFoldername)
 				Directory.CreateDirectory(registryParentFolder);
 			else
 				// LN only creates .localnotion folders. For use-cases involving a custom path profile that changes
@@ -127,7 +124,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		} else {
 			Guard.Ensure(Tools.FileSystem.IsDirectoryEmpty(registryParentFolder), "Registry was not empty");
 		}
-
 		
 		var objectsPath = pathResolver.GetObjectsFolderPath(FileSystemPathType.Absolute);	
 		if (!Directory.Exists(objectsPath))
@@ -164,17 +160,21 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	}
 
 
-	public static async Task Remove(string registryFile, ILogger logger = null) {
-		Guard.ArgumentNotNullOrEmpty(registryFile, nameof(registryFile));
-		Guard.FileExists(registryFile);
-		var registry = await Task.Run( () => Tools.Json.ReadFromFile<LocalNotionRegistry>(registryFile));
-		await Remove(Path.GetFullPath(registry.Paths.RepositoryPathR, Path.GetDirectoryName(registryFile)), registry.Paths, logger);
+	public static async Task Remove(string repoPath, ILogger logger = null) {
+		Guard.ArgumentNotNullOrEmpty(repoPath, nameof(repoPath));
+		Guard.DirectoryExists(repoPath);
+		await RemoveRegistry(PathResolver.ResolveDefaultRegistryFilePath(repoPath), logger);
 	}
 
-	public static Task Remove(string repoPath, LocalNotionRepositoryPathProfile pathProfile, ILogger logger = null) 
-		=> Remove(new LocalNotionPathResolver(repoPath, pathProfile), logger);
+	public static Task RemoveRegistry(string registryPath, ILogger logger = null) {
+		Guard.ArgumentNotNull(registryPath, nameof(registryPath));
+		Guard.FileExists(registryPath);
+		var registry = Tools.Json.ReadFromFile<LocalNotionRegistry>(registryPath);
+		var pathResolver = new PathResolver(Path.GetFullPath(registry.Paths.RepositoryPathR, Path.GetDirectoryName(registryPath)), registry.Paths);
+		return RemoveInternal(pathResolver, logger);
+	}
 
-	public static async Task Remove(ILocalNotionPathResolver pathResolver, ILogger logger = null) {
+	private static async Task RemoveInternal(IPathResolver pathResolver, ILogger logger = null) {
 		logger ??= new NoOpLogger();
 
 		var registryFile = pathResolver.GetRegistryFilePath(FileSystemPathType.Absolute);
@@ -198,7 +198,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		// Delete resource paths if exists
 		foreach(var resourceType in Enum.GetValues<LocalNotionResourceType>()) {
 			var resourceTypePath = pathResolver.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute);
-			if (!Directory.Exists(resourceTypePath) && !Tools.FileSystem.IsDirectoryEmpty(resourceTypePath)) {
+			if (Directory.Exists(resourceTypePath) && !Tools.FileSystem.IsDirectoryEmpty(resourceTypePath)) {
 				logger.Info($"Removing {registryParentFolder}");
 				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
 			}
@@ -217,14 +217,20 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			logger.Info($"Removing {logsPath}");
 			await Tools.FileSystem.DeleteDirectoryAsync(logsPath);
 		}
+	}
 
+	public static Task<LocalNotionRepository> Open(string repositoryFolder, ILogger logger = null) {
+		Guard.ArgumentNotNull(repositoryFolder, nameof(repositoryFolder));
+		if (!Directory.Exists(repositoryFolder))
+			throw new DirectoryNotFoundException(repositoryFolder);
+		return OpenRegistry(PathResolver.ResolveDefaultRegistryFilePath(repositoryFolder), logger);
 	}
 	
-	public static async Task<LocalNotionRepository> Open(string repoFile, ILogger logger = null) {
-		Guard.ArgumentNotNull(repoFile, nameof(repoFile));
-		if (!File.Exists(repoFile))
-			throw new FileNotFoundException(repoFile);
-		var repo = new LocalNotionRepository(repoFile, logger);
+	public static async Task<LocalNotionRepository> OpenRegistry(string registryFile, ILogger logger = null) {
+		Guard.ArgumentNotNull(registryFile, nameof(registryFile));
+		if (!File.Exists(registryFile))
+			throw new FileNotFoundException(registryFile);
+		var repo = new LocalNotionRepository(registryFile, logger);
 		await repo.Load();
 		return repo;
 	}
@@ -237,7 +243,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		_registry = await Task.Run(() => Tools.Json.ReadFromFile<LocalNotionRegistry>(_registryPath));
 
 		// create path resolver
-		Paths = new LocalNotionPathResolver(Path.GetFullPath(_registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), _registry.Paths);
+		Paths = new PathResolver(Path.GetFullPath(_registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), _registry.Paths);
 
 		// create the resource lookup table
 		_resourcesByNID = _registry.Resources.ToDictionary(x => x.ID);
@@ -259,9 +265,10 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		// Create template manager (will extract missing templates on ctor)
 		HtmlThemeManager.ExtractEmbeddedThemes(Paths.GetThemesFolderPath(FileSystemPathType.Absolute), false, _logger);
 
+		RequiresLoad = false;
+
 		await Clean();
 		
-		RequiresLoad = false;
 	}
 
 	public async Task Save() {
@@ -313,7 +320,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		var resourceFolders = Enumerable.Empty<string>();
 		foreach(var resourceType in Enum.GetValues<LocalNotionResourceType>()) {
 			if (Paths.UsesObjectIDSubFolders(resourceType)) {
-				resourceFolders = resourceFolders.Union(Tools.FileSystem.GetSubDirectories(Paths.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute)));
+				resourceFolders = resourceFolders.Union(Tools.FileSystem.GetSubDirectories(Paths.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute), FileSystemPathType.Absolute));
 			}
 		}
 
@@ -342,13 +349,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		if (RequiresSave) 
 			await Save();
 	}
-
-	//public IUrlResolver CreateUrlResolver()
-	//	=> _registry.Mode switch {
-	//		LocalNotionMode.Offline => new LocalUrlResolver(this),
-	//		LocalNotionMode.Online => new RemoteUrlResolver(this, $"{BaseUrl.TrimEnd('/')}/{{slug}}"),
-	//		_ => throw new ArgumentOutOfRangeException()
-	//	};
 
 	public bool TryGetObject(string objectId, out IFuture<IObject> @object) {
 		CheckLoaded();
@@ -388,6 +388,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
 		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
 		Guard.Ensure(resourceID == pageGraph.ObjectID, $"Mismatch between argument object identifiers");
+		_graphStore.RegisterFile(resourceID);
 		Tools.Json.WriteToFile(_graphStore.GetFilePath(resourceID), pageGraph);
 	}
 
@@ -406,10 +407,10 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		}
 		localNotionResource = resource;
 
-		if (localNotionResource is LocalNotionPage lnp) 
-			lnp.PropertyObjects = Tools.Values.Future.LazyLoad( 
-				() => lnp.Properties.ToDictionary(property => property.Key, property => (IPropertyItemObject) this.GetObject(property.Value))
-			);
+		//if (localNotionResource is LocalNotionPage lnp) 
+		//	lnp.PropertyObjects = Tools.Values.Future.LazyLoad( 
+		//		() => lnp.Properties.ToDictionary(property => property.Key, property => (IPropertyItemObject) this.GetObject(property.Value))
+		//	);
 
 		return true;
 	}

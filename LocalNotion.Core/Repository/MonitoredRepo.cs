@@ -49,11 +49,10 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual string DefaultTemplate => InternalRepository.Value.DefaultTemplate;
 
-	public virtual LocalNotionMode Mode => InternalRepository.Value.Mode;
 
 	public virtual IReadOnlyDictionary<string, string> ThemeMaps => InternalRepository.Value.ThemeMaps;
 	
-	public virtual ILocalNotionPathResolver Paths => InternalRepository.Value.Paths;
+	public virtual IPathResolver Paths => InternalRepository.Value.Paths;
 
 	public virtual string DefaultNotionApiKey => InternalRepository.Value.DefaultNotionApiKey;
 

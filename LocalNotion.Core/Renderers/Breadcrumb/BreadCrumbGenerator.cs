@@ -85,7 +85,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			// if current item is a CMS item, the remainder of trail is extracted from he slug
 			if (isCmsPage) {
 				var cmsPage = (LocalNotionPage)item;
-				var slugParts = cmsPage.CMSProperties.Slug.Split('/');
+				var slugParts = cmsPage.CMSProperties.CustomSlug.Split('/');
 
 				foreach (var slugAncestor in slugParts.Reverse().WithDescriptions()) {
 					if (slugAncestor.Index == 0)

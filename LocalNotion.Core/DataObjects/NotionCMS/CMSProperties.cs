@@ -12,8 +12,8 @@ public class CMSProperties {
 	[JsonConverter(typeof(StringEnumConverter))]
 	public CMSItemStatus Status { get; set; }
 
-	[JsonProperty("slug")]
-	public string Slug { get; set; }
+	[JsonProperty("custom_slug")]
+	public string CustomSlug { get; set; }
 
 	[JsonProperty("location", NullValueHandling = NullValueHandling.Ignore)]
 	public string Location { get; set; }

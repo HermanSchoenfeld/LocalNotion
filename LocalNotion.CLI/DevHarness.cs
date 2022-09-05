@@ -29,19 +29,19 @@
 ////var repo = await LocalNotionRepository.CreateNew("c:\\temp\\render\\local_notion.json", LocalNotionMode.Offline, logger:logger); 
 //var repo = await LocalNotionRepository.Open("c:\\temp\\render\\local_notion.json",  logger);
 
-////repo.BaseUrl = "../../";
+////repo.BaseUrlOverride = "../../";
 
 //var orchestrator = new NotionSyncOrchestrator(client, repo, logger);
 ////await orchestrator.RegisterPage("cda5ecf6-9476-4933-9d1f-52a1031b4f16");
 
 ////foreach (var page in repo.Resources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
-////    orchestrator.RenderLocalResource(page.ID, RenderOutput.HTML, RenderMode.ReadOnly);
+////    orchestrator.RenderLocalResource(page.ID, RenderType.HTML, RenderMode.ReadOnly);
 ////}
 
 //try {
 ////    await orchestrator.DownloadPage(HowToArticleID);
-//  //  orchestrator.RenderLocalResource(HowToArticleID, RenderOutput.HTML, RenderMode.ReadOnly);
-//    //orchestrator.RenderLocalResource(EmbeddedArticleID, RenderOutput.HTML, RenderMode.ReadOnly);
+//  //  orchestrator.RenderLocalResource(HowToArticleID, RenderType.HTML, RenderMode.ReadOnly);
+//    //orchestrator.RenderLocalResource(EmbeddedArticleID, RenderType.HTML, RenderMode.ReadOnly);
 //} catch (Exception error) {
 //    logger.LogException(error);
 //}

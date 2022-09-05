@@ -39,13 +39,6 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		}
 	}
 
-	public override LocalNotionMode Mode {
-		get {
-			using (EnterReadScope())
-				return InternalRepository.Mode;
-		}
-	}
-	
 	public override IReadOnlyDictionary<string, string> ThemeMaps {
 		get {
 			using (EnterReadScope())
@@ -53,7 +46,7 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		}
 	}
 	
-	public override ILocalNotionPathResolver Paths {
+	public override IPathResolver Paths {
 		get {
 			using (EnterReadScope())
 				return InternalRepository.Paths;
