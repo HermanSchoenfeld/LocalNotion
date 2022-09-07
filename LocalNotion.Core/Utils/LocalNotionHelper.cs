@@ -55,17 +55,17 @@ internal class LocalNotionHelper {
 		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedOnPropertyName);
 
-	public static LocalNotionPage ParsePage(Page page, PageProperties pageProperties) {
+	public static LocalNotionPage ParsePage(Page page) {
 		var result = new LocalNotionPage();
-		ParsePage(page, pageProperties, result);
+		ParsePage(page, result);
 		return result;
 	}
 
-	public static void ParsePage(Page page, PageProperties pageProperties, LocalNotionPage dest) {
+	public static void ParsePage(Page page, LocalNotionPage dest) {
 		dest.ID = page.Id;
 		dest.Parent = page.Parent.GetParentId();
 		dest.LastEditedTime = page.LastEditedTime;
-		dest.Title = page.GetTitle(pageProperties).ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;
 		if (page.Icon != null) {
 			dest.Thumbnail = new() {
@@ -133,6 +133,23 @@ internal class LocalNotionHelper {
 				.ToDelimittedString("/");
 	}
 
+	/// <summary>
+	/// This calculates a UUID ID of a Page property so that it can be stored in the Local Notion Objects database. This is needed
+	/// because Notion does not use UUID's for Page properties.
+	/// </summary>
+	/// <remarks>The algorithm used is: Guid.Parse( Blake2b_128( ToGuidBytes(PageID) ++ ToAsciiEncodedBytes(PropertyID) ) ) </remarks>
+	/// <param name="pageID">The ID of the Page containing the property</param>
+	/// <param name="propertyID">The Notion issued ID of the Page property (a string that is unique only to the Page)</param>
+	/// <returns>A globally unique ID for the property.</returns>
+	public string CalculatePagePropertyUUID(string pageID, string propertyID) {
+		Guard.ArgumentNotNull(pageID, nameof(pageID));
+		Guard.ArgumentNotNull(propertyID, nameof(propertyID));
+		Guard.ArgumentParse<Guid>(pageID, nameof(pageID), out var pageGuid);
+		var pageIDBytes = pageGuid.ToByteArray();
+		var propIDBytes = Encoding.ASCII.GetBytes(propertyID);
+		var result = LocalNotionHelper.ObjectGuidToId(new Guid(Hashers.JoinHash(CHF.Blake2b_128, pageIDBytes, propIDBytes)));
+		return result;
+	}
 
 }
 

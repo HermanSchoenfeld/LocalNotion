@@ -6,19 +6,20 @@ namespace LocalNotion.Core;
 
 public static class IPagesClientExtensions  {
 
-	public static async Task<PageProperties> RetrievePagePropertiesAsync(this IPagesClient pagesClient, Page page, CancellationToken cancellationToken = default) 
+	public static async Task<PagePropertyItems> RetrievePagePropertiesAsync(this IPagesClient pagesClient, Page page, CancellationToken cancellationToken = default) 
 		=> new (
-				await pagesClient.EnumeratePagePropertiesAsync(page.Id, page.Properties.Values.Select(x => x.Id), cancellationToken).ToArrayAsync()
+			page,
+			await pagesClient.EnumeratePagePropertiesAsync(page.Id, page.Properties.Values.Select(x => x.Id), cancellationToken).ToArrayAsync()
 		);
 
-	public static async Task<PageProperties> ParallelRetrievePagePropertiesAsync(this IPagesClient pagesClient, string pageId, IEnumerable<string> propertyIds, CancellationToken cancellationToken = default) {
+	public static async Task<PagePropertyItems> ParallelRetrievePagePropertiesAsync(this IPagesClient pagesClient, Page page, IEnumerable<string> propertyIds, CancellationToken cancellationToken = default) {
 		var results = new SynchronizedDictionary<string,IPropertyItemObject>();
 		await Parallel.ForEachAsync(propertyIds, cancellationToken, async (id, ct) => {
-			var prop = await pagesClient.RetrievePagePropertyItemCompleteAsync(pageId, id, ct);
+			var prop = await pagesClient.RetrievePagePropertyItemCompleteAsync(page.Id, id, ct);
 			results.Add(prop);
 		});
 		var kvps = propertyIds.Select(id => new KeyValuePair<string, IPropertyItemObject>(id, results[id])); // return properties in same order as parameters (since they may be fetched in different order)
-		return new(kvps);
+		return new(page, kvps);
 	}
 
 	public static async IAsyncEnumerable<KeyValuePair<string, IPropertyItemObject>> EnumeratePagePropertiesAsync(this IPagesClient pagesClient, string pageId, IEnumerable<string> propertyIds, [EnumeratorCancellation] CancellationToken cancellationToken = default) {

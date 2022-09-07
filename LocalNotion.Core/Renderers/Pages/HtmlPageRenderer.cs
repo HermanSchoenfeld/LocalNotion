@@ -9,8 +9,8 @@ namespace LocalNotion.Core;
 public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, PageProperties pageProperties, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, IUrlResolver resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
-		: base(page, pageGraph, pageProperties, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
+	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, IUrlResolver resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
+		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
 		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
 		Guard.ArgumentNotNullOrWhitespace(theme, nameof(theme));
 		ThemeManager = themeManager;
@@ -22,7 +22,6 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			GetModeCorrectedTokens(Theme)
 			.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
 
-		
 		DictionaryChain<string, object> GetModeCorrectedTokens(HtmlThemeInfo theme) {
 			// This method provides a "chain of responsibility" style dictionary of all the theme tokens
 			// Also it resolves a theme:// tokens which are aliases for links to a theme resource.
@@ -35,7 +34,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				if (key.StartsWith("theme://")) {
 					Guard.Ensure(value != null, $"Unexpected null value for key '{key}'");
 					var thisRendersExpectedParentFolder = pathResolver.GetResourceFolderPath(LocalNotionResourceType.Page, Page.ID, FileSystemPathType.Absolute);
-					return "../" + Path.GetRelativePath(thisRendersExpectedParentFolder, value.ToString()).ToUnixPath();
+					return Path.GetRelativePath(thisRendersExpectedParentFolder, value.ToString()).ToUnixPath();
 				}
 				return value;
 			}
@@ -65,7 +64,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> externalFile.External.Url;
 
 	protected override string Render(UploadedFile uploadedFile)
-		 => Resolver.ResolveUploadedFileUrl(LocalNotionResourceType.Page, Page.ID, uploadedFile, out _);
+		 => Resolver.ResolveUploadedFileUrl(Page, uploadedFile, out _);
 
 	protected override string Render(Link link)
 		=> RenderTemplate(
@@ -151,8 +150,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"page" => RenderTemplate(
 				"text_link",   // should be page_link (use svg's)
 				new NotionObjectTokens {
-					["url"] = Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
-					["text"] = Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
+					["url"] = Resolver.TryResolveLinkToResource(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
+					["text"] = Resolver.TryResolveLinkToResource(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
 				}
 			),
 			"database" => $"[{text.Mention.Type}]{text.Mention.Database.Id}",
@@ -490,7 +489,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderUnsupported(block);
 
 	protected override string Render(ChildPageBlock block) {
-		if (!Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
+		if (!Resolver.TryResolveLinkToResource(Page, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved child page {block.Id}";
 
 
@@ -695,7 +694,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 
 	protected override string Render(LinkToPageBlock block) {
-		if (!Resolver.TryResolveLinkToResource(LocalNotionResourceType.Page, Page.ID, block.LinkToPage.GetParentId(), RenderType.HTML, out var childPageUrl, out var resource))
+		if (!Resolver.TryResolveLinkToResource(Page, block.LinkToPage.GetParentId(), RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved page {block.LinkToPage.GetParentId()}";
 
 		return RenderTemplate(

@@ -6,44 +6,22 @@ namespace LocalNotion.Core;
 
 public static class PageExtensions {
 
-	public static bool ContainsPropertyObject(this Page page, PageProperties propertyObjects, string propertyName) 
-		=> page.Properties.TryGetValue(propertyName, out var propID) && propertyObjects.ContainsKey(propID.Id);
+	public static string GetTitle(this Page page) 
+		=> (page.Properties.Values.FirstOrDefault(x => x is TitlePropertyValue) as TitlePropertyValue)?.Title.ToPlainText() ?? string.Empty;
 
-	public static bool TryGetPropertyObject(this Page page, PageProperties propertyObjects, string propertyName, out IPropertyItemObject propertyItemObject) {
-		propertyItemObject = null;
-		return page.Properties.TryGetValue(propertyName, out var propID) && propertyObjects.TryGetValue(propID.Id, out propertyItemObject);
+	public static string GetPropertyDisplayValue(this Page page, string propertyName) {
+		if (!page.Properties.TryGetValue(propertyName, out var propertyValue))
+			throw new InvalidOperationException($"Property '{propertyName}' not found");
+		return propertyValue.ToPlainText();
 	}
 
-	public static string GetTitle(this Page page, PageProperties propertyObjects) 
-		=> page.GetPropertyObjectByID(propertyObjects, "title").ToPlainText();
-
-	public static IPropertyItemObject GetPropertyObject(this Page page, PageProperties propertyObjects, string propertyName) {
-		Guard.ArgumentNotNull(page, nameof(page));
-		Guard.Ensure(propertyObjects != null, "Properties have not been fetched");
-		if (!page.Properties.TryGetValue(propertyName, out var propId))
-			throw new ArgumentException($"Property '{nameof(propertyName)}' not found");
-		return page.GetPropertyObjectByID(propertyObjects, propId.Id);
+	public static DateTime? GetPropertyDate(this Page page, string propertyName) {
+		if (!page.Properties.TryGetValue(propertyName, out var propertyValue))
+			throw new InvalidOperationException($"Property '{propertyName}' not found");
+		var datePropertyValue = propertyValue as DatePropertyValue;
+		Guard.Ensure(datePropertyValue != null, $"Property '{propertyName}' was not a date");
+		return datePropertyValue.Date?.Start;
 	}
-
-	public static IPropertyItemObject GetPropertyObjectByID(this Page page, PageProperties propertyObjects, string propertyID) {
-		Guard.ArgumentNotNull(page, nameof(page));
-		Guard.ArgumentNotNull(page, nameof(propertyID));
-		if (!propertyObjects.TryGetValue(propertyID, out var propObj))
-			throw new InvalidOperationException($"Property object '{propertyID}' not found");
-		return propObj;
-	}
-
-	public static string GetPropertyPlainTextValue(this Page page, PageProperties propertyObjects, string propertyName) 
-		=> page.GetPropertyObject(propertyObjects, propertyName).ToPlainText();
-
-	public static DateTime? GetPropertyDateValue(this Page page, PageProperties propertyObjects, string propertyName) {
-		var dateProp = page.GetPropertyObject<DatePropertyItem>(propertyObjects, propertyName);
-		return dateProp.Date?.Start ?? dateProp.Date?.End;
-	}
-
-	public static TProperty GetPropertyObject<TProperty>(this Page page, PageProperties propertyObjects, string propertyName) where TProperty : class, IPropertyItemObject
-		=> page.GetPropertyObject(propertyObjects, propertyName) as TProperty ?? throw new InvalidOperationException($"Property '{propertyName}' not a '{typeof(TProperty).Name}' property");
-
 
 	public static void ValidatePropertiesExist(this Page page, params string[] propertyNames)
 		=> page.ValidatePropertiesExist((IEnumerable<string>)propertyNames);
@@ -54,14 +32,14 @@ public static class PageExtensions {
 	public static void ValidatePropertyExist(this Page page, string propertyName)
 		=> Guard.Ensure(page.Properties.ContainsKey(propertyName), $"Missing property '{propertyName}'");
 
-	public static ChildPageBlock AsChildPageBlock(this Page page, PageProperties propertyObjects)
+	public static ChildPageBlock AsChildPageBlock(this Page page)
 		=> new() {
 			Id = page.Id,
 			CreatedTime = page.CreatedTime,
 			LastEditedTime = page.LastEditedTime,
 			HasChildren = true,
 			ChildPage = new ChildPageBlock.Info {
-				Title = page.GetTitle(propertyObjects)
+				Title = page.GetTitle()
 			}
 		};
 }

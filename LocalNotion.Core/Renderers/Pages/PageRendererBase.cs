@@ -6,17 +6,15 @@ namespace LocalNotion.Core;
 
 public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
-	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, PageProperties pageProperties, IDictionary<string, IObject> pageObjects, IUrlResolver resolver,  IBreadCrumbGenerator breadCrumbGenerator, Action<string, TOutput> fileSerializer) {
+	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IUrlResolver resolver,  IBreadCrumbGenerator breadCrumbGenerator, Action<string, TOutput> fileSerializer) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
-		Guard.ArgumentNotNull(pageProperties, nameof(pageProperties));
 		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
 		Guard.ArgumentNotNull(resolver, nameof(resolver));
 		Guard.ArgumentNotNull(breadCrumbGenerator, nameof(breadCrumbGenerator));
 		Guard.ArgumentNotNull(fileSerializer, nameof(fileSerializer));
 		Page = page;
 		PageGraph = pageGraph;
-		PageProperties = pageProperties;
 		PageObjects = pageObjects;
 		Resolver = resolver;
 		BreadCrumbGenerator = breadCrumbGenerator;
@@ -27,8 +25,6 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected LocalNotionPage Page { get; }
 
 	protected NotionObjectGraph PageGraph { get; }
-
-	protected PageProperties PageProperties { get; set; }
 
 	protected IDictionary<string, IObject> PageObjects { get; set; }
 
@@ -62,7 +58,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				TableBlock x => Render(x),
 				TableRowBlock x => Render(x),
 				Database x => Render(x),
-				Page x => RenderingStack.Count == 1 ? Render(x) : Render(x.AsChildPageBlock(PageProperties)),   // Nested pages are stored as "Page" objects in LocalNotion
+				Page x => RenderingStack.Count == 1 ? Render(x) : Render(x.AsChildPageBlock()),   // Nested pages are stored as "Page" objects in LocalNotion
 				User x => Render(x),
 				AudioBlock x => Render(x),
 				BookmarkBlock x => Render(x),
@@ -182,7 +178,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				return RenderVideoEmbed(block, externalFile.External.Url);
 			}
 			case UploadedFile uploadedFile: {
-				var url = Resolver.ResolveUploadedFileUrl(LocalNotionResourceType.Page, Page.ID, uploadedFile, out _);
+				var url = Resolver.ResolveUploadedFileUrl(Page, uploadedFile, out _);
 				return RenderVideoEmbed(block, url);
 			}
 			default:
@@ -310,7 +306,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected abstract TOutput Render(BookmarkBlock block);
 
 	protected virtual TOutput Render(BreadcrumbBlock block) 
-		=> Render(block, BreadCrumbGenerator.CalculateBreadcrumb(Page.ID));
+		=> Render(block, BreadCrumbGenerator.CalculateBreadcrumb(Page));
 
 	protected abstract TOutput Render(BreadcrumbBlock block, BreadCrumb breadcrumb);
 	protected virtual TOutput Render(IEnumerable<BulletedListItemBlock> bullets) 

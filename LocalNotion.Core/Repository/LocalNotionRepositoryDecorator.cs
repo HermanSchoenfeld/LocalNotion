@@ -62,18 +62,6 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual void DeleteObject(string objectId) => InternalRepository.DeleteObject(objectId);
 
-	public bool TryGetProperty(string pageID, string propertyID, out IFuture<IPropertyItemObject> property) 
-		=> InternalRepository.TryGetProperty(pageID, propertyID, out property);
-
-	public bool ContainsProperty(string pageID, string propertyID)
-		=> InternalRepository.ContainsProperty(pageID, propertyID);
-
-	public void AddProperty(string pageID, string propertyID, IPropertyItemObject property)
-		=> InternalRepository.AddProperty(pageID, propertyID, property);
-
-	public void DeleteProperty(string pageID, string propertyID)
-		=> InternalRepository.DeleteProperty(pageID, propertyID);
-
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.ContainsResource(resourceID);
 
 	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceId, out resource);

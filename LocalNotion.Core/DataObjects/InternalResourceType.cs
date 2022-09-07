@@ -9,9 +9,6 @@ public enum InternalResourceType {
 	[EnumMember(Value = "graph")]
 	Graphs,
 
-	[EnumMember(Value = "property")]
-	Properties,
-
 	[EnumMember(Value = "themes")]
 	Themes,
 

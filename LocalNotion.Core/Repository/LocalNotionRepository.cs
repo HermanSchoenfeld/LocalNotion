@@ -1,4 +1,5 @@
-﻿using Hydrogen;
+﻿using System.Runtime.CompilerServices;
+using Hydrogen;
 using Hydrogen.Data;
 using Microsoft.Win32;
 using Notion.Client;
@@ -26,7 +27,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 	private LocalNotionRegistry _registry;
 	private GuidStringFileStore _objectStore;
-	private GuidStringFileStore _propertyStore;
 	private GuidStringFileStore _graphStore;
 	
 	private IDictionary<string, LocalNotionResource> _resourcesByNID;
@@ -115,6 +115,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		// Create folders
 		var pathResolver = new PathResolver(repoPath, pathProfile);
 
+		// Registry folder
 		var registryParentFolder = Tools.FileSystem.GetParentDirectoryPath(registryFile);
 		if (!Directory.Exists(registryParentFolder)) {
 			if (Path.GetFileName(registryParentFolder) == Constants.DefaultRegistryFoldername)
@@ -134,6 +135,13 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 				await Tools.FileSystem.CreateDirectoryAsync(internalResourceFolderPath);
 		}
 
+		// resource paths
+		foreach (var resourceType in Enum.GetValues<LocalNotionResourceType>()) {
+			var resourceTypeFolderPath = pathResolver.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute);	
+			if (!Directory.Exists(resourceTypeFolderPath))
+				await Tools.FileSystem.CreateDirectoryAsync(resourceTypeFolderPath);
+		}
+
 		// create registry
 		Tools.Json.WriteToFile(registryFile, registry);
 
@@ -146,15 +154,36 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	public static async Task Remove(string repoPath, ILogger logger = null) {
 		Guard.ArgumentNotNullOrEmpty(repoPath, nameof(repoPath));
 		Guard.DirectoryExists(repoPath);
-		await RemoveRegistry(PathResolver.ResolveDefaultRegistryFilePath(repoPath), logger);
+		logger ??= new NoOpLogger();
+		var registryFilePath = Path.Join(repoPath, Constants.DefaultRegistryFilePath);
+		if (File.Exists(registryFilePath))
+			await RemoveUsingRegistry(registryFilePath, logger);
+
+		var registryParentFolder = Path.Join(repoPath, Constants.DefaultRegistryFoldername);
+		if (Directory.Exists(registryParentFolder))
+			await Tools.FileSystem.DeleteDirectoryAsync(registryParentFolder); // this can happen if registry file is deleted but this folder was left
 	}
 
-	public static Task RemoveRegistry(string registryPath, ILogger logger = null) {
+	public static async Task RemoveUsingRegistry(string registryPath, ILogger logger = null) {
 		Guard.ArgumentNotNull(registryPath, nameof(registryPath));
 		Guard.FileExists(registryPath);
+		logger ??= new NoOpLogger();
 		var registry = Tools.Json.ReadFromFile<LocalNotionRegistry>(registryPath);
 		var pathResolver = new PathResolver(Path.GetFullPath(registry.Paths.RepositoryPathR, Path.GetDirectoryName(registryPath)), registry.Paths);
-		return RemoveInternal(pathResolver, logger);
+		await RemoveInternal(pathResolver, logger);
+		
+		// Delete any dangling renders
+		foreach(var render in registry.Resources.SelectMany(x => x.Renders.Values).Select(x=>x.LocalPath)) {
+			var fullRenderPath = Path.Combine(pathResolver.GetRepositoryPath(FileSystemPathType.Absolute), render);
+			if (File.Exists(fullRenderPath)) {
+				logger.Info($"Removing {fullRenderPath}");
+				try {
+					await Tools.FileSystem.DeleteFileAsync(fullRenderPath);
+				} catch (Exception error) {
+					logger.Exception(error);
+				}
+			}
+		}
 	}
 
 	private static async Task RemoveInternal(IPathResolver pathResolver, ILogger logger = null) {
@@ -170,10 +199,11 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		}
 		
 		// Delete resource paths if exists
+		var repoPath = Tools.FileSystem.GetCaseCorrectDirectoryPath(pathResolver.GetRepositoryPath(FileSystemPathType.Absolute));
 		foreach(var resourceType in Enum.GetValues<LocalNotionResourceType>()) {
 			var resourceTypePath = pathResolver.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute);
-			if (Directory.Exists(resourceTypePath) && !Tools.FileSystem.IsDirectoryEmpty(resourceTypePath)) {
-				logger.Info($"Removing {registryParentFolder}");
+			if (Directory.Exists(resourceTypePath) && Tools.FileSystem.GetCaseCorrectDirectoryPath(resourceTypePath) != repoPath ) {
+				logger.Info($"Removing {resourceTypePath}");
 				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
 			}
 		}
@@ -182,7 +212,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		foreach(var internalResourceType in Enum.GetValues<InternalResourceType>()) {
 			var resourceTypePath = pathResolver.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Absolute);
 			if (Directory.Exists(resourceTypePath) && !Tools.FileSystem.IsDirectoryEmpty(resourceTypePath)) {
-				logger.Info($"Removing {registryParentFolder}");
+				logger.Info($"Removing {resourceTypePath}");
 				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
 			}
 		}
@@ -223,15 +253,13 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 				Options = _registry.LogLevel.ToLogOptions()
 			}
 		);
+		SystemLog.RegisterLogger(_logger);
 
 		// Create object store
 		_objectStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Objects, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
 		
-		// Create property store
-		_propertyStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Properties, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json");
-
 		// Create graph store
-		_graphStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Properties, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
+		_graphStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Graphs, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
 
 		// Create template manager (will extract missing templates on ctor)
 		HtmlThemeManager.ExtractEmbeddedThemes(Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute), false, _logger);
@@ -341,36 +369,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	public virtual void DeleteObject(string objectId) {
 		CheckLoaded();
 		_objectStore.Delete(objectId);
-	}
-
-	public bool ContainsProperty(string pageID, string propertyID) {
-		var objectID = PageProperties.CalculatePagePropertyUUID(pageID, propertyID);
-		return _propertyStore.ContainsFile(objectID);
-	}
-
-	public bool TryGetProperty(string pageID, string propertyID, out IFuture<IPropertyItemObject> pageProperty) {
-		CheckLoaded();
-		var objectID = PageProperties.CalculatePagePropertyUUID(pageID, propertyID);
-		var path = _propertyStore.GetFilePath(objectID);
-		if (!File.Exists(path)) {
-			pageProperty = null;
-			return false;
-		}
-		pageProperty = LazyLoad<IPropertyItemObject>.From(() => Tools.Json.ReadFromFile<IPropertyItemObject>(path));
-		return true;
-	}
-
-	public void AddProperty(string pageID, string propertyID, IPropertyItemObject propertyObject) {
-		CheckLoaded();
-		var objectID = PageProperties.CalculatePagePropertyUUID(pageID, propertyID);
-		_propertyStore.RegisterFile(objectID);
-		Tools.Json.WriteToFile(_propertyStore.GetFilePath(objectID), propertyObject);
-	}
-
-	public void DeleteProperty(string pageID, string propertyID) {
-		CheckLoaded();
-		var objectID = PageProperties.CalculatePagePropertyUUID(pageID, propertyID);
-		_propertyStore.Delete(objectID);
 	}
 
 	public virtual bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page) {
@@ -518,33 +516,51 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		
 		var resource = this.GetResource(resourceID);
 		NotifyResourceUpdating(resourceID);
+		string resourceRenderPath = null;
 		if (resource.Renders.ContainsKey(renderType)) {
 			var render = resource.Renders[renderType];
-			var renderFilePath = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
-			if (File.Exists(renderFilePath))
-				File.Delete(renderFilePath);
+			resourceRenderPath = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
+			if (File.Exists(resourceRenderPath))
+				File.Delete(resourceRenderPath);
 			resource.Renders.Remove(renderType);
 		}
 
-		var resourceRenderPath = Paths.CalculateResourceFilePath(resource.Type, resource.ID, resource.Title, renderType, FileSystemPathType.Absolute);
-		resourceRenderPath = Paths.ResolveConflictingFilePath(resourceRenderPath);
+		// Try to re-use prior render path (in ebook path profiles, we may have conflicting filenames so this ensures same filename is used)
+		if (resourceRenderPath == null) {
+			resourceRenderPath = Paths.CalculateResourceFilePath(resource.Type, resource.ID, resource.Title, renderType, FileSystemPathType.Absolute);
+			resourceRenderPath = Paths.ResolveConflictingFilePath(resourceRenderPath);
+		}
 		Tools.FileSystem.CopyFile(renderedFile, resourceRenderPath, true, true);
 		resource.Renders[renderType] = new RenderEntry {
 			LocalPath = Path.GetRelativePath(Paths.GetRepositoryPath(FileSystemPathType.Absolute), resourceRenderPath),
-			Slug = LocalNotionHelper.SanitizeSlug(BuildResourceRenderSlug(resource, renderType, Path.GetFileName(resourceRenderPath)))
+			Slug = BuildResourceRenderSlug(resource, renderType, resourceRenderPath)
 		};
 		RequiresSave = true;
 		NotifyResourceUpdated(resource);
 		return resourceRenderPath;
 
 		string BuildResourceRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {
+			
 			var slugBuilder = new List<string>();
 			var resourceTypeFolder = Paths.GetResourceTypeFolderPath(resource.Type, FileSystemPathType.Relative);
+
+			// Add resource type folder part (if has one)
 			if (!string.IsNullOrWhiteSpace(resourceTypeFolder))
-				slugBuilder.Add(Path.GetDirectoryName(resourceTypeFolder));
+				slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetDirectoryName(resourceTypeFolder)));
+			
+			// Add object if folder (if has one)
 			if (Paths.UsesObjectIDSubFolders(resource.Type))
-				slugBuilder.Add(resource.ID);
-			slugBuilder.Add(renderedFilename);
+				slugBuilder.Add(LocalNotionHelper.SanitizeSlug(resource.ID));
+
+			if (render == RenderType.File) {
+				// use proper filename
+				renderedFilename = Tools.FileSystem.GetCaseCorrectFilePath(renderedFilename);
+				slugBuilder.Add(Path.GetFileName(renderedFilename));
+			} else {
+				// add HTML/PDF file without extension and lowercase
+				slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetFileNameWithoutExtension(renderedFilename)));
+			}
+			
 			return "/" + slugBuilder.ToDelimittedString("/");
 		}
 	}

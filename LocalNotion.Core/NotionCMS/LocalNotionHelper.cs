@@ -24,14 +24,14 @@ internal class NotionCMSHelper {
 		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedOnPropertyName);
 
-	public static CMSProperties ParseCMSProperties(Page page, PageProperties properties) {
+	public static CMSProperties ParseCMSProperties(Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		var result = new CMSProperties();
-		ParseCMSProperties(page, properties, result);
+		ParseCMSProperties(page, result);
 		return result;
 	}
 
-	public static CMSProperties ParseCMSProperties(Page page, PageProperties properties, CMSProperties result) {
+	public static CMSProperties ParseCMSProperties(Page page, CMSProperties result) {
 		Guard.ArgumentNotNull(page, nameof(page));
 
 		page.ValidatePropertiesExist(
@@ -45,19 +45,19 @@ internal class NotionCMSHelper {
 			Constants.SummaryPropertyName
 		);
 
-		result.PublishOn = page.GetPropertyDateValue(properties, Constants.PublishOnPropertyName);
-		result.Status = Tools.Parser.SafeParse(page.GetPropertyPlainTextValue(properties, Constants.StatusPropertyName), CMSItemStatus.Hidden);
-		result.Location = page.GetPropertyPlainTextValue(properties, Constants.LocationPropertyName).ToNullWhenWhitespace();
-		result.CustomSlug = page.GetPropertyPlainTextValue(properties, Constants.SlugPropertyName).ToNullWhenWhitespace();
-		result.Root = page.GetPropertyPlainTextValue(properties, Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
-		result.Category1 = page.GetPropertyPlainTextValue(properties, Constants.Category1PropertyName).ToNullWhenWhitespace();
-		result.Category2 = page.GetPropertyPlainTextValue(properties, Constants.Category2PropertyName).ToNullWhenWhitespace();
-		result.Category3 = page.GetPropertyPlainTextValue(properties, Constants.Category3PropertyName).ToNullWhenWhitespace();
-		result.Category4 = page.GetPropertyPlainTextValue(properties, Constants.Category4PropertyName).ToNullWhenWhitespace();
-		result.Category5 = page.GetPropertyPlainTextValue(properties, Constants.Category5PropertyName).ToNullWhenWhitespace();
-		result.Summary = page.GetPropertyPlainTextValue(properties, Constants.SummaryPropertyName).ToNullWhenWhitespace();
+		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
+		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSItemStatus.Hidden);
+		result.Location = page.GetPropertyDisplayValue(Constants.LocationPropertyName).ToNullWhenWhitespace();
+		result.CustomSlug = page.GetPropertyDisplayValue(Constants.SlugPropertyName).ToNullWhenWhitespace();
+		result.Root = page.GetPropertyDisplayValue(Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
+		result.Category1 = page.GetPropertyDisplayValue(Constants.Category1PropertyName).ToNullWhenWhitespace();
+		result.Category2 = page.GetPropertyDisplayValue(Constants.Category2PropertyName).ToNullWhenWhitespace();
+		result.Category3 = page.GetPropertyDisplayValue(Constants.Category3PropertyName).ToNullWhenWhitespace();
+		result.Category4 = page.GetPropertyDisplayValue(Constants.Category4PropertyName).ToNullWhenWhitespace();
+		result.Category5 = page.GetPropertyDisplayValue(Constants.Category5PropertyName).ToNullWhenWhitespace();
+		result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName).ToNullWhenWhitespace();
 		NormalizeCategories(result);
-		var pageTitle = page.GetTitle(properties).ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.CustomSlug = CalculateCMSSlug(pageTitle, result);
 		return result;
 	}

@@ -41,11 +41,10 @@ public class ResourceRenderer : IResourceRenderer {
 		var page = (LocalNotionPage) _repository.GetResource(pageID);
 		var pageGraph = _repository.GetPageGraph(pageID);
 		var pageObjects = _repository.LoadObjects(pageGraph);
-		var pageProperties = _repository.LoadPageProperties((Page)pageObjects[pageID]);
 
 		// HTML render the page graph
 		Logger.Info($"Rendering page '{page.Title}'");
-		var renderer = PageRenderFactory.Create(page, renderType, renderMode, pageGraph, pageProperties, pageObjects, _repository, Logger);
+		var renderer = PageRenderFactory.Create(page, renderType, renderMode, pageGraph, pageObjects, _repository, Logger);
 		var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
 		var output = string.Empty;
 		try {

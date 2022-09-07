@@ -14,10 +14,16 @@ public class LocalUrlResolver : IUrlResolver {
 
 	public ILocalNotionRepository Repository { get; }
 
-	public bool TryResolveLinkToResource(LocalNotionResourceType fromResourceType, string fromResourceID, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
-		url = null;
+	public bool TryResolveLinkToResource(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
+		url = default;
 
-		var fromPath = Repository.Paths.GetResourceFolderPath(fromResourceType, fromResourceID, FileSystemPathType.Absolute);
+		if (from.ID == toResourceID){
+			url = "";
+			toResource = from;
+			return true;
+		}
+
+		var fromPath = Repository.Paths.GetResourceFolderPath(from.Type, from.ID, FileSystemPathType.Absolute);
 
 		if (!Repository.TryGetResource(toResourceID, out toResource))
 			return false;
@@ -31,7 +37,5 @@ public class LocalUrlResolver : IUrlResolver {
 
 		return true;
 	}
-
-
 
 }

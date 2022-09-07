@@ -1,4 +1,4 @@
 ﻿namespace LocalNotion.Core;
 public interface IBreadCrumbGenerator {
-	BreadCrumb CalculateBreadcrumb(string resourceID);
+	BreadCrumb CalculateBreadcrumb(LocalNotionResource from);
 }

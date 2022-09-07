@@ -15,10 +15,10 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 	protected IUrlResolver UrlResolver { get; }
 
-	public virtual BreadCrumb CalculateBreadcrumb(string resourceID) {
+	public virtual BreadCrumb CalculateBreadcrumb(LocalNotionResource from) {
 		const string DefaultUrl = "#";
 
-		var ancestors = Repository.GetResourceAncestry(resourceID).TakeUntilInclusive(x => x is LocalNotionPage { CMSProperties: not null }).ToArray();
+		var ancestors = Repository.GetResourceAncestry(from.ID).TakeUntilInclusive(x => x is LocalNotionPage { CMSProperties: not null }).ToArray();
 		if (ancestors.Length == 0)
 			return BreadCrumb.Empty;
 
@@ -45,7 +45,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			//IsRoot			= 1 << 6,
 			//IsWorkspace		= 1 << 7,
 
-			var hasUrl = UrlResolver.TryResolveLinkToResource(LocalNotionResourceType.Page, resourceID, item.ID, RenderType.HTML, out var url, out var resource);
+			var hasUrl = UrlResolver.TryResolveLinkToResource(from, item.ID, RenderType.HTML, out var url, out var resource);
 			traits.SetFlags(BreadCrumbItemTraits.HasUrl, hasUrl);
 			if (!hasUrl)
 				url = DefaultUrl;

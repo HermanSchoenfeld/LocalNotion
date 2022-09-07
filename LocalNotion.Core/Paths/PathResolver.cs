@@ -134,7 +134,6 @@ public class PathResolver : IPathResolver {
 		=> internalResourceType switch {
 			InternalResourceType.Objects => PathProfile.ObjectsPathR,
 			InternalResourceType.Graphs => PathProfile.GraphsPathR,
-			InternalResourceType.Properties => PathProfile.PropertiesPathR,
 			InternalResourceType.Themes => PathProfile.ThemesPathR,
 			InternalResourceType.Logs => PathProfile.LogsPathR,
 			_ => throw new NotSupportedException($"{internalResourceType}")

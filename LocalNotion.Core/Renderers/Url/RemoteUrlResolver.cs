@@ -13,8 +13,15 @@ public class RemoteUrlResolver : IUrlResolver {
 
 	public ILocalNotionRepository Repository { get; }
 
-	public bool TryResolveLinkToResource(LocalNotionResourceType fromResourceType, string fromResourceID, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
-		url = null;
+	public bool TryResolveLinkToResource(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
+		url = default;
+
+		if (from.ID == toResourceID){
+			url = "";
+			toResource = from;
+			return true;
+		}
+
 		if (!Repository.TryGetResource(toResourceID, out toResource))
 			return false;
 

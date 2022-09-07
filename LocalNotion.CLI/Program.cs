@@ -7,6 +7,8 @@ using CommandLine;
 using System.IO;
 using System.Runtime.Serialization;
 using LocalNotion.Core;
+using System.Drawing;
+using System.Security.AccessControl;
 
 namespace LocalNotion.CLI;
 
@@ -50,6 +52,7 @@ public static partial class Program {
 	
 	[Verb("status", HelpText = "Provides status of the Local Notion repository")]
 	public class StatusRepositoryCommandArguments {
+
 		[Option('p', "path", HelpText = "Path to Local Notion repository")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
 
@@ -82,9 +85,6 @@ public static partial class Program {
 
 		[Option("override-objects-path", HelpText = $"Override path where notion objects are stored")]
 		public string ObjectsPathOverride { get; set; } = null;
-		
-		[Option("override-properties-path", HelpText = $"Override path where notion properties are stored")]
-		public string PropertiesPathOverride { get; set; } = null;
 
 		[Option("override-pages-path", HelpText = $"Override path where rendered pages are stored")]
 		public string PagesPathOverride { get; set; } = null;
@@ -236,13 +236,28 @@ public static partial class Program {
 	public static async Task<int> ExecuteStatusCommand(StatusRepositoryCommandArguments arguments) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
-		if (!File.Exists(arguments.Path)) {
+		if (!Directory.Exists(arguments.Path)) {
 			consoleLogger.Error($"Repository not found: {arguments.Path}");
 			return ERRORCODE_REPO_NOT_FOUND;
 		}
 
 		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
-		consoleLogger.Info("Location Notion repository has been created");
+		System.Console.WriteLine(
+$@"Local Notion Status:
+	Total Resources: {repo.Resources.Count()}
+	Total Objects: {repo.Objects.Count()}
+	Total Graphs: {repo.Graphs.Count()}");
+
+		Console.WriteLine();
+		Console.WriteLine($"\tLocal Notion Resource Paths (relative):");
+		foreach(var resourceType in Enum.GetValues<LocalNotionResourceType>()) 
+			Console.WriteLine($"\t\t{resourceType}: {repo.Paths.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Relative)}");
+		Console.WriteLine();
+		Console.WriteLine($"\tInternal Resource Paths (relative):");
+		Console.WriteLine($"\t\tRegistry: {repo.Paths.GetRegistryFilePath(FileSystemPathType.Relative)}");
+		foreach(var internalResourceType in Enum.GetValues<InternalResourceType>()) 
+			Console.WriteLine($"\t\t{internalResourceType}: {repo.Paths.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Relative)}");
+		
 		return ERRORCODE_OK;
 	}
 
@@ -269,8 +284,6 @@ public static partial class Program {
 			pathProfile.LogsPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.LogsPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.ObjectsPathOverride))
 			pathProfile.ObjectsPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.ObjectsPathOverride);
-		if (!string.IsNullOrWhiteSpace(arguments.PropertiesPathOverride))
-			pathProfile.PropertiesPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.PropertiesPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.PagesPathOverride))
 			pathProfile.PagesPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.PagesPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.ThemesPathOverride))
@@ -398,14 +411,14 @@ public static partial class Program {
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-		 string[] InitCmd = new [] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
-		 string[] PullCmd = new [] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		 string[] PullPage = new [] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		 string[] RenderPage = new [] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		
+		string[] InitCmd = new [] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] Remove = new [] { "remove", "--confirm" };
 		
 		if (args.Length ==0)
-			args = RenderPage;
+			args = PullCmd;
 
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00"))  {
