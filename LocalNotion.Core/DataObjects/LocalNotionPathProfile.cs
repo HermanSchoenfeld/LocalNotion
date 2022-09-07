@@ -43,6 +43,12 @@ public class LocalNotionPathProfile {
 	public string GraphsPathR { get; set; } = Constants.DefaultGraphsFolderPath;
 
 	/// <summary>
+	///  Path to the page properties folder relative to the repository.
+	/// </summary>
+	[JsonProperty("properties_path")]
+	public string PropertiesPathR { get; set; } = Constants.DefaultPropertiesPath;
+
+	/// <summary>
 	/// Path to the themes folder relative to the repository.
 	/// </summary>
 	[JsonProperty("themes_path")]

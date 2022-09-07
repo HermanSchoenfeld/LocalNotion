@@ -80,22 +80,25 @@ public static partial class Program {
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 
-		[Option("override-objects-path", HelpText = $"Override object path where notion objects are stored")]
+		[Option("override-objects-path", HelpText = $"Override path where notion objects are stored")]
 		public string ObjectsPathOverride { get; set; } = null;
+		
+		[Option("override-properties-path", HelpText = $"Override path where notion properties are stored")]
+		public string PropertiesPathOverride { get; set; } = null;
 
-		[Option("override-pages-path", HelpText = $"Override  page path where rendered pages are stored")]
+		[Option("override-pages-path", HelpText = $"Override path where rendered pages are stored")]
 		public string PagesPathOverride { get; set; } = null;
 
-		[Option("override-db-path", HelpText = $"Override database path where rendered databases are stored")]
+		[Option("override-db-path", HelpText = $"Override path where rendered databases are stored")]
 		public string DatabasePathOverride { get; set; } = null;
 
-		[Option("override-workspace-path", HelpText = $"Override workspace path where rendered workspace pages are stored")]
+		[Option("override-workspace-path", HelpText = $"Override path where rendered workspace pages are stored")]
 		public string WorkspacePathOverride { get; set; } = null;
 
-		[Option("override-files-path", HelpText = $"Override where files are stored")]
+		[Option("override-files-path", HelpText = $"Override path where files are stored")]
 		public string FilesPathOverride { get; set; } = null;
 
-		[Option("override-themes-path", HelpText = $"Override path that contains the themes used during rendering")]
+		[Option("override-themes-path", HelpText = $"Override path where local notion themes are stored")]
 		public string ThemesPathOverride { get; set; } = null;
 
 		[Option("override-logs-path", HelpText = $"Override path that stores the log files")]
@@ -266,13 +269,14 @@ public static partial class Program {
 			pathProfile.LogsPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.LogsPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.ObjectsPathOverride))
 			pathProfile.ObjectsPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.ObjectsPathOverride);
+		if (!string.IsNullOrWhiteSpace(arguments.PropertiesPathOverride))
+			pathProfile.PropertiesPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.PropertiesPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.PagesPathOverride))
 			pathProfile.PagesPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.PagesPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.ThemesPathOverride))
 			pathProfile.ThemesPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.ThemesPathOverride);
 		if (!string.IsNullOrWhiteSpace(arguments.WorkspacePathOverride))
 			pathProfile.WorkspacePathR = GetInputPathRelativeToRepo(arguments.Path, arguments.WorkspacePathOverride);
-
 
 		await LocalNotionRepository.CreateNew(
 			arguments.Path,

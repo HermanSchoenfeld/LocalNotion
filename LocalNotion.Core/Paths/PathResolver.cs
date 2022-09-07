@@ -34,26 +34,13 @@ public class PathResolver : IPathResolver {
 			_ => throw new NotSupportedException($"{pathType}")
 		};
 
-	public string GetObjectsFolderPath(FileSystemPathType pathType)
+	public string GetInternalResourceFolderPath(InternalResourceType internalResourceType, FileSystemPathType pathType) 
 		=> pathType switch {
-			FileSystemPathType.Relative => PathProfile.ObjectsPathR,
-			FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.ObjectsPathR, RepositoryPath),
+			FileSystemPathType.Relative => GetRelativePath(internalResourceType),
+			FileSystemPathType.Absolute => Path.GetFullPath(GetRelativePath(internalResourceType), RepositoryPath),
 			_ => throw new NotSupportedException($"{pathType}")
 		};
-
-	public string GetGraphsFolderPath(FileSystemPathType pathType)
-		=> pathType switch {
-			FileSystemPathType.Relative => PathProfile.GraphsPathR,
-			FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.GraphsPathR, RepositoryPath),
-			_ => throw new NotSupportedException($"{pathType}")
-		};
-
-	public string GetThemesFolderPath(FileSystemPathType pathType)
-		=> pathType switch {
-			FileSystemPathType.Relative => PathProfile.ThemesPathR,
-			FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.ThemesPathR, RepositoryPath),
-			_ => throw new NotSupportedException($"{pathType}")
-		};
+	
 
 	public string GetResourceTypeFolderPath(LocalNotionResourceType resourceType, FileSystemPathType pathType)
 		=> resourceType switch {
@@ -78,13 +65,6 @@ public class PathResolver : IPathResolver {
 				_ => throw new NotSupportedException($"{pathType}")
 			},
 			_ => throw new ArgumentOutOfRangeException(nameof(resourceType), resourceType, null)
-		};
-
-	public string GetLogsFolderPath(FileSystemPathType pathType)
-		=> pathType switch {
-			FileSystemPathType.Relative => PathProfile.LogsPathR,
-			FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.LogsPathR, RepositoryPath),
-			_ => throw new NotSupportedException($"{pathType}")
 		};
 
 	public bool UsesObjectIDSubFolders(LocalNotionResourceType resourceType)
@@ -150,4 +130,13 @@ public class PathResolver : IPathResolver {
 		return Path.Join(repoPath, Constants.DefaultRegistryFilePath).ToUnixPath();
 	}
 
+	private string GetRelativePath(InternalResourceType internalResourceType)
+		=> internalResourceType switch {
+			InternalResourceType.Objects => PathProfile.ObjectsPathR,
+			InternalResourceType.Graphs => PathProfile.GraphsPathR,
+			InternalResourceType.Properties => PathProfile.PropertiesPathR,
+			InternalResourceType.Themes => PathProfile.ThemesPathR,
+			InternalResourceType.Logs => PathProfile.LogsPathR,
+			_ => throw new NotSupportedException($"{internalResourceType}")
+		};
 }

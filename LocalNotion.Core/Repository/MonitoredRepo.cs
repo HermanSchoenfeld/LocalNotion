@@ -80,6 +80,14 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual void DeleteObject(string objectId) => throw new NotSupportedException();
 
+	public bool TryGetProperty(string pageID, string propertyID, out IFuture<IPropertyItemObject> property) => InternalRepository.Value.TryGetProperty(pageID, propertyID, out property);
+
+	public bool ContainsProperty(string pageID, string propertyID) => InternalRepository.Value.ContainsProperty(pageID, propertyID);
+
+	public void AddProperty(string pageID, string propertyID, IPropertyItemObject property)=> throw new NotSupportedException();
+
+	public void DeleteProperty(string pageID, string propertyID)=> throw new NotSupportedException();
+
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.Value.ContainsResource(resourceID);
 
 	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceId, out resource);

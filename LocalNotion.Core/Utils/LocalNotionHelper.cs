@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Text;
 using Hydrogen;
 using Notion.Client;
 
@@ -14,6 +15,7 @@ internal class LocalNotionHelper {
 
 	public static string ObjectGuidToId(Guid guid)
 		=> guid.ToString().Trim("{}".ToCharArray());
+
 
 	public static bool TryParseNotionFileUrl(string url, out string resourceID, out string filename) {
 		resourceID = filename = null;
@@ -35,7 +37,6 @@ internal class LocalNotionHelper {
 		return true;
 	}
 
-
 	public static bool IsCMSPage(Page page)
 		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
 		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
@@ -54,17 +55,17 @@ internal class LocalNotionHelper {
 		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedOnPropertyName);
 
-	public static LocalNotionPage ParsePage(Page page) {
+	public static LocalNotionPage ParsePage(Page page, PageProperties pageProperties) {
 		var result = new LocalNotionPage();
-		ParsePage(page, result);
+		ParsePage(page, pageProperties, result);
 		return result;
 	}
 
-	public static void ParsePage(Page page, LocalNotionPage dest) {
+	public static void ParsePage(Page page, PageProperties pageProperties, LocalNotionPage dest) {
 		dest.ID = page.Id;
 		dest.Parent = page.Parent.GetParentId();
 		dest.LastEditedTime = page.LastEditedTime;
-		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		dest.Title = page.GetTitle(pageProperties).ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;
 		if (page.Icon != null) {
 			dest.Thumbnail = new() {
@@ -84,7 +85,6 @@ internal class LocalNotionHelper {
 		} else dest.Thumbnail = LocalNotionThumbnail.None;
 
 	}
-
 
 	public static string ParseFileUrl(FileObject fileObject, out string name) {
 		name = Constants.DefaultResourceTitle;

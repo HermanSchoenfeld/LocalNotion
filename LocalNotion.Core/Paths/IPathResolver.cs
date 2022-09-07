@@ -24,30 +24,6 @@ public interface IPathResolver {
 	string GetRepositoryPath(FileSystemPathType pathType);
 
 	/// <summary>
-	/// Gets the path to the object folder. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
-	/// the repository folder.
-	/// </summary>
-	/// <param name="pathType">Absolute ore Relative</param>
-	/// <returns>Path to the theme folder</returns>
-	string GetObjectsFolderPath(FileSystemPathType pathType);
-
-	/// <summary>
-	/// Gets the path to the repository folder. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
-	/// the repository folder.
-	/// </summary>
-	/// <param name="pathType">Absolute ore Relative</param>
-	/// <returns>Path to the repository folder</returns>
-	string GetGraphsFolderPath(FileSystemPathType pathType);
-
-	/// <summary>
-	/// Gets the path to the theme folder. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
-	/// the repository folder.
-	/// </summary>
-	/// <param name="pathType">Absolute ore Relative</param>
-	/// <returns>Path to the theme folder</returns>
-	string GetThemesFolderPath(FileSystemPathType pathType);
-
-	/// <summary>
 	/// Gets the path to the folder which contains renders of resources of type <paramref name="resourceType"/>.
 	/// When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
 	/// the repository folder.
@@ -65,13 +41,14 @@ public interface IPathResolver {
 	/// <returns>Path to the registry file</returns>
 	string GetResourceFolderPath(LocalNotionResourceType resourceType, string resourceId, FileSystemPathType pathType);
 
-	/// <summary> 
-	/// Gets the path to the repository folder. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
+	/// <summary>
+	/// Gets the path to the object folder. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
 	/// the repository folder.
 	/// </summary>
 	/// <param name="pathType">Absolute ore Relative</param>
-	/// <returns>Path to the registry file</returns>
-	string GetLogsFolderPath(FileSystemPathType pathType);
+	/// <returns>Path to the theme folder</returns>
+	string GetInternalResourceFolderPath(InternalResourceType internalResourceType, FileSystemPathType pathType);
+
 
 	bool UsesObjectIDSubFolders(LocalNotionResourceType resourceType);
 

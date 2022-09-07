@@ -3,7 +3,7 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
+public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
 
 	event EventHandlerEx<object> Changing;
 	event EventHandlerEx<object> Changed;
@@ -26,16 +26,16 @@ public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
 
 	IReadOnlyDictionary<string, string> ThemeMaps { get; }
 
-	public IPathResolver Paths { get; }	
+	public IPathResolver Paths { get; }
 
 	string DefaultNotionApiKey { get; }
 
 	IEnumerable<string> Objects { get; }
 
 	IEnumerable<string> Graphs { get; }
-	
+
 	IEnumerable<LocalNotionResource> Resources { get; }
-	
+
 	Task Load();
 
 	Task Save();
@@ -50,12 +50,20 @@ public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
 
 	void DeleteObject(string objectId);
 
+	bool TryGetProperty(string pageID, string propertyID, out IFuture<IPropertyItemObject> property);
+
+	bool ContainsProperty(string pageID, string propertyID);
+
+	void AddProperty(string pageID, string propertyID, IPropertyItemObject property);
+
+	void DeleteProperty(string pageID, string propertyID);
+
 	bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page);
 
 	void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph);
 
 	void DeleteResourceGraph(string resourceID);
-	
+
 	bool ContainsResource(string resourceID);
 
 	bool TryGetResource(string resourceId, out LocalNotionResource resource);
@@ -76,29 +84,47 @@ public interface ILocalNotionRepository: IAsyncLoadable, IAsyncSaveable {
 
 public static class ILocalNotionRepositoryExtensions {
 
-	public static bool ContainsResource(this ILocalNotionRepository repository, string objectId) 
+	public static bool ContainsResource(this ILocalNotionRepository repository, string objectId)
 		=> repository.TryGetResource(objectId, out _); // WARN: potentially expensive
 
 	public static LocalNotionResource GetResource(this ILocalNotionRepository repository, string objectId)
 		=> repository.TryGetResource(objectId, out var resource) ? resource : throw new InvalidOperationException($"Resource '{objectId}' not found");
 
-	public static IDictionary<string, IObject> FetchObjects(this ILocalNotionRepository repository, NotionObjectGraph graph) 
+	public static IDictionary<string, IObject> LoadObjects(this ILocalNotionRepository repository, NotionObjectGraph graph)
 		=> graph
 			.VisitAll()
 			.Select(x => x.ObjectID)
 			.Select(repository.GetObject)
 			.ToDictionary(x => x.Id, x => x);
 
-	public static bool ContainsObject(this ILocalNotionRepository repository, string objectId) 
+	public static bool ContainsObject(this ILocalNotionRepository repository, string objectId)
 		=> repository.TryGetObject(objectId, out _);
 
 	public static IObject GetObject(this ILocalNotionRepository repository, string objectId)
 		=> repository.TryGetObject(objectId, out var @object) ? @object.Value : throw new InvalidOperationException($"Object '{objectId}' not found");
 
-	public static bool ContainsPageGraph(this ILocalNotionRepository repository, string pageId) 
+	public static PageProperties LoadPageProperties(this ILocalNotionRepository repository, Page page) {
+		var props = page.Properties.Select(prop => new KeyValuePair<string, IPropertyItemObject>(page.Id, repository.GetProperty(page.Id, prop.Value.Id)));
+		return new PageProperties(props);
+	}
+
+	public static void SavePageProperties(this ILocalNotionRepository repository, string pageID, PageProperties pageProperties) {
+		foreach (var property in pageProperties)
+			repository.AddProperty(pageID, property.Key, property.Value);
+	}
+
+	public static void DeletePageProperties(this ILocalNotionRepository repository, Page page) {
+		foreach (var property in page.Properties)
+			repository.DeleteProperty(page.Id, property.Value.Id);
+	}
+
+	public static IPropertyItemObject GetProperty(this ILocalNotionRepository repository, string pageID, string propertyID)
+		=> repository.TryGetProperty(pageID, propertyID, out var property) ? property.Value : throw new InvalidOperationException($"Page property '{pageID}:{propertyID}' not found");
+
+	public static bool ContainsPageGraph(this ILocalNotionRepository repository, string pageId)
 		=> repository.TryGetResourceGraph(pageId, out _);
 
-	public static NotionObjectGraph GetPageGraph(this ILocalNotionRepository repository, string pageId) 
+	public static NotionObjectGraph GetPageGraph(this ILocalNotionRepository repository, string pageId)
 		=> repository.TryGetResourceGraph(pageId, out var pageGraph) ? pageGraph.Value : throw new InvalidOperationException($"Page '{pageId}' not found");
 
 	public static bool TryGetPage(this ILocalNotionRepository repository, string pageID, out LocalNotionPage page) {
@@ -106,7 +132,7 @@ public static class ILocalNotionRepositoryExtensions {
 		if (!repository.TryGetResource(pageID, out var resource))
 			return false;
 
-		if (resource is not LocalNotionPage lnp)  
+		if (resource is not LocalNotionPage lnp)
 			return false;
 
 		page = lnp;
@@ -121,7 +147,7 @@ public static class ILocalNotionRepositoryExtensions {
 		if (!repository.TryGetResource(fileID, out var resource))
 			return false;
 
-		if (resource is not LocalNotionFile lnf)  
+		if (resource is not LocalNotionFile lnf)
 			return false;
 
 		file = lnf;

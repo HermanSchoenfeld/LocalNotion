@@ -9,8 +9,8 @@ namespace LocalNotion.Core;
 public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, IUrlResolver resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
-		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
+	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, PageProperties pageProperties, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, IUrlResolver resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
+		: base(page, pageGraph, pageProperties, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
 		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
 		Guard.ArgumentNotNullOrWhitespace(theme, nameof(theme));
 		ThemeManager = themeManager;

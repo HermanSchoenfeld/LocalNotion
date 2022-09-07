@@ -99,7 +99,9 @@ public class NotionSyncOrchestrator {
 
 		// Fetch page from Notion
 		Logger.Info($"Fetching page '{pageId}'");
-		var notionPage = await NotionClient.Pages.RetrieveWithPropertiesAsync(pageId);
+		var notionPage = await NotionClient.Pages.RetrieveAsync(pageId);
+		Logger.Info($"Fetching page properties '{pageId}'");
+		var properties = await NotionClient.Pages.RetrievePagePropertiesAsync(notionPage);
 
 		if (!forceRefresh && Repository.TryGetPage(pageId, out var localPage) && localPage.LastEditedTime >= notionPage.LastEditedTime) {
 			Logger.Info($"No changes detected");
@@ -107,14 +109,14 @@ public class NotionSyncOrchestrator {
 		}
 
 		// Parse into a LocalNotion page
-		var localNotionPage = LocalNotionHelper.ParsePage(notionPage);
+		var localNotionPage = LocalNotionHelper.ParsePage(notionPage, properties);
 
 		// Parse NotionCMS properties (if applicable)
 		if (NotionCMSHelper.IsCMSPage(notionPage))
-			localNotionPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
+			localNotionPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage, properties);
 
 		// Fetch page object graph
-		Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({pageId})");
+		Logger.Info($"Fetching page graph for '{notionPage.GetTitle(properties)}' ({pageId})");
 		var objects = new Dictionary<string, IObject>();
 		objects.Add(notionPage.Id, notionPage); // add root page object (will not fetch it and re-use it)
 		var objectGraph = await NotionClient.Blocks.GetObjectGraph(pageId, objects);
@@ -126,12 +128,18 @@ public class NotionSyncOrchestrator {
 			}
 		}
 
-		// Save notion objects
+		// Save notion objects (note: this saves Page object)
 		foreach (var obj in objects.Values) {
-			if (Repository.ContainsObject(obj.Id))
+			if (Repository.ContainsObject(obj.Id)) {
+				if (obj is Page page) 
+					Repository.DeletePageProperties(page); // make sure to delete attached properties
 				Repository.DeleteObject(obj.Id);
+			}
 			Repository.AddObject(obj);
 		}
+
+		// Save page properties
+		Repository.SavePageProperties(pageId, properties);
 
 		// Save local notion page resource 
 		if (Repository.ContainsResource(pageId))

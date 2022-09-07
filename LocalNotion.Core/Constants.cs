@@ -31,6 +31,7 @@ public static class Constants {
 	public const string DefaultRegistryFilePath = DefaultRegistryFoldername + "/" + "registry.json";
 	public const string TemplateInfoFilename = ".config.json";
 	public const string DefaultObjectsFolderPath = DefaultRegistryFoldername + "/" + "objects";
+	public const string DefaultPropertiesPath = DefaultRegistryFoldername + "/" + "properties";
 	public const string DefaultGraphsFolderPath = DefaultRegistryFoldername + "/" + "graphs";
 	public const string DefaultThemesFolderPath = DefaultRegistryFoldername + "/" + "themes";
 	public const string DefaultPagesFolderPath = "pages";
