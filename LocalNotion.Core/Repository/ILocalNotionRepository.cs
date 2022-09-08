@@ -64,13 +64,13 @@ public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
 
 	void DeleteResource(string resourceID);
 
-	IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId);
-
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 
 	string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile);
 
 	void DeleteResourceRender(string resourceID, RenderType renderType);
+
+	string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename);
 
 }
 
@@ -136,6 +136,13 @@ public static class ILocalNotionRepositoryExtensions {
 		using var disposables = new Disposables();
 		disposables.Add( () => File.Delete(tmpFile));
 		repository.ImportResourceRender(resourceID, renderType, tmpFile);
+	}
+
+	public static IEnumerable<LocalNotionResource> GetResourceAncestry(this ILocalNotionRepository repository, string resourceId) {
+		var resource = repository.GetResource(resourceId);;
+		do {
+			yield return resource;;
+		} while (repository.TryGetResource(resource.ParentResource, out resource));
 	}
 
 }

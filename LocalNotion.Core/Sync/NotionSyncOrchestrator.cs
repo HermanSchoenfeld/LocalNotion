@@ -65,9 +65,6 @@ public class NotionSyncOrchestrator {
 				try {
 					var downloads = await DownloadPage(page.Id, render: false, forceRefresh: forceRefresh); // rendering deferred to below
 					downloadedResources.AddRange(downloads);
-					if (render)
-						// Add a blank render to avoid link resolution errors later
-						Repository.ImportBlankResourceRender(page.Id, renderType); 
 				} catch (Exception error) {
 					Logger.Error($"Failed to process page '{page.Id}'.");
 					Logger.Exception(error);
@@ -78,7 +75,6 @@ public class NotionSyncOrchestrator {
 
 			// Render
 			if (render) {
-				//downloadedResources.Reverse(); // render child first
 				var renderer = new ResourceRenderer(Repository, Logger);
 				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
 					try {
@@ -139,6 +135,7 @@ public class NotionSyncOrchestrator {
 		// Save local notion page resource 
 		if (Repository.ContainsResource(pageId))
 			Repository.DeleteResource(pageId);
+
 		Repository.AddResource(localNotionPage);
 		downloadedResources.Add(localNotionPage);
 
@@ -180,6 +177,14 @@ public class NotionSyncOrchestrator {
 			var downloadedFile = await DownloadFile(uploadedFile.File.Url, notionPage.Id, forceRefresh);
 			downloadedResources.Add(downloadedFile);
 		}
+
+		// In order to support cyclic references between parent -> child pages in the case where
+		// no object-id folders are used, we generate blank stub at download time. This is because trying to predict
+		// the render as IUrlResolver's do is unreliable due to potential for conflicting filenames.
+		// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
+		// issue.
+		if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Page))
+			Repository.ImportBlankResourceRender(pageId, renderType); 
 
 		// Download any child pages
 		var childPages =

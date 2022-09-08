@@ -47,7 +47,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected HtmlThemeInfo Theme { get; }
 
 	protected LocalNotionMode Mode { get; }
-	
+
 	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
 	protected RenderMode RenderMode { get; }
@@ -225,7 +225,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				return RenderTemplate(
 					"text_colored",
 					new NotionObjectTokens {
-						["color"] = color.GetAttribute<EnumMemberAttribute>().Value.Replace("_","-"),
+						["color"] = color.GetAttribute<EnumMemberAttribute>().Value.Replace("_", "-"),
 						["text"] = RenderInternal(null, false, false, false, false, false, Color.Default, content)
 					}
 				);
@@ -500,13 +500,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
 													"icon_emoji",
 													 new NotionObjectTokens(block) {
-														 ["emoji"] = localNotionPage.Thumbnail
+														 ["emoji"] = localNotionPage.Thumbnail.Data
 													 }
 												),
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
 													"icon_image",
 													 new NotionObjectTokens(block) {
-														 ["url"] = localNotionPage.Thumbnail
+														 ["url"] = localNotionPage.Thumbnail.Data
 													 }
 												),
 						_ => string.Empty
@@ -670,7 +670,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderTemplate(
 				"heading_2",
 				new NotionObjectTokens(block) {
-					["text"] = Render(block.Heading_2.RichText),	
+					["text"] = Render(block.Heading_2.RichText),
 					["color"] = ToColorString(block.Heading_2.Color.Value)
 				}
 			);
@@ -694,8 +694,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 
 	protected override string Render(LinkToPageBlock block) {
-		if (!Resolver.TryResolveLinkToResource(Page, block.LinkToPage.GetParentId(), RenderType.HTML, out var childPageUrl, out var resource))
-			return $"Unresolved page {block.LinkToPage.GetParentId()}";
+		if (!Resolver.TryResolveLinkToResource(Page, block.LinkToPage.GetId(), RenderType.HTML, out var childPageUrl, out var resource))
+			return $"Unresolved page {block.LinkToPage.GetId()}";
 
 		return RenderTemplate(
 				"page_link",
@@ -704,13 +704,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
 													"icon_emoji",
 													 new NotionObjectTokens(block) {
-														 ["emoji"] = localNotionPage.Thumbnail
+														 ["emoji"] = localNotionPage.Thumbnail.Data
 													 }
 												),
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
 													"icon_image",
 													 new NotionObjectTokens(block) {
-														 ["url"] = localNotionPage.Thumbnail
+														 ["url"] = localNotionPage.Thumbnail.Data
 													 }
 												),
 						_ => string.Empty
@@ -771,7 +771,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderUnsupported(block);
 
 	protected override string Render(TableOfContentsBlock block)
-		=> RenderTemplate("table_of_contents", 
+		=> RenderTemplate("table_of_contents",
 			new NotionObjectTokens(block) {
 				["color"] = ToColorString(block.TableOfContents.Color.Value)
 			}
@@ -839,7 +839,6 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	#endregion
 
 	#region Aux
-
 
 	protected virtual string RenderTemplate(string widgetType)
 		=> RenderTemplate(widgetType, new NotionObjectTokens());
@@ -913,8 +912,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected virtual string ToString(PropertyValueType propertyValueType)
 		=> $"{propertyValueType.GetAttribute<EnumMemberAttribute>().Value}";
 
-	protected string ToColorString(Color color) 
-		=> color.GetAttribute<EnumMemberAttribute>()?.Value.Replace("_","-") ?? throw new InvalidOperationException($"Color '{color}' did not have {nameof(EnumMemberAttribute)} defined");
+	protected string ToColorString(Color color)
+		=> color.GetAttribute<EnumMemberAttribute>()?.Value.Replace("_", "-") ?? throw new InvalidOperationException($"Color '{color}' did not have {nameof(EnumMemberAttribute)} defined");
 
 	#endregion
 

@@ -140,11 +140,6 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			return base.TryGetResource(resourceID, out localNotionResource);
 	}
 
-	public override IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId) {
-		using (EnterReadScope()) 
-			return base.GetResourceAncestry(resourceId).ToArray(); // note: inefficient
-	}
-
 	public override bool ContainsResourceRender(string resourceID, RenderType renderType) {
 		using (EnterReadScope())
 			return base.ContainsResourceRender(resourceID, renderType);
@@ -183,6 +178,11 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 	public override void DeleteResourceRender(string resourceID, RenderType renderType) {
 		using (EnterWriteScope()) 
 			base.DeleteResourceRender(resourceID, renderType);
+	}
+
+	public override string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {
+		using (EnterReadScope()) 
+			return base.CalculateRenderSlug(resource, render, renderedFilename);
 	}
 
 	public Scope EnterReadScope() => _syncObj.EnterReadScope();

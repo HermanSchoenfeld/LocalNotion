@@ -28,8 +28,18 @@ public class RemoteUrlResolver : IUrlResolver {
 		if (toResource is LocalNotionPage { CMSProperties: not null } lnp) {
 			url = lnp.CMSProperties.CustomSlug;
 		} else {
-			if (!toResource.TryGetRender(out var render, renderType))
-				return false;
+			if (!toResource.TryGetRender(renderType, out var render))
+				if (renderType != null && Repository.Paths.UsesObjectIDSubFolders(toResource.Type)) {
+					// Here we are trying to resolve a render that is likely to be  rendered later in the processing
+					// pipeline.  We only attempt this if Render lives under a object-id folder as otherwise
+					// it's filename may clash.  Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code
+					// for how this is dealt with when object-id folders are not used.
+					var expectedRenderPath = Repository.Paths.CalculateResourceFilePath(toResource.Type, toResourceID, toResource.Title, renderType.Value, FileSystemPathType.Relative);
+					render = new RenderEntry {
+						LocalPath = expectedRenderPath,
+						Slug = Repository.CalculateRenderSlug(toResource, renderType.Value, expectedRenderPath)
+					};
+				} else return false;
 			url = render.Slug;
 		}
 

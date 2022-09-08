@@ -84,8 +84,6 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceId, out resource);
 
-	public virtual IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId) => InternalRepository.Value.GetResourceAncestry(resourceId);
-
 	public bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.Value.AddResource(resource);
@@ -101,6 +99,8 @@ public class MonitoredRepo : ILocalNotionRepository {
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) => throw new NotSupportedException();
 
 	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) => throw new NotSupportedException();
+
+	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.Value.CalculateRenderSlug(resource, render, renderedFilename);
 
 }
 

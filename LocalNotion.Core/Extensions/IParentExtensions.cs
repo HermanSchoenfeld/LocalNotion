@@ -2,9 +2,9 @@
 
 namespace LocalNotion.Core;
 
-public static class IPageParentExtensions {
+public static class IParentExtensions {
 
-	public static string GetParentId(this IPageParent pageParent) 
+	public static string GetId(this IParent pageParent) 
 		=> pageParent switch {
 			DatabaseParent dp => dp.DatabaseId,
 			PageParent pp => pp.PageId,

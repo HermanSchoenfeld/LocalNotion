@@ -23,6 +23,32 @@ public static class IObjectExtensions {
 			TypeSwitch<FileObject>.Default(default)
 		);
 
-	
+	public static bool TryGetParent(this IObject obj, out IParent parent) {
+		switch (obj) {
+			case Comment comment:
+				parent = comment.Parent;
+				return true;
+
+			case Database database:
+				parent = database.Parent;
+				return true;
+
+			case IBlock block:
+				parent = block.Parent;
+				return true;
+
+			case Page page:
+				parent = page.Parent;
+				return true;
+
+			case PartialUser partialUser:
+			case User user:
+			default:
+				parent = null;
+				break;
+		}
+		return false;
+	}
+
 }
 

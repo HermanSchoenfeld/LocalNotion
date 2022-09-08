@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using AngleSharp.Html.Dom;
 using Hydrogen;
 using Hydrogen.Data;
 using Microsoft.Win32;
@@ -149,7 +150,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		await repo.Load();
 		return repo;
 	}
-
 
 	public static async Task Remove(string repoPath, ILogger logger = null) {
 		Guard.ArgumentNotNullOrEmpty(repoPath, nameof(repoPath));
@@ -434,6 +434,9 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			Directory.CreateDirectory(resourceFolder);
 		}
 
+		// Try to determine the object parent by calculting the path back up to the 
+		resource.ParentResource = CalculateResourceParent(resource.ID);
+
 		RequiresSave = true;
 		_registry.Add(resource);
 		_resourcesByNID.Add(resource.ID, resource);
@@ -470,30 +473,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		_registry.Remove(resource);
 		_resourcesByNID.Remove(resourceID);
 		NotifyResourceRemoved(resource);
-	}
-
-	public virtual IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId) {
-		var visited = new HashSet<string>();
-		return GetResourceAncestryInternal(resourceId);
-
-		IEnumerable<LocalNotionResource> GetResourceAncestryInternal(string resourceId) {
-			if (resourceId is null || visited.Contains(resourceId))
-				yield break;
-
-			if (!TryGetResource(resourceId, out var resource))
-				yield break;
-
-			visited.Add(resourceId);
-
-			yield return resource;
-
-			// TODO: need Resource base for Page & DB
-			if (resource is LocalNotionPage lnp) {
-				foreach (var ancestor in GetResourceAncestryInternal(lnp.Parent)) {
-					yield return ancestor;
-				}
-			}
-		}
 	}
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) {
@@ -533,36 +512,12 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		Tools.FileSystem.CopyFile(renderedFile, resourceRenderPath, true, true);
 		resource.Renders[renderType] = new RenderEntry {
 			LocalPath = Path.GetRelativePath(Paths.GetRepositoryPath(FileSystemPathType.Absolute), resourceRenderPath),
-			Slug = BuildResourceRenderSlug(resource, renderType, resourceRenderPath)
+			Slug = CalculateRenderSlug(resource, renderType, resourceRenderPath)
 		};
 		RequiresSave = true;
 		NotifyResourceUpdated(resource);
 		return resourceRenderPath;
 
-		string BuildResourceRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {
-			
-			var slugBuilder = new List<string>();
-			var resourceTypeFolder = Paths.GetResourceTypeFolderPath(resource.Type, FileSystemPathType.Relative);
-
-			// Add resource type folder part (if has one)
-			if (!string.IsNullOrWhiteSpace(resourceTypeFolder))
-				slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetDirectoryName(resourceTypeFolder)));
-			
-			// Add object if folder (if has one)
-			if (Paths.UsesObjectIDSubFolders(resource.Type))
-				slugBuilder.Add(LocalNotionHelper.SanitizeSlug(resource.ID));
-
-			if (render == RenderType.File) {
-				// use proper filename
-				renderedFilename = Tools.FileSystem.GetCaseCorrectFilePath(renderedFilename);
-				slugBuilder.Add(Path.GetFileName(renderedFilename));
-			} else {
-				// add HTML/PDF file without extension and lowercase
-				slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetFileNameWithoutExtension(renderedFilename)));
-			}
-			
-			return "/" + slugBuilder.ToDelimittedString("/");
-		}
 	}
 
 	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) {
@@ -577,6 +532,56 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		resource.Renders.Remove(renderType);
 		RequiresSave = true;
 		NotifyResourceUpdated(resource);
+	}
+
+	public string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {
+			
+		var slugBuilder = new List<string>();
+		var resourceTypeFolder = Paths.GetResourceTypeFolderPath(resource.Type, FileSystemPathType.Relative);
+
+		// Add resource type folder part (if has one)
+		if (!string.IsNullOrWhiteSpace(resourceTypeFolder))
+			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetDirectoryName(resourceTypeFolder)));
+			
+		// Add object if folder (if has one)
+		if (Paths.UsesObjectIDSubFolders(resource.Type))
+			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(resource.ID));
+
+		if (render == RenderType.File) {
+			// use proper filename
+			renderedFilename = Tools.FileSystem.GetCaseCorrectFilePath(renderedFilename);
+			slugBuilder.Add(Path.GetFileName(renderedFilename));
+		} else {
+			// add HTML/PDF file without extension and lowercase
+			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetFileNameWithoutExtension(renderedFilename)));
+		}
+			
+		return "/" + slugBuilder.ToDelimittedString("/");
+	}
+
+	/// <summary>
+	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
+	/// </summary>
+	protected string CalculateResourceParent(string objectID) {
+		var visited = new HashSet<string>();
+		while(!visited.Contains(objectID) && TryGetObject(objectID, out var obj)) {
+			visited.Add(objectID);
+			if (obj.Value.TryGetParent(out var parent)) {
+				switch(parent.Type) {
+					case ParentType.DatabaseId:
+					case ParentType.PageId:
+					case ParentType.Workspace:
+						return parent.GetId();
+					case ParentType.Unknown:
+					case ParentType.BlockId:
+					default:
+						// object 
+						objectID = parent.GetId();
+						break;
+				}
+			}
+		}
+		return null;
 	}
 
 	protected virtual void OnLoading() {

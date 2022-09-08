@@ -66,8 +66,6 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceId, out resource);
 
-	public virtual IEnumerable<LocalNotionResource> GetResourceAncestry(string resourceId) => InternalRepository.GetResourceAncestry(resourceId);
-
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.ContainsResourceRender(resourceID, renderType);
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.AddResource(resource);
@@ -83,6 +81,8 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) => InternalRepository.ImportResourceRender(resourceID, renderType, renderedFile);
 
 	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) => InternalRepository.DeleteResourceRender(resourceID, renderType);
+
+	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.CalculateRenderSlug(resource, render, renderedFilename);
 
 
 }

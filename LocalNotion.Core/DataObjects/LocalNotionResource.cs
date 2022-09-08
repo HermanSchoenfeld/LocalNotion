@@ -19,10 +19,13 @@ public abstract class LocalNotionResource {
 	[JsonProperty("title")]
 	public string Title { get; set; }
 
+	[JsonProperty("parent_resource", NullValueHandling = NullValueHandling.Ignore)]
+	public string ParentResource { get; set; }
+
 	[JsonProperty("renders", NullValueHandling = NullValueHandling.Ignore)]
 	public IDictionary<RenderType, RenderEntry> Renders { get; set; } = new Dictionary<RenderType, RenderEntry>();
 
-	public bool TryGetRender(out RenderEntry render, RenderType? renderType = null) {
+	public bool TryGetRender(RenderType? renderType, out RenderEntry render) {
 		render = null;
 
 		// No best match render found
