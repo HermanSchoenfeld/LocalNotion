@@ -63,7 +63,6 @@ internal class LocalNotionHelper {
 
 	public static void ParsePage(Page page, LocalNotionPage dest) {
 		dest.ID = page.Id;
-		//dest.Parent = page.Parent.GetId();
 		dest.LastEditedTime = page.LastEditedTime;
 		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;

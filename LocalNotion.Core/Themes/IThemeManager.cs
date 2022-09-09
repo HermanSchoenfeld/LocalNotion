@@ -4,16 +4,16 @@ namespace LocalNotion.Core;
 
 public interface IThemeManager {
 
-	bool TryLoadTemplate(string template, out ThemeInfo themeInfo);
+	bool TryLoadTemplate(string theme, out ThemeInfo themeInfo);
 
 }
 
 public static class TemplateManagerExtensions {
 
-	public static ThemeInfo LoadTemplate(this IThemeManager themeManager, string template) {
-		Guard.ArgumentNotNull(template, nameof(template));
-		if (!themeManager.TryLoadTemplate(template, out var templateInfo))
-			throw new InvalidOperationException($"Unable to load template info for '{template}'. Possible errors include missing or corrupt '{Constants.TemplateInfoFilename}' in template folder, or a cyclic dependency detected among template inheritance graph.");
+	public static ThemeInfo LoadTemplate(this IThemeManager themeManager, string theme) {
+		Guard.ArgumentNotNull(theme, nameof(theme));
+		if (!themeManager.TryLoadTemplate(theme, out var templateInfo))
+			throw new InvalidOperationException($"Unable to load theme info for '{theme}'. Possible errors include missing or corrupt '{Constants.ThemeInfoFileName}' in theme folder, or a cyclic dependency detected among theme inheritance graph.");
 		return templateInfo;
 	}
 }

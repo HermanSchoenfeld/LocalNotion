@@ -10,45 +10,38 @@ namespace LocalNotion.Core;
 
 public class HtmlThemeManager : IThemeManager {
 
-	public HtmlThemeManager(string themeFolder, ILogger logger = null) {
-		Guard.ArgumentNotNull(themeFolder, nameof(themeFolder));
-		Logger = logger ?? new NoOpLogger();
-		if (!Directory.Exists(themeFolder)) {
-			Directory.CreateDirectory(themeFolder);
-			// Spit out the templates
-		}
-		ThemeDirectoryPath = themeFolder;
+	public HtmlThemeManager(IPathResolver pathResolver, ILogger logger = null) {
+		Guard.ArgumentNotNull(pathResolver, nameof(pathResolver));
+		PathResolver = pathResolver;
+		Logger = logger;
 	}
 
-	public string ThemeDirectoryPath { get; }
+	public IPathResolver PathResolver { get; }
 
 	private ILogger Logger { get; }
 
-	public string FetchTemplateFolderPath(string theme) 
-		=> Path.Combine(ThemeDirectoryPath, theme) ;
-
-	public bool TryLoadTemplate(string template, out ThemeInfo themeInfo) {
+	public bool TryLoadTemplate(string theme, out ThemeInfo themeInfo) {
 		var fetched = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
-		return TryGetTemplateInfoInternal(template, out themeInfo, fetched);
+		return TryGetTemplateInfoInternal(theme, out themeInfo, fetched);
 
 
-		bool TryGetTemplateInfoInternal(string template, out ThemeInfo templateInfo, HashSet<string> alreadyFetched) {
-			templateInfo = null;
+		bool TryGetTemplateInfoInternal(string theme, out ThemeInfo themeInfo, ISet<string> alreadyFetched) {
+			themeInfo = null;
 
-			if (alreadyFetched.Contains(template))
+			if (alreadyFetched.Contains(theme))
 				return false;
 
-			var templatePath = FetchTemplateFolderPath(template);
+			var templatePath = PathResolver.GetThemePath(theme, FileSystemPathType.Absolute);
 
-			var templateInfoPath = Path.Combine(templatePath, Constants.TemplateInfoFilename);
+			var templateInfoPath = Path.Combine(templatePath, Constants.ThemeInfoFileName);
 			if (!File.Exists(templateInfoPath)) {
-				templateInfo = null;
+				themeInfo = null;
 				return false;
 			}
 			var htmlTemplateInfo = Tools.Json.ReadFromFile<HtmlThemeInfo>(templateInfoPath);
 			htmlTemplateInfo.TemplatePath = templatePath;
-			templateInfo = htmlTemplateInfo;
-			alreadyFetched.Add(template);
+			themeInfo = htmlTemplateInfo;
+			alreadyFetched.Add(theme);
 
 			// Setup all the theme tokens for the files
 			foreach (var templateFile in Tools.FileSystem.GetFiles(templatePath, recursive: true).Select(x => x.ToUnixPath())) {

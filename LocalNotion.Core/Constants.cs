@@ -22,26 +22,24 @@ public static class Constants {
 	public const string EditedByPropertyName = "Edited By";
 	public const string EditedOnPropertyName = "Edited On";
 	public const string DefaultResourceTitle = "Untitled";
-	public const string ArticleExtension = ".html";
-	public const string DefaultOfflineBaseUrl = "../..";
-	public const string DefaultOnlineBaseUrl = "/";
 	public const string WorkspaceId = "00000000-0000-0000-0000-000000000000";
 
-	public const string DefaultRegistryFoldername = ".localnotion";
-	public const string DefaultRegistryFilePath = DefaultRegistryFoldername + "/" + "registry.json";
-	public const string TemplateInfoFilename = ".config.json";
-	public const string DefaultObjectsFolderPath = DefaultRegistryFoldername + "/" + "objects";
-	public const string DefaultPropertiesPath = DefaultRegistryFoldername + "/" + "properties";
-	public const string DefaultGraphsFolderPath = DefaultRegistryFoldername + "/" + "graphs";
-	public const string DefaultThemesFolderPath = DefaultRegistryFoldername + "/" + "themes";
-	public const string DefaultPagesFolderPath = "pages";
-	public const string DefaultFilesFolderPath = "files";
-	public const string DefaultDatabasesFolderPath = "databases";
-	public const string DefaultWorkspacesFolderPath = "workspaces";
-	public const string DefaultLogsFolderPath = DefaultRegistryFoldername + "/" + "logs";
+	public const string DefaultTheme = "default";
+	public const string DefaultRegistryFolderName = ".localnotion";
+	public const string DefaultRegistryFileName = "registry.json";
+	public const string ThemeInfoFileName = ".config.json";
+	public const string DefaultObjectsFolderName = "objects";
+	public const string DefaultPropertiesFolderName = "properties";
+	public const string DefaultGraphsFolderName = "graphs";
+	public const string DefaultThemesFolderName = "themes";
+	public const string DefaultPagesFolderName = "pages";
+	public const string DefaultFilesFolderName = "files";
+	public const string DefaultDatabasesFolderName = "databases";
+	public const string DefaultWorkspacesFolderName = "workspaces";
+	public const string DefaultLogsFolderName = "logs";
 	public const string DefaultLogFilename = "localnotion.log";
 	public const bool DefaultUseObjectIDFolders = true;
-	public const string DefaultTheme = "default";
+	public const bool DefaultDownloadExternalContent = false;
 
 
 }

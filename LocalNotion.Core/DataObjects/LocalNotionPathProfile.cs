@@ -22,7 +22,7 @@ public class LocalNotionPathProfile {
 	/// The path to the registry file relative to the repository.
 	/// </summary>
 	[JsonIgnore]
-	public string RegistryPathR { get; set; } = Constants.DefaultRegistryFilePath;
+	public string RegistryPathR { get; set; } = Constants.DefaultRegistryFolderName + "/" + Constants.DefaultRegistryFileName;
 
 	/// <summary>
 	/// Prefix to urls when generating links
@@ -34,55 +34,55 @@ public class LocalNotionPathProfile {
 	/// The path to the objects folder relative to the repository.
 	/// </summary>
 	[JsonProperty("objects_path")]
-	public string ObjectsPathR { get; set; } = Constants.DefaultObjectsFolderPath;
+	public string ObjectsPathR { get; set; } = Constants.DefaultRegistryFolderName + "/" + Constants.DefaultObjectsFolderName;
 
 	/// <summary>
 	///  Path to the graphs folder relative to the repository.
 	/// </summary>
 	[JsonProperty("graphs_path")]
-	public string GraphsPathR { get; set; } = Constants.DefaultGraphsFolderPath;
+	public string GraphsPathR { get; set; } = Constants.DefaultRegistryFolderName + "/" + Constants.DefaultGraphsFolderName;
 
 	/// <summary>
 	///  Path to the page properties folder relative to the repository.
 	/// </summary>
 	[JsonProperty("properties_path")]
-	public string PropertiesPathR { get; set; } = Constants.DefaultPropertiesPath;
+	public string PropertiesPathR { get; set; } = Constants.DefaultRegistryFolderName + "/" + Constants.DefaultPropertiesFolderName;
 
 	/// <summary>
 	/// Path to the themes folder relative to the repository.
 	/// </summary>
 	[JsonProperty("themes_path")]
-	public string ThemesPathR { get; set; } = Constants.DefaultThemesFolderPath;
+	public string ThemesPathR { get; set; } = Constants.DefaultRegistryFolderName + "/" + Constants.DefaultThemesFolderName;
 
 	/// <summary>
 	/// Path to the downloaded files folder relative to the repository.
 	/// </summary>
 	[JsonProperty("files_path")]
-	public string FilesPathR { get; set; } = Constants.DefaultFilesFolderPath;
+	public string FilesPathR { get; set; } = Constants.DefaultFilesFolderName;
 
 	/// <summary>
 	/// Path to the rendered databases relative to the repository.
 	/// </summary>
 	[JsonProperty("databases_path")]
-	public string DatabasesPathR { get; set; } = Constants.DefaultDatabasesFolderPath;
+	public string DatabasesPathR { get; set; } = Constants.DefaultDatabasesFolderName;
 
 	/// <summary>
 	/// Path to the rendered workspace/index pages relative to the repository.
 	/// </summary>
 	[JsonProperty("workspace_path")]
-	public string WorkspacePathR { get; set; } = Constants.DefaultWorkspacesFolderPath;
+	public string WorkspacePathR { get; set; } = Constants.DefaultWorkspacesFolderName;
 
 	/// <summary>
 	/// Path to the rendered pages relative to the repository.
 	/// </summary>
 	[JsonProperty("pages_path")]
-	public string PagesPathR { get; set; } = Constants.DefaultPagesFolderPath;
+	public string PagesPathR { get; set; } = Constants.DefaultPagesFolderName;
 
 	/// <summary>
 	/// Path to the logs relative to the repository
 	/// </summary>
 	[JsonProperty("logs_path")]
-	public string LogsPathR { get; set; } = Constants.DefaultLogsFolderPath;
+	public string LogsPathR { get; set; } = Constants.DefaultRegistryFolderName + "/" + Constants.DefaultLogsFolderName;
 
 	/// <summary>
 	/// When true, rendered pages will be contained within a dedicated sub-folder inside <see cref="PagesPathR"/> named after page id. When false, all pages will be rendered side-by-side in <see cref="PagesPathR"/>.
@@ -109,28 +109,48 @@ public class LocalNotionPathProfile {
 	public bool UseWorkspaceIDFolders { get; set; } = Constants.DefaultUseObjectIDFolders;
 
 	/// <summary>
-	/// Directory profile for standard Local Notion repository.
+	/// When true, Local Notion will download external images and files as well.
 	/// </summary>
-	public static LocalNotionPathProfile Backup => new ();
+	[JsonProperty("download_external")]
+	public bool DownloadExternalContent { get; set; } = Constants.DefaultDownloadExternalContent;
 
 	/// <summary>
-	/// Creates a Local Notion path profile suitable for publishing (renders in same folder and no object id subfolders)
+	/// Default profile for standard Local Notion repository.
 	/// </summary>
-	public static LocalNotionPathProfile PublishingProfile => new () {
+	public static LocalNotionPathProfile Default => new ();
+
+	/// <summary>
+	/// Backup profile for standard Local Notion repository. Currently, this is same as default.
+	/// </summary>
+	public static LocalNotionPathProfile Backup => Default;
+
+	/// <summary>
+	/// Offline profile for a Local Notion repository. Same as <see cref="Backup"/> but downloads external content.
+	/// </summary>
+	public static LocalNotionPathProfile Offline => new () {
+		DownloadExternalContent = true,
+	};
+
+	/// <summary>
+	/// Publishing profile for Local Notion repository. Suitable for create distributable content such as eBooks, manuals, etc.
+	/// </summary>
+	public static LocalNotionPathProfile Publishing => new () {
 		PagesPathR = string.Empty,
-		FilesPathR = string.Empty,
+		FilesPathR = Constants.DefaultFilesFolderName,
 		DatabasesPathR = string.Empty,
 		WorkspacePathR = string.Empty,
+		ThemesPathR = Constants.DefaultThemesFolderName,
 		UsePageIDFolders = false,
 		UseFileIDFolders = false,
 		UseDatabaseIDFolders = false,
 		UseWorkspaceIDFolders = false,
+		DownloadExternalContent = true,
 	};
 
 	/// <summary>
-	/// Creates a Local Notion path profile suitable for hosting website content (renders in same folder but uses object-id subfolders) with a url-prefix.
+	/// Web hosting profile for a Local Notion repository. Suitable for content that is hosted on a web server.
 	/// </summary>
-	public static LocalNotionPathProfile HostingProfile => new () {
+	public static LocalNotionPathProfile WebHosting => new () {
 		BaseUrl = "/",
 		PagesPathR = string.Empty,
 		FilesPathR = string.Empty,

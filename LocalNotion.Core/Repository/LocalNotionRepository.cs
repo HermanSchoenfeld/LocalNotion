@@ -92,7 +92,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		theme ??= Constants.DefaultTheme;
 
 		// The registry file is computed from the profile
-		pathProfile ??= LocalNotionPathProfile.Backup;
+		pathProfile ??= LocalNotionPathProfile.Default;
 
 		var registryFile = Path.GetFullPath(pathProfile.RegistryPathR, repoPath);
 		Guard.FileNotExists(registryFile);
@@ -119,7 +119,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		// Registry folder
 		var registryParentFolder = Tools.FileSystem.GetParentDirectoryPath(registryFile);
 		if (!Directory.Exists(registryParentFolder)) {
-			if (Path.GetFileName(registryParentFolder) == Constants.DefaultRegistryFoldername)
+			if (Path.GetFileName(registryParentFolder) == Constants.DefaultRegistryFolderName)
 				Directory.CreateDirectory(registryParentFolder);
 			else
 				// LN only creates .localnotion folders. For use-cases involving a custom path profile that changes
@@ -155,11 +155,11 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		Guard.ArgumentNotNullOrEmpty(repoPath, nameof(repoPath));
 		Guard.DirectoryExists(repoPath);
 		logger ??= new NoOpLogger();
-		var registryFilePath = Path.Join(repoPath, Constants.DefaultRegistryFilePath);
+		var registryFilePath = Path.Join(repoPath, LocalNotionPathProfile.Default.RegistryPathR);
 		if (File.Exists(registryFilePath))
 			await RemoveUsingRegistry(registryFilePath, logger);
 
-		var registryParentFolder = Path.Join(repoPath, Constants.DefaultRegistryFoldername);
+		var registryParentFolder = Path.Join(repoPath, Tools.FileSystem.GetParentDirectoryPath(registryFilePath));
 		if (Directory.Exists(registryParentFolder))
 			await Tools.FileSystem.DeleteDirectoryAsync(registryParentFolder); // this can happen if registry file is deleted but this folder was left
 	}
@@ -434,8 +434,8 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			Directory.CreateDirectory(resourceFolder);
 		}
 
-		// Try to determine the object parent by calculting the path back up to the 
-		resource.ParentResource = CalculateResourceParent(resource.ID);
+		// Try to determine the object parent by calculating the path back up to the 
+		resource.ParentResourceID = CalculateResourceParent(resource.ID);
 
 		RequiresSave = true;
 		_registry.Add(resource);

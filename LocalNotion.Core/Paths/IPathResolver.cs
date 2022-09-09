@@ -46,9 +46,18 @@ public interface IPathResolver {
 	/// the repository folder.
 	/// </summary>
 	/// <param name="pathType">Absolute ore Relative</param>
-	/// <returns>Path to the theme folder</returns>
+	/// <returns>Path to the internal resource folder</returns>
 	string GetInternalResourceFolderPath(InternalResourceType internalResourceType, FileSystemPathType pathType);
 
+
+	/// <summary>
+	/// Gets the path to a theme.  When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to
+	/// the repository folder.
+	/// </summary>
+	/// <param name="pathType">Absolute ore Relative</param>
+	/// <returns>Path to the theme</returns>
+	string GetThemePath(string themeName, FileSystemPathType pathType);
+	
 
 	bool UsesObjectIDSubFolders(LocalNotionResourceType resourceType);
 
@@ -65,8 +74,6 @@ public interface IPathResolver {
 
 	string ResolveConflictingFilePath(string filepath);
 
-
 	string GetRemoteHostedBaseUrl();
-
 
 }

@@ -41,14 +41,16 @@ public static partial class Program {
 		[EnumMember(Value = "backup")]
 		Backup,
 
-		[EnumMember(Value = "ebook")]
-		EBook,
+		[EnumMember(Value = "offline")]
+		Offline,
+
+		[EnumMember(Value = "publishing")]
+		Publishing,
 
 		[EnumMember(Value = "website")]
 		Website,
 
 	}
-
 	
 	[Verb("status", HelpText = "Provides status of the Local Notion repository")]
 	public class StatusRepositoryCommandArguments {
@@ -71,10 +73,10 @@ public static partial class Program {
 		[Option('k', "key", HelpText = "Notion API key to use when contacting notion (do not pass in low security environment)")]
 		public string APIKey { get; set; } = null;
 
-		[Option('l', "log-level", Default = LogLevel.Info, HelpText = $"Logging level in log files (Debug, Info, Warning, Error)")]
+		[Option('l', "log-level", Default = LogLevel.Info, HelpText = $"Logging level in log files (Options: debug, info, warning, error)")]
 		public LogLevel LogLevel { get; set; }
 
-		[Option('x', "profile", Default = LocalNotionProfileDescriptor.Backup, HelpText = $"Determines how to organizes files and generate links in your repository (options are \"backup\", \"ebook\", \"website\")")]
+		[Option('x', "profile", Default = LocalNotionProfileDescriptor.Backup, HelpText = $"Determines how to organizes files and generate links in your repository (options: backup, offline, publishing, website)")]
 		public LocalNotionProfileDescriptor Profile { get; set; }
 
 		[Option('t', "theme", Default = "default", HelpText = $"Local Notion theme used for rendering")]
@@ -270,8 +272,9 @@ $@"Local Notion Status:
 
 		var pathProfile = arguments.Profile switch {
 			LocalNotionProfileDescriptor.Backup => LocalNotionPathProfile.Backup,
-			LocalNotionProfileDescriptor.EBook => LocalNotionPathProfile.PublishingProfile,
-			LocalNotionProfileDescriptor.Website => LocalNotionPathProfile.HostingProfile,
+			LocalNotionProfileDescriptor.Offline => LocalNotionPathProfile.Offline,
+			LocalNotionProfileDescriptor.Publishing => LocalNotionPathProfile.Publishing,
+			LocalNotionProfileDescriptor.Website => LocalNotionPathProfile.WebHosting,
 			_ => throw new NotSupportedException(arguments.Profile.ToString())
 		};
 		if (!string.IsNullOrWhiteSpace(arguments.BaseUrlOverride))
@@ -411,18 +414,21 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-		string[] InitCmd = new [] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		#if DEBUG
+		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "ebook" };
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] Remove = new [] { "remove", "--confirm" };
-		
+		string[] Remove = new[] { "remove", "--confirm" };
+		string[] HelpInit = new[] { "help", "init" };
+
 		if (args.Length == 0)
 			args = PullCmd;
+		#endif
 
 		try {
-			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00"))  {
+			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00")) {
 				Console.WriteLine("Software has expired");
 				return ERRORCODE_LICENSE_ERROR;
 			}

@@ -36,11 +36,13 @@ public class PathResolver : IPathResolver {
 
 	public string GetInternalResourceFolderPath(InternalResourceType internalResourceType, FileSystemPathType pathType) 
 		=> pathType switch {
-			FileSystemPathType.Relative => GetRelativePath(internalResourceType),
-			FileSystemPathType.Absolute => Path.GetFullPath(GetRelativePath(internalResourceType), RepositoryPath),
+			FileSystemPathType.Relative => GetResourceTypeFolderRelativePath(internalResourceType),
+			FileSystemPathType.Absolute => Path.GetFullPath(GetResourceTypeFolderRelativePath(internalResourceType), RepositoryPath),
 			_ => throw new NotSupportedException($"{pathType}")
 		};
-	
+
+	public string GetThemePath(string themeName, FileSystemPathType pathType)
+		=> Path.Join( GetInternalResourceFolderPath(InternalResourceType.Themes, pathType), themeName);
 
 	public string GetResourceTypeFolderPath(LocalNotionResourceType resourceType, FileSystemPathType pathType)
 		=> resourceType switch {
@@ -127,10 +129,11 @@ public class PathResolver : IPathResolver {
 	public static string ResolveDefaultRegistryFilePath(string repoPath) {
 		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
 		Guard.DirectoryExists(repoPath);
-		return Path.Join(repoPath, Constants.DefaultRegistryFilePath).ToUnixPath();
+		
+		return Path.Join(repoPath, LocalNotionPathProfile.Default.RegistryPathR).ToUnixPath();
 	}
 
-	private string GetRelativePath(InternalResourceType internalResourceType)
+	private string GetResourceTypeFolderRelativePath(InternalResourceType internalResourceType)
 		=> internalResourceType switch {
 			InternalResourceType.Objects => PathProfile.ObjectsPathR,
 			InternalResourceType.Graphs => PathProfile.GraphsPathR,

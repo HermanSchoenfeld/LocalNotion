@@ -20,7 +20,7 @@ public abstract class LocalNotionResource {
 	public string Title { get; set; }
 
 	[JsonProperty("parent_resource", NullValueHandling = NullValueHandling.Ignore)]
-	public string ParentResource { get; set; }
+	public string ParentResourceID { get; set; }
 
 	[JsonProperty("renders", NullValueHandling = NullValueHandling.Ignore)]
 	public IDictionary<RenderType, RenderEntry> Renders { get; set; } = new Dictionary<RenderType, RenderEntry>();

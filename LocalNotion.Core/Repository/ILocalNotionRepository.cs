@@ -142,7 +142,7 @@ public static class ILocalNotionRepositoryExtensions {
 		var resource = repository.GetResource(resourceId);;
 		do {
 			yield return resource;;
-		} while (repository.TryGetResource(resource.ParentResource, out resource));
+		} while (repository.TryGetResource(resource.ParentResourceID, out resource));
 	}
 
 }
