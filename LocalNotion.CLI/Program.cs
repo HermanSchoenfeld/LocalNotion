@@ -37,6 +37,15 @@ public static partial class Program {
 		return Path.GetRelativePath(repoPath, Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory));
 	}
 
+	private static async Task<ILocalNotionRepository> OpenRepo(string userPath, ILogger logger) {
+		userPath = ToFullPath(userPath);
+		var repo = 
+			Directory.Exists(userPath) ? 
+			await LocalNotionRepository.Open(userPath, logger) : 
+			await LocalNotionRepository.OpenRegistry(userPath, logger);
+		return repo;
+	}
+
 	public enum LocalNotionProfileDescriptor {
 		[EnumMember(Value = "backup")]
 		Backup,
@@ -115,14 +124,17 @@ public static partial class Program {
 	}
 
 	
-	[Verb("remove", HelpText = "Removes a Local Notion repository")]
+	[Verb("remove", HelpText = "Remove resources from a Local Notion repository")]
 	public class RemoveRepositoryCommandArguments {
 
 		[Option('r', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
 
-		[Option("confirm", Required = true, HelpText = "Mandatory option required to avoid accidental user removal")]
-		public bool Confirm { get; set; }
+		[Option("all", HelpText = "Removes entire repository")]
+		public bool All { get; set; }
+
+		[Option('o', "objects", HelpText = "List of Notion objects to remove (i.e. pages, databases, workspaces)")]
+		public IEnumerable<string> Objects { get; set; } = null;
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
@@ -308,7 +320,26 @@ $@"Local Notion Status:
 
 	public static async Task<int> ExecuteRemoveCommand(RemoveRepositoryCommandArguments arguments) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-		await LocalNotionRepository.Remove(arguments.Path, consoleLogger);
+		if (!arguments.All) {
+			foreach (var objectID in arguments.Objects) {
+				var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+				if (!ILocalNotionRepository.IsValidObjectID(objectID)) {
+					consoleLogger.Warning($"ObjectID '{objectID}' was malformed");
+					continue;
+				}
+				if (repo.ContainsResource(objectID)) {
+					repo.DeleteResource(objectID);
+					consoleLogger.Info($"Removed resource: {objectID}");
+				}
+
+				if (repo.ContainsObject(objectID)) {
+					repo.DeleteObject(objectID);
+					consoleLogger.Info($"Removed object: {objectID}");
+				}
+			}
+		} else {
+			await LocalNotionRepository.Remove(arguments.Path, consoleLogger);
+		}
 		consoleLogger.Info("Local Notion repository has been removed");
 		return ERRORCODE_OK;
 	}
@@ -419,12 +450,13 @@ $@"Local Notion Status:
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] RenderAllPage = new[] { "render", "--all"};
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] Remove = new[] { "remove", "--confirm" };
 		string[] HelpInit = new[] { "help", "init" };
 
 		if (args.Length == 0)
-			args = PullCmd;
+			args = PullPage;
 		#endif
 
 		try {

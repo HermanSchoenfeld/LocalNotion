@@ -112,7 +112,7 @@ public class LocalNotionPathProfile {
 	/// When true, Local Notion will download external images and files as well.
 	/// </summary>
 	[JsonProperty("download_external")]
-	public bool DownloadExternalContent { get; set; } = Constants.DefaultDownloadExternalContent;
+	public bool ForceDownloadExternalContent { get; set; } = Constants.DefaultDownloadExternalContent;
 
 	/// <summary>
 	/// Default profile for standard Local Notion repository.
@@ -128,7 +128,7 @@ public class LocalNotionPathProfile {
 	/// Offline profile for a Local Notion repository. Same as <see cref="Backup"/> but downloads external content.
 	/// </summary>
 	public static LocalNotionPathProfile Offline => new () {
-		DownloadExternalContent = true,
+		ForceDownloadExternalContent = true,
 	};
 
 	/// <summary>
@@ -144,7 +144,7 @@ public class LocalNotionPathProfile {
 		UseFileIDFolders = false,
 		UseDatabaseIDFolders = false,
 		UseWorkspaceIDFolders = false,
-		DownloadExternalContent = true,
+		ForceDownloadExternalContent = true,
 	};
 
 	/// <summary>

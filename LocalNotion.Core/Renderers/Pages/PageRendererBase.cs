@@ -172,10 +172,9 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected virtual TOutput Render(VideoBlock block) {
 		switch (block.Video) {
 			case ExternalFile externalFile: {
-				var youTubeVideoID = Tools.Url.ExtractVideoIdFromYouTubeUrl(externalFile.External.Url);
-				if (!string.IsNullOrWhiteSpace(youTubeVideoID))
-					return RenderYouTubeEmbed(block, youTubeVideoID);
-				return RenderVideoEmbed(block, externalFile.External.Url);
+				return Tools.Url.TryParseYouTubeUrl(externalFile.External.Url, out var videoID) ? 
+					RenderYouTubeEmbed(block, videoID) : 
+					RenderVideoEmbed(block, externalFile.External.Url);
 			}
 			case UploadedFile uploadedFile: {
 				var url = Resolver.ResolveUploadedFileUrl(Page, uploadedFile, out _);

@@ -19,6 +19,7 @@ public class PathResolver : IPathResolver {
 	protected LocalNotionPathProfile PathProfile { get; }
 
 	public LocalNotionMode Mode => PathProfile.Mode;
+	public bool ForceDownloadExternalContent => PathProfile.ForceDownloadExternalContent;
 
 	public string GetRegistryFilePath(FileSystemPathType pathType)
 		=> pathType switch {

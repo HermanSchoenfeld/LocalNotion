@@ -31,6 +31,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	private GuidStringFileStore _graphStore;
 	
 	private IDictionary<string, LocalNotionResource> _resourcesByNID;
+	private IDictionary<string, (string, RenderType)> _renderBySlug;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
 
@@ -49,6 +50,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		_objectStore = null;
 		_graphStore = null;
 		_resourcesByNID = null;
+		_renderBySlug = null;
 		Paths = null;
 	}
 
@@ -246,6 +248,11 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		// create the resource lookup table
 		_resourcesByNID = _registry.Resources.ToDictionary(x => x.ID);
+		_renderBySlug = 
+			_registry
+			.Resources
+			.SelectMany(resource => resource.Renders.Select(render => (resource,render)))
+			.ToDictionary(x => x.render.Value.Slug, x => (x.resource.ID, x.render.Key)); // possible exception if duplicate slug found in repo
 
 		// Prepare repository logger
 		_logger.Add(
@@ -431,7 +438,8 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		if (useObjectIDFolder) {
 			Guard.Against(Directory.Exists(resourceFolder), $"Resource '{resource.ID}' path was already existing (dangling resource)");
-			Directory.CreateDirectory(resourceFolder);
+			if (!Directory.Exists(resourceFolder))
+				Directory.CreateDirectory(resourceFolder);
 		}
 
 		// Try to determine the object parent by calculating the path back up to the 
@@ -450,13 +458,10 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			throw new InvalidOperationException($"Resource {resourceID} not found");
 
 		NotifyResourceRemoving(resourceID);
-
+		
 		// Delete resource renders
-		foreach(var render in resource.Renders.Values) {
-			var fileToDelete = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
-			if (File.Exists(fileToDelete))
-				File.Delete(fileToDelete);
-		}
+		foreach(var render in resource.Renders)
+			DeleteResourceRenderInternal(resource, render.Key, render.Value);
 
 		// Delete resource folder if any
 		if (Paths.UsesObjectIDSubFolders(resource.Type)) {
@@ -468,6 +473,16 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		// Delete graph
 		if (_graphStore.ContainsFile(resourceID))
 			_graphStore.Delete(resourceID);
+
+		// Delete any attached files if applicable
+		if (resource is LocalNotionPage page) {
+			if (page.Thumbnail.Type == ThumbnailType.Image && TryFindRenderBySlug(page.Thumbnail.Data, out var attachedFile, out _)) 
+				// TODO: reference count decrease (when added)
+				DeleteResource(attachedFile);
+			
+			if (!string.IsNullOrWhiteSpace(page.Cover) && TryFindRenderBySlug(page.Cover, out  attachedFile, out _))
+				DeleteResource(attachedFile);
+		}
 
 		RequiresSave = true;
 		_registry.Remove(resource);
@@ -485,6 +500,17 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		var file = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
 		return File.Exists(file);
+	}
+
+	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) {
+		if (_renderBySlug.TryGetValue(slug, out var render)) {
+			resourceID = render.Item1;
+			renderType = render.Item2;
+			return true;
+		}
+		resourceID = default;
+		renderType = default;
+		return false;
 	}
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {
@@ -510,10 +536,14 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			resourceRenderPath = Paths.ResolveConflictingFilePath(resourceRenderPath);
 		}
 		Tools.FileSystem.CopyFile(renderedFile, resourceRenderPath, true, true);
-		resource.Renders[renderType] = new RenderEntry {
+		var renderEntry =  new RenderEntry {
 			LocalPath = Path.GetRelativePath(Paths.GetRepositoryPath(FileSystemPathType.Absolute), resourceRenderPath),
 			Slug = CalculateRenderSlug(resource, renderType, resourceRenderPath)
 		};
+		resource.Renders[renderType] =renderEntry;
+		if (!_renderBySlug.ContainsKey(renderEntry.Slug))
+			_renderBySlug.Add(renderEntry.Slug, (resourceID, renderType));
+
 		RequiresSave = true;
 		NotifyResourceUpdated(resource);
 		return resourceRenderPath;
@@ -526,11 +556,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		if (!resource.Renders.TryGetValue(renderType, out var render))
 			return;
 		NotifyResourceUpdating(resourceID);
-		var fileToDelete = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
-		if (File.Exists(fileToDelete))
-			File.Delete(fileToDelete);
-		resource.Renders.Remove(renderType);
-		RequiresSave = true;
+		DeleteResourceRenderInternal(resource, renderType, render);
 		NotifyResourceUpdated(resource);
 	}
 
@@ -541,7 +567,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		// Add resource type folder part (if has one)
 		if (!string.IsNullOrWhiteSpace(resourceTypeFolder))
-			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetDirectoryName(resourceTypeFolder)));
+			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Tools.FileSystem.GetParentDirectoryName(renderedFilename)));
 			
 		// Add object if folder (if has one)
 		if (Paths.UsesObjectIDSubFolders(resource.Type))
@@ -556,7 +582,17 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Path.GetFileNameWithoutExtension(renderedFilename)));
 		}
 			
-		return "/" + slugBuilder.ToDelimittedString("/");
+		return slugBuilder.ToDelimittedString("/");
+	}
+
+	protected void DeleteResourceRenderInternal(LocalNotionResource resource, RenderType renderType, RenderEntry render) {
+		var fileToDelete = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
+		if (File.Exists(fileToDelete))
+			File.Delete(fileToDelete);
+		resource.Renders.Remove(renderType);
+		if (_renderBySlug.ContainsKey(render.Slug))
+			_renderBySlug.Remove(render.Slug);
+		RequiresSave = true;
 	}
 
 	/// <summary>

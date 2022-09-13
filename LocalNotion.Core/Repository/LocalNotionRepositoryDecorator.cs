@@ -64,6 +64,8 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.ContainsResource(resourceID);
 
+	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) => InternalRepository.TryFindRenderBySlug(slug, out resourceID, out renderType);
+
 	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceId, out resource);
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.ContainsResourceRender(resourceID, renderType);

@@ -5,18 +5,15 @@ namespace LocalNotion.Core;
 /// <summary>
 /// Resolves URLs to resources used in online scenarios (webhosting, etc)
 /// </summary>
-public class RemoteUrlResolver : IUrlResolver {
+public class RemoteUrlResolver : UrlResolverBase {
 
-	public RemoteUrlResolver(ILocalNotionRepository repository) {
-		Repository = repository;
+	public RemoteUrlResolver(ILocalNotionRepository repository) : base(repository) {
 	}
 
-	public ILocalNotionRepository Repository { get; }
-
-	public bool TryResolveLinkToResource(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
+	public override bool TryResolveLinkToResource(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
 		url = default;
 
-		if (from.ID == toResourceID){
+		if (from.ID == toResourceID) {
 			url = "";
 			toResource = from;
 			return true;

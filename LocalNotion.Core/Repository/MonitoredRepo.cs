@@ -86,6 +86,9 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 
+	public bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) 
+		=> InternalRepository.Value.TryFindRenderBySlug(slug, out resourceID, out renderType);
+
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.Value.AddResource(resource);
 
 	public virtual void DeleteResource(string resourceID) => throw new NotSupportedException();

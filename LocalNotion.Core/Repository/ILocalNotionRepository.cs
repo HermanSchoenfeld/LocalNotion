@@ -66,12 +66,15 @@ public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 
+	bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType);
+	
 	string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile);
 
 	void DeleteResourceRender(string resourceID, RenderType renderType);
 
 	string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename);
 
+	public static bool IsValidObjectID(string objectID) => LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _);
 }
 
 public static class ILocalNotionRepositoryExtensions {
@@ -145,4 +148,5 @@ public static class ILocalNotionRepositoryExtensions {
 		} while (repository.TryGetResource(resource.ParentResourceID, out resource));
 	}
 
+	
 }

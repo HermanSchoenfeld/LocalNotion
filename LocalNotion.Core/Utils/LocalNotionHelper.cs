@@ -22,7 +22,7 @@ internal class LocalNotionHelper {
 		if (!Tools.Url.TryParse(url, out var protocol, out var port, out var host, out var path, out var queryString))
 			return false;
 
-		if (!host.Contains("amazonaws"))
+		if (!host.Contains("amazonaws") && !host.Contains("secure.notion-static.com"))
 			return false;
 
 		var splits = path.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -34,6 +34,9 @@ internal class LocalNotionHelper {
 
 		resourceID = splits[1];
 		filename = Uri.UnescapeDataString(splits[2]);
+		if (!Tools.FileSystem.IsWellFormedFileName(filename))
+			filename = "LN_"+Guid.Parse(resourceID).ToStrictAlphaString();
+		
 		return true;
 	}
 
