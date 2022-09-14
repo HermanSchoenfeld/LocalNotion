@@ -1,27 +1,22 @@
-﻿using Notion.Client;
+﻿using Hydrogen;
+using Notion.Client;
 
 
 namespace LocalNotion.Core;
 
 public static class IBlocksClientExtensions {
 
-	public static async Task<IBlock[]> GetPageBlocks(this IBlocksClient blocksClient, string pageId) {
-		var blocks = await blocksClient.RetrieveAllChildrenAsync(pageId);
-		return blocks;
-	}
-
-	public static async Task<IBlock[]> RetrieveAllChildrenAsync(this IBlocksClient blocksClient, string blockId) {
-		var results = new List<IBlock>();
+	public static async IAsyncEnumerable<IBlock> EnumerateChildrenAsync(this IBlocksClient blocksClient, string blockId) {
 		PaginatedList<IBlock> searchResult;
 		var parameters = new BlocksRetrieveChildrenParameters();
 		var cursor = parameters.StartCursor;
 		do {
 			parameters.StartCursor = cursor;
 			searchResult = await blocksClient.RetrieveChildrenAsync(blockId, parameters);
-			results.AddRange(searchResult.Results);
+			foreach(var result in searchResult.Results)
+				yield return result;
 			cursor = searchResult.NextCursor;
 		} while (searchResult.HasMore);
-		return results.ToArray();
 	}
 
 	public static async Task<NotionObjectGraph> GetObjectGraph(this IBlocksClient blocksClient, string objectId, IDictionary<string, IObject> objects) {
@@ -38,7 +33,7 @@ public static class IBlocksClientExtensions {
 
 		async Task PopulateChildren(NotionObjectGraph parent) {
 			var children = new List<NotionObjectGraph>();
-			foreach (var child in await blocksClient.RetrieveAllChildrenAsync(parent.ObjectID)) {
+			await foreach (var child in blocksClient.EnumerateChildrenAsync(parent.ObjectID)) {
 				var graphChild = new NotionObjectGraph { ObjectID = child.Id };
 				objects[child.Id] = child;
 				if (child.HasChildren && child is not ChildPageBlock)
@@ -49,7 +44,4 @@ public static class IBlocksClientExtensions {
 		}
 		return root;
 	}
-
-
 }
-

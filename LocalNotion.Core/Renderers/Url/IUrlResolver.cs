@@ -24,7 +24,6 @@ public static class IUrlGeneratorExtensions {
 		=> localResourceResolver.TryResolveLinkToResource(from, toResourceID, renderType, out var url, out toResource) ? url : defaultValue;
 
 	public static bool TryResolveUploadedFileUrl(this IUrlResolver localResourceResolver, LocalNotionResource from, UploadedFile file, out string url, out LocalNotionResource toResource) {
-		//if (LocalNotionHelper.TryParseNotionFileUrl(file.File.Url, out var toResourceID, out _))
 		if (localResourceResolver.TryGetResourceFromUrl(file.File.Url, out toResource, out _))			
 			if (localResourceResolver.TryResolveLinkToResource(from, toResource.ID, RenderType.File, out url, out toResource))
 				return true;

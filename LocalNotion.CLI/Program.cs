@@ -140,6 +140,27 @@ public static partial class Program {
 		public bool Verbose { get; set; } = false;
 
 	}
+	
+	[Verb("list", HelpText = "Lists objects from Notion which can be pulled into Local Notion")]
+	public class ListContentsCommandArguments {
+		[Option('d', "db", HelpText = "Lists the page items of a database")]
+		public string Object { get; set; } = null;
+
+		[Option('a', "all", HelpText = "Lists all child objects (default shows workspace-level only)")]
+		public bool All { get; set; } = false;
+
+		[Option('f', "filter", HelpText = "Filter by object title")]
+		public string Filter { get; set; } = null;
+		
+		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
+		public string APIKey { get; set; } = null;
+
+		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
+		public string Path { get; set; } = GetDefaultRepoFolder();
+		
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+	}
 
 	[Verb("pull", HelpText = "Pulls Notion objects into a Local Notion repository")]
 	public class PullRepositoryCommandArguments {
@@ -152,9 +173,6 @@ public static partial class Program {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
-			
-		[Option('d', "last-updated-on-property", HelpText = "Property on which has a 'Last Edited Time' value")]
-		public string FilterLastUpdatedOnPropertyName { get; set; } = null;
 
 		[Option('u', "last-updated-on", HelpText = "Filters objects not edited on or after this date")]
 		public DateTime? FilterLastUpdatedOn { get; set; } = null;
@@ -344,6 +362,52 @@ $@"Local Notion Status:
 		return ERRORCODE_OK;
 	}
 
+	public static async Task<int> ExecuteListRemoteCommand(ListContentsCommandArguments arguments) {
+		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
+		
+		string apiKey = default;
+
+		if (!string.IsNullOrWhiteSpace(arguments.APIKey)) {
+			apiKey = arguments.APIKey;
+		} else {
+			if (!Directory.Exists(arguments.Path)) {
+				consoleLogger.Error($"Repository not found: {arguments.Path}");
+				return ERRORCODE_REPO_NOT_FOUND;
+			}
+			var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+			apiKey = repo.DefaultNotionApiKey;
+		}
+		
+		if (string.IsNullOrWhiteSpace(apiKey)) {
+			consoleLogger.Info("No API key was specified in argument or registered in repository");
+			return -1;
+		}
+
+		var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
+
+		if (string.IsNullOrWhiteSpace(arguments.Object)) {
+			// List workspace level
+			consoleLogger.Info($"Listing workspace items{$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
+			var searchParameters = new SearchParameters { Query = arguments.Filter };
+			var results = client.Search.EnumerateAsync(searchParameters);
+			if (!arguments.All) 
+				results = results.WhereAwait(async x => x is Database or Page && x.GetParent() is WorkspaceParent);
+			
+			await foreach(var obj in results)
+				consoleLogger.Info($"{Tools.Enums.GetSerializableName(obj.Object)} - {obj.Id} - {obj.GetTitle()}");
+		} else {
+			// Lists database contents
+			consoleLogger.Info($"Listing database {arguments.Object} {$"filtering by {arguments.Filter} (NOTE: filtering database queries is not currently supported by Notion API)".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}");
+			//var searchParameters = new DatabasesQueryParameters { Query = arguments.Filter };
+			var searchParameters = new DatabasesQueryParameters();
+			var results = client.Databases.EnumerateAsync(arguments.Object, searchParameters);
+			await foreach(var obj in results)
+				consoleLogger.Info($"{Tools.Enums.GetSerializableName(obj.Object)} - {obj.Id} - {obj.GetTitle()}");
+		}
+
+		return ERRORCODE_OK;
+	}
+
 	public static async Task<int> ExecutePullCommand(PullRepositoryCommandArguments arguments) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
@@ -366,7 +430,6 @@ $@"Local Notion Status:
 				case LocalNotionResourceType.Database:
 					await syncOrchestrator.DownloadDatabasePages(
 						@obj, 
-						arguments.FilterLastUpdatedOnPropertyName,
 						arguments.FilterLastUpdatedOn,
 						arguments.Render,
 						arguments.RenderOutput,
@@ -445,19 +508,19 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-		#if DEBUG
-		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "ebook" };
-		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] RenderAllPage = new[] { "render", "--all"};
-		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] Remove = new[] { "remove", "--confirm" };
-		string[] HelpInit = new[] { "help", "init" };
+		//#if DEBUG
+		//string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "ebook" };
+		//string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		//string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		//string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		//string[] RenderAllPage = new[] { "render", "--all"};
+		//string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		//string[] Remove = new[] { "remove", "--confirm" };
+		//string[] HelpInit = new[] { "help", "init" };
 
-		if (args.Length == 0)
-			args = PullPage;
-		#endif
+		//if (args.Length == 0)
+		//	args = PullPage;
+		//#endif
 
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00")) {
@@ -471,6 +534,7 @@ $@"Local Notion Status:
 				StatusRepositoryCommandArguments,
 				InitRepositoryCommandArguments,
 				RemoveRepositoryCommandArguments,
+				ListContentsCommandArguments,
 				PullRepositoryCommandArguments,
 				SyncRepositoryCommandArguments,
 				RenderCommandArguments,
@@ -481,6 +545,7 @@ $@"Local Notion Status:
 				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteStatusCommand),
 				(InitRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteInitCommand),
 				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteRemoveCommand),
+				(ListContentsCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteListRemoteCommand),
 				(PullRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecutePullCommand),
 				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteSyncCommand),
 				(RenderCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteRenderCommand),

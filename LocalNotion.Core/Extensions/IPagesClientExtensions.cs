@@ -28,23 +28,18 @@ public static class IPagesClientExtensions  {
 	}
 
 	public static async Task<KeyValuePair<string, IPropertyItemObject>> RetrievePagePropertyItemCompleteAsync(this IPagesClient pagesClient, string pageId, string propertyId, CancellationToken cancellationToken = default) {
-		IPropertyItemObject searchResult;
-		
 		var parameters = new RetrievePropertyItemParameters();
 		parameters.PageId = pageId;
 		parameters.PropertyId = propertyId;
-		searchResult = await pagesClient.RetrievePagePropertyItem(parameters).WithCancellationToken(cancellationToken);
+		var searchResult = await pagesClient.RetrievePagePropertyItem(parameters).WithCancellationToken(cancellationToken);
 
 		if (searchResult is ListPropertyItem lpi) {
 			var itemsList = new List<SimplePropertyItem>();
-			//itemsList.Add(lpi.PropertyItem);
 			itemsList.AddRange(lpi.Results);
 			
 			while (lpi.HasMore) {
 				parameters.StartCursor = lpi.NextCursor;
 				var nextPage = (ListPropertyItem) await pagesClient.RetrievePagePropertyItem(parameters).WithCancellationToken(cancellationToken) ;
-				//if (nextPage.PropertyItem != null)
-				//	itemsList.Add(nextPage.PropertyItem);
 				itemsList.AddRange(nextPage.Results);
 			}
 			lpi.Results = itemsList; // this aggregates all items into the list of first itemlist

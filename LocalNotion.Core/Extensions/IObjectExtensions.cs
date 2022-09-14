@@ -6,6 +6,13 @@ namespace LocalNotion.Core;
 
 public static class IObjectExtensions {
 
+	public static string GetTitle(this IObject obj) 
+		=> obj switch {
+			Page page => page.GetTitle(),
+			Database database => database.GetTitle(),
+			_ => throw new NotSupportedException($"{obj.GetType()}")
+		};
+
 	public static bool HasFileAttachment(this IObject block)
 		=> block.GetType().IsIn(typeof(AudioBlock), typeof(FileBlock), typeof(ImageBlock), typeof(PDFBlock), typeof(VideoBlock), typeof(CalloutBlock)) && (block.GetFileAttachmentOrDefault() != null);
 
@@ -22,6 +29,9 @@ public static class IObjectExtensions {
 			TypeSwitch<FileObject>.Case<CalloutBlock>(cb => cb.Callout.Icon as FileObject),
 			TypeSwitch<FileObject>.Default(default)
 		);
+
+	public static IParent GetParent(this IObject obj) 
+		=> TryGetParent(obj, out var parent) ? parent : throw new InvalidOperationException($"{nameof(IObject)} of type {obj.GetType().Name} does not have a parent");
 
 	public static bool TryGetParent(this IObject obj, out IParent parent) {
 		switch (obj) {
@@ -49,6 +59,7 @@ public static class IObjectExtensions {
 		}
 		return false;
 	}
+
 
 }
 

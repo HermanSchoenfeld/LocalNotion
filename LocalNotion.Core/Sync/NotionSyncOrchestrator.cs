@@ -55,10 +55,10 @@ public class NotionSyncOrchestrator {
 	/// <param name="updatedOnFilter">Filter out pages updated before date</param>
 	/// <param name="faultTolerant">Continues processing other items when failing on any individual item</param>
 	/// <returns></returns>
-	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, string updatedOnColumnName = "Edited On", DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
 		try {
 			// Fetch updated notion pages and transform into articles
-			var cmsPages = await QueryDatabasePages(cmsDatabaseID, updatedOnColumnName, updatedOnFilter);
+			var cmsPages = await QueryDatabasePages(cmsDatabaseID, updatedOnFilter);
 
 			// Download
 			var downloadedResources = new List<LocalNotionResource>();
@@ -304,16 +304,12 @@ public class NotionSyncOrchestrator {
 		throw new NotImplementedException();
 	}
 
-	public async Task<Page[]> QueryDatabasePages(string databaseID, string lastUpdateOnColumnName, DateTime? updatedOnOrAfter = null) {
+	public async Task<Page[]> QueryDatabasePages(string databaseID, DateTime? updatedOnOrAfter = null) {
 		Logger.Info($"Fetching updated pages for database '{databaseID}'{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
-		var notionUpdateOnFilter =
-			lastUpdateOnColumnName != null && updatedOnOrAfter != null ?
-			new DateFilter(lastUpdateOnColumnName, onOrAfter: updatedOnOrAfter) :
-			null;
 		var results = await NotionClient.Databases.GetAllDatabaseRows(
 			databaseID,
 			new DatabasesQueryParameters {
-				Filter = notionUpdateOnFilter
+				Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null,
 			}
 		);
 		Logger.Info($"Found {results.Length} updated articles");
