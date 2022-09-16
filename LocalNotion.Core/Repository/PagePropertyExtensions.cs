@@ -12,7 +12,7 @@
 
 //	public static void DeletePageProperty(this ILocalNotionRepository repository, string pageID, string propertyID) {
 //		var objectID = PageProperties.CalculatePagePropertyUUID(pageID, propertyID);
-//		repository.DeleteObject(objectID);
+//		repository.RemoveObject(objectID);
 //	}
 
 //	public static bool ContainsPageProperty(this ILocalNotionRepository repository, string pageID, string propertyID) {

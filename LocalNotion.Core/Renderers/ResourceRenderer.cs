@@ -27,13 +27,13 @@ public class ResourceRenderer : IResourceRenderer {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
 		if (!_repository.TryGetObject(resourceID, out var @obj)) 
 			throw new ObjectNotFoundException(resourceID); 
-		switch(@obj.Value.Object) {
+		switch(@obj.Object) {
 			case ObjectType.Page:
 				return RenderLocalPage(resourceID, renderType, renderMode);
 			case ObjectType.Database:
 				return RenderLocalDatabase(resourceID, renderType, renderMode);
 			default:
-				throw new InvalidOperationException($"Unable to render {@obj.Value.Object} '{resourceID}' as it is not a top-level object");
+				throw new InvalidOperationException($"Unable to render {@obj.Object} '{resourceID}' as it is not a top-level object");
 		}
 	}
 
@@ -51,7 +51,6 @@ public class ResourceRenderer : IResourceRenderer {
 			renderer.Render(tmpFile);
 			output = _repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
 		} catch (Exception error) {
-			Logger.Exception(error);
 			// Save exception to rendered file (for html)
 			Tools.Exceptions.ExecuteIgnoringException(() => {
 				if (renderType == RenderType.HTML) {
@@ -59,6 +58,7 @@ public class ResourceRenderer : IResourceRenderer {
 					_repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
 				}
 			});
+			throw;
 		} finally {
 			File.Delete(tmpFile);
 		}

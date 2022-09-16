@@ -4,7 +4,7 @@ namespace LocalNotion.Core;
 
 public class NotionObjectGraph {
 
-	[JsonProperty("objectId")]
+	[JsonProperty("objectID")]
 	public virtual string ObjectID { get; set; }
 
 	[JsonProperty("children", NullValueHandling = NullValueHandling.Ignore)]

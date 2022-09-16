@@ -45,7 +45,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			//IsRoot			= 1 << 6,
 			//IsWorkspace		= 1 << 7,
 
-			var hasUrl = UrlResolver.TryResolveLinkToResource(from, item.ID, RenderType.HTML, out var url, out var resource);
+			var hasUrl = UrlResolver.TryResolve(from, item.ID, RenderType.HTML, out var url, out var resource);
 			traits.SetFlags(BreadCrumbItemTraits.HasUrl, hasUrl);
 			if (!hasUrl)
 				url = DefaultUrl;

@@ -26,7 +26,7 @@ public abstract class LocalNotionResource {
 	public IDictionary<RenderType, RenderEntry> Renders { get; set; } = new Dictionary<RenderType, RenderEntry>();
 
 	public bool TryGetRender(RenderType? renderType, out RenderEntry render) {
-		render = null;
+		render = default;
 
 		// No best match render found
 		if (renderType == null) {

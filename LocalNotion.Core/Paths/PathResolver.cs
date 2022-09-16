@@ -79,12 +79,12 @@ public class PathResolver : IPathResolver {
 			_ => throw new NotSupportedException(resourceType.ToString())
 		};
 
-	public string GetResourceFolderPath(LocalNotionResourceType resourceType, string resourceId, FileSystemPathType pathType) {
-		Guard.ArgumentNotNull(resourceId, nameof(resourceId));
-		Guard.Argument(LocalNotionHelper.TryCovertObjectIdToGuid(resourceId, out _), nameof(resourceId), "Invalid format");
+	public string GetResourceFolderPath(LocalNotionResourceType resourceType, string resourceID, FileSystemPathType pathType) {
+		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
+		Guard.Argument(LocalNotionHelper.TryCovertObjectIdToGuid(resourceID, out _), nameof(resourceID), "Invalid format");
 		var path = GetResourceTypeFolderPath(resourceType, pathType);
 		if (UsesObjectIDSubFolders(resourceType))
-			path = Path.Combine(path, resourceId);
+			path = Path.Combine(path, resourceID);
 
 		return path;
 	}

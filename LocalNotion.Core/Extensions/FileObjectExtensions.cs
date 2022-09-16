@@ -4,16 +4,16 @@ using Notion.Client;
 namespace LocalNotion.Core;
 
 public static class FileObjectExtensions {
-	public static string GetUrl(this FileObject pageParent) 
-		=> pageParent switch {
+	public static string GetUrl(this FileObject fileObject) 
+		=> fileObject switch {
 			ExternalFile externalFile => externalFile.External.Url,
 			UploadedFile uploadedFile => uploadedFile.File.Url,
-			_ => throw new NotSupportedException(pageParent.GetType().ToString())
+			_ => throw new NotSupportedException(fileObject.GetType().ToString())
 		};
 
 
-	public static void SetUrl(this FileObject pageParent, string value)  {
-		switch (pageParent) {
+	public static void SetUrl(this FileObject fileObject, string value)  {
+		switch (fileObject) {
 			case ExternalFile externalFile:
 				externalFile.External.Url = value;
 				break;
@@ -21,7 +21,7 @@ public static class FileObjectExtensions {
 				uploadedFile.File.Url = value;
 				break;
 			default:
-				throw new NotSupportedException(pageParent.GetType().ToString());
+				throw new NotSupportedException(fileObject.GetType().ToString());
 		}
 	}
 

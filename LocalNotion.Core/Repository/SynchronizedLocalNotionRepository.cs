@@ -114,10 +114,14 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		using (EnterWriteScope())
 			await InternalRepository.Clean();
 	}
-
-	public override bool TryGetObject(string objectId, out IFuture<IObject> @object) {
+	public override bool ContainsObject(string objectID) {
 		using (EnterReadScope()) 
-			return base.TryGetObject(objectId, out @object);
+			return base.ContainsObject(objectID);
+	}
+
+	public override bool TryGetObject(string objectID, out IObject @object) {
+		using (EnterReadScope()) 
+			return base.TryGetObject(objectID, out @object);
 	}
 
 	public override void AddObject(IObject @object) {
@@ -125,9 +129,9 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.AddObject(@object);
 	}
 
-	public override void DeleteObject(string objectId) {
+	public override void RemoveObject(string objectID) {
 		using (EnterWriteScope()) 
-			base.DeleteObject(objectId);
+			base.RemoveObject(objectID);
 	}
 
 	public override bool ContainsResource(string resourceID) {
@@ -155,12 +159,17 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.AddResource(resource);
 	}
 
-	public override void DeleteResource(string resourceID) {
+	public override void RemoveResource(string resourceID) {
 		using (EnterWriteScope())
-			base.DeleteResource(resourceID);
+			base.RemoveResource(resourceID);
 	}
 
-	public override bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page) {
+	public override bool ContainsResourceGraph(string objectID) {
+		using (EnterReadScope())
+			return base.ContainsResourceGraph(objectID);
+	}
+
+	public override bool TryGetResourceGraph(string resourceID, out NotionObjectGraph page) {
 		using (EnterReadScope()) 
 			return TryGetResourceGraph(resourceID, out page);
 	}
@@ -170,9 +179,9 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.AddResourceGraph(resourceID, pageGraph);
 	}
 
-	public override void DeleteResourceGraph(string resourceID) {
+	public override void RemoveResourceGraph(string resourceID) {
 		using (EnterWriteScope()) 
-			base.DeleteResourceGraph(resourceID);
+			base.RemoveResourceGraph(resourceID);
 	}
 
 	public override string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {
@@ -180,9 +189,9 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			return base.ImportResourceRender(resourceID, renderType, renderedFile);
 	}
 
-	public override void DeleteResourceRender(string resourceID, RenderType renderType) {
+	public override void RemoveResourceRender(string resourceID, RenderType renderType) {
 		using (EnterWriteScope()) 
-			base.DeleteResourceRender(resourceID, renderType);
+			base.RemoveResourceRender(resourceID, renderType);
 	}
 
 	public override string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {

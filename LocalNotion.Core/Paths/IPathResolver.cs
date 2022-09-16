@@ -40,7 +40,7 @@ public interface IPathResolver {
 	/// </summary>
 	/// <param name="pathType">Absolute ore Relative</param>
 	/// <returns>Path to the registry file</returns>
-	string GetResourceFolderPath(LocalNotionResourceType resourceType, string resourceId, FileSystemPathType pathType);
+	string GetResourceFolderPath(LocalNotionResourceType resourceType, string resourceID, FileSystemPathType pathType);
 
 	/// <summary>
 	/// Gets the path to the object folder. When <paramref name="pathType" /> is <see cref="FileSystemPathType.Relative"/> the path is relative to

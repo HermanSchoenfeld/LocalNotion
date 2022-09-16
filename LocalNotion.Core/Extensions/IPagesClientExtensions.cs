@@ -22,14 +22,14 @@ public static class IPagesClientExtensions  {
 		return new(page, kvps);
 	}
 
-	public static async IAsyncEnumerable<KeyValuePair<string, IPropertyItemObject>> EnumeratePagePropertiesAsync(this IPagesClient pagesClient, string pageId, IEnumerable<string> propertyIds, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+	public static async IAsyncEnumerable<KeyValuePair<string, IPropertyItemObject>> EnumeratePagePropertiesAsync(this IPagesClient pagesClient, string pageID, IEnumerable<string> propertyIds, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 		foreach(var propertyId in propertyIds) 
-			yield return await pagesClient.RetrievePagePropertyItemCompleteAsync(pageId, propertyId, cancellationToken);
+			yield return await pagesClient.RetrievePagePropertyItemCompleteAsync(pageID, propertyId, cancellationToken);
 	}
 
-	public static async Task<KeyValuePair<string, IPropertyItemObject>> RetrievePagePropertyItemCompleteAsync(this IPagesClient pagesClient, string pageId, string propertyId, CancellationToken cancellationToken = default) {
+	public static async Task<KeyValuePair<string, IPropertyItemObject>> RetrievePagePropertyItemCompleteAsync(this IPagesClient pagesClient, string pageID, string propertyId, CancellationToken cancellationToken = default) {
 		var parameters = new RetrievePropertyItemParameters();
-		parameters.PageId = pageId;
+		parameters.PageId = pageID;
 		parameters.PropertyId = propertyId;
 		var searchResult = await pagesClient.RetrievePagePropertyItem(parameters).WithCancellationToken(cancellationToken);
 

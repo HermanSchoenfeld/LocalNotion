@@ -3,10 +3,12 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
+public interface ILocalNotionRepository  {
 
 	event EventHandlerEx<object> Changing;
 	event EventHandlerEx<object> Changed;
+	event EventHandlerEx<object> Loading;
+	event EventHandlerEx<object> Loaded;
 	event EventHandlerEx<object> Saving;
 	event EventHandlerEx<object> Saved;
 	event EventHandlerEx<object> Clearing;
@@ -36,33 +38,43 @@ public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
 
 	IEnumerable<LocalNotionResource> Resources { get; }
 
+	bool RequiresLoad { get; }
+
+	bool RequiresSave { get; }
+
 	Task Load();
 
 	Task Save();
-
+	
 	Task Clear();
 
 	Task Clean();
 
-	bool TryGetObject(string objectId, out IFuture<IObject> @object);
+	bool ContainsObject(string objectID);
+
+	bool TryGetObject(string objectID, out IObject @object);
 
 	void AddObject(IObject @object);
 
-	void DeleteObject(string objectId);
+	//void UpdateObject(IObject @object);
 
-	bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page);
+	void RemoveObject(string objectID);
+
+	bool ContainsResourceGraph(string objectID);
+
+	bool TryGetResourceGraph(string resourceID, out NotionObjectGraph graph);
 
 	void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph);
 
-	void DeleteResourceGraph(string resourceID);
+	void RemoveResourceGraph(string resourceID);
 
 	bool ContainsResource(string resourceID);
 
-	bool TryGetResource(string resourceId, out LocalNotionResource resource);
+	bool TryGetResource(string resourceID, out LocalNotionResource resource);
 
 	void AddResource(LocalNotionResource resource);
 
-	void DeleteResource(string resourceID);
+	void RemoveResource(string resourceID);
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 
@@ -70,7 +82,7 @@ public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
 	
 	string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile);
 
-	void DeleteResourceRender(string resourceID, RenderType renderType);
+	void RemoveResourceRender(string resourceID, RenderType renderType);
 
 	string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename);
 
@@ -79,11 +91,11 @@ public interface ILocalNotionRepository : IAsyncLoadable, IAsyncSaveable {
 
 public static class ILocalNotionRepositoryExtensions {
 
-	public static bool ContainsResource(this ILocalNotionRepository repository, string objectId)
-		=> repository.TryGetResource(objectId, out _); // WARN: potentially expensive
+	public static IScope EnterUpdateScope(this ILocalNotionRepository repository) 
+		=> new AsyncCallContextScope(repository.Save, default, CallContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
 
-	public static LocalNotionResource GetResource(this ILocalNotionRepository repository, string objectId)
-		=> repository.TryGetResource(objectId, out var resource) ? resource : throw new InvalidOperationException($"Resource '{objectId}' not found");
+	public static LocalNotionResource GetResource(this ILocalNotionRepository repository, string objectID)
+		=> repository.TryGetResource(objectID, out var resource) ? resource : throw new InvalidOperationException($"Resource '{objectID}' not found");
 
 	public static IDictionary<string, IObject> LoadObjects(this ILocalNotionRepository repository, NotionObjectGraph graph)
 		=> graph
@@ -92,17 +104,11 @@ public static class ILocalNotionRepositoryExtensions {
 			.Select(repository.GetObject)
 			.ToDictionary(x => x.Id, x => x);
 
-	public static bool ContainsObject(this ILocalNotionRepository repository, string objectId)
-		=> repository.TryGetObject(objectId, out _);
+	public static IObject GetObject(this ILocalNotionRepository repository, string objectID)
+		=> repository.TryGetObject(objectID, out var @object) ? @object : throw new InvalidOperationException($"Object '{objectID}' not found");
 
-	public static IObject GetObject(this ILocalNotionRepository repository, string objectId)
-		=> repository.TryGetObject(objectId, out var @object) ? @object.Value : throw new InvalidOperationException($"Object '{objectId}' not found");
-
-	public static bool ContainsPageGraph(this ILocalNotionRepository repository, string pageId)
-		=> repository.TryGetResourceGraph(pageId, out _);
-
-	public static NotionObjectGraph GetPageGraph(this ILocalNotionRepository repository, string pageId)
-		=> repository.TryGetResourceGraph(pageId, out var pageGraph) ? pageGraph.Value : throw new InvalidOperationException($"Page '{pageId}' not found");
+	public static NotionObjectGraph GetPageGraph(this ILocalNotionRepository repository, string pageID)
+		=> repository.TryGetResourceGraph(pageID, out var pageGraph) ? pageGraph : throw new InvalidOperationException($"Page '{pageID}' not found");
 
 	public static bool TryGetPage(this ILocalNotionRepository repository, string pageID, out LocalNotionPage page) {
 		page = null;
@@ -141,8 +147,8 @@ public static class ILocalNotionRepositoryExtensions {
 		repository.ImportResourceRender(resourceID, renderType, tmpFile);
 	}
 
-	public static IEnumerable<LocalNotionResource> GetResourceAncestry(this ILocalNotionRepository repository, string resourceId) {
-		var resource = repository.GetResource(resourceId);;
+	public static IEnumerable<LocalNotionResource> GetResourceAncestry(this ILocalNotionRepository repository, string resourceID) {
+		var resource = repository.GetResource(resourceID);;
 		do {
 			yield return resource;;
 		} while (repository.TryGetResource(resource.ParentResourceID, out resource));

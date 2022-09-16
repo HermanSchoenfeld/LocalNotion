@@ -74,15 +74,17 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual Task Clean() => throw new NotSupportedException();
 
-	public virtual bool TryGetObject(string objectId, out IFuture<IObject> @object) => InternalRepository.Value.TryGetObject(objectId, out @object);
+	public bool ContainsObject(string objectID) => InternalRepository.Value.ContainsObject(objectID);
+
+	public virtual bool TryGetObject(string objectID, out IObject @object) => InternalRepository.Value.TryGetObject(objectID, out @object);
 
 	public virtual void AddObject(IObject @object) => throw new NotSupportedException();
 
-	public virtual void DeleteObject(string objectId) => throw new NotSupportedException();
+	public virtual void RemoveObject(string objectID) => throw new NotSupportedException();
 
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.Value.ContainsResource(resourceID);
 
-	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceId, out resource);
+	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceID, out resource);
 
 	public bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 
@@ -91,17 +93,19 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.Value.AddResource(resource);
 
-	public virtual void DeleteResource(string resourceID) => throw new NotSupportedException();
+	public virtual void RemoveResource(string resourceID) => throw new NotSupportedException();
 
-	public virtual bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page) => InternalRepository.Value.TryGetResourceGraph(resourceID, out page);
+	public virtual bool ContainsResourceGraph(string objectID) => InternalRepository.Value.ContainsResourceGraph(objectID);
+
+	public virtual bool TryGetResourceGraph(string resourceID, out NotionObjectGraph page) => InternalRepository.Value.TryGetResourceGraph(resourceID, out page);
 
 	public virtual void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) => InternalRepository.Value.AddResourceGraph(resourceID, pageGraph);
 
-	public virtual void DeleteResourceGraph(string resourceID) => throw new NotSupportedException();
+	public virtual void RemoveResourceGraph(string resourceID) => throw new NotSupportedException();
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) => throw new NotSupportedException();
 
-	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) => throw new NotSupportedException();
+	public virtual void RemoveResourceRender(string resourceID, RenderType renderType) => throw new NotSupportedException();
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.Value.CalculateRenderSlug(resource, render, renderedFilename);
 

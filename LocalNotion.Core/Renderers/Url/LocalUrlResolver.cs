@@ -11,7 +11,7 @@ public class LocalUrlResolver : UrlResolverBase {
 	public LocalUrlResolver(ILocalNotionRepository repository) : base(repository) {
 	}
 
-	public override bool TryResolveLinkToResource(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
+	public override bool TryResolve(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
 		url = default;
 
 		if (from.ID == toResourceID) {

@@ -90,6 +90,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				ToggleBlock x => Render(x),
 				UnsupportedBlock x => RenderUnsupported(x),
 				VideoBlock x => Render(x),
+				LinkPreviewBlock x => RenderUnsupported(x),
 				_ => throw new ArgumentOutOfRangeException()
 			};
 		} finally {
@@ -112,6 +113,12 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	}
 
 	protected abstract TOutput Merge(IEnumerable<TOutput> outputs);
+
+	protected string SanitizeUrl(string url) {
+		if (LocalNotionRenderLink.TryParse(url, out var link))  
+			return Resolver.Resolve(Page, link.ResourceID, link.RenderType, out _);
+		return url;
+	}
 
 	#region Base renderers
 
@@ -177,7 +184,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 					RenderVideoEmbed(block, externalFile.External.Url);
 			}
 			case UploadedFile uploadedFile: {
-				var url = Resolver.ResolveUploadedFileUrl(Page, uploadedFile, out _);
+				var url = Resolver.ResolveResourceRender(Page, uploadedFile, out _);
 				return RenderVideoEmbed(block, url);
 			}
 			default:
@@ -308,6 +315,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 		=> Render(block, BreadCrumbGenerator.CalculateBreadcrumb(Page));
 
 	protected abstract TOutput Render(BreadcrumbBlock block, BreadCrumb breadcrumb);
+	
 	protected virtual TOutput Render(IEnumerable<BulletedListItemBlock> bullets) 
 		=> Merge(bullets.Select((b, i) => Render(i+1, b)));
 

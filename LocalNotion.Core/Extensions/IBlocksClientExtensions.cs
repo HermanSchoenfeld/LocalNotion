@@ -19,14 +19,14 @@ public static class IBlocksClientExtensions {
 		} while (searchResult.HasMore);
 	}
 
-	public static async Task<NotionObjectGraph> GetObjectGraph(this IBlocksClient blocksClient, string objectId, IDictionary<string, IObject> objects) {
+	public static async Task<NotionObjectGraph> GetObjectGraph(this IBlocksClient blocksClient, string objectID, IDictionary<string, IObject> objects) {
 		var root = new NotionObjectGraph {
-			ObjectID =	objectId,
+			ObjectID =	objectID,
 			Children = Array.Empty<NotionObjectGraph>()
 		};
 		
-		var rootObject = objects.TryGetValue(objectId, out var x) ? x : await blocksClient.RetrieveAsync(objectId);
-		objects[objectId] = rootObject;
+		var rootObject = objects.TryGetValue(objectID, out var x) ? x : await blocksClient.RetrieveAsync(objectID);
+		objects[objectID] = rootObject;
 
 		if (rootObject is Page or IBlock { HasChildren: true })  // note will not populate child page blocks
 			await PopulateChildren(root);

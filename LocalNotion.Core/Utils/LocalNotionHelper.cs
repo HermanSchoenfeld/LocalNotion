@@ -9,13 +9,13 @@ internal class LocalNotionHelper {
 	public static bool TryCovertObjectIdToGuid(string objectID, out Guid guid)
 		=> Guid.TryParse(objectID, out guid);
 
+	public static bool IsValidObjectID(string objectID) => TryCovertObjectIdToGuid(objectID, out _);
 
 	public static Guid ObjectIdToGuid(string objectID)
 		=> TryCovertObjectIdToGuid(objectID, out var guid) ? guid : throw new ArgumentException($"Not a validly formatted object ID '{objectID}'", nameof(objectID));
 
 	public static string ObjectGuidToId(Guid guid)
 		=> guid.ToString().Trim("{}".ToCharArray());
-
 
 	public static bool TryParseNotionFileUrl(string url, out string resourceID, out string filename) {
 		resourceID = filename = null;

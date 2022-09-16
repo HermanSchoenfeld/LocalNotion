@@ -56,33 +56,37 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual Task Clean() => InternalRepository.Clean();
 
-	public virtual bool TryGetObject(string objectId, out IFuture<IObject> @object) => InternalRepository.TryGetObject(objectId, out @object);
+	public virtual bool ContainsObject(string objectID) => InternalRepository.ContainsObject(objectID);
+
+	public virtual bool TryGetObject(string objectID, out IObject @object) => InternalRepository.TryGetObject(objectID, out @object);
 
 	public virtual void AddObject(IObject @object) => InternalRepository.AddObject(@object);
 
-	public virtual void DeleteObject(string objectId) => InternalRepository.DeleteObject(objectId);
+	public virtual void RemoveObject(string objectID) => InternalRepository.RemoveObject(objectID);
 
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.ContainsResource(resourceID);
 
 	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) => InternalRepository.TryFindRenderBySlug(slug, out resourceID, out renderType);
 
-	public virtual bool TryGetResource(string resourceId, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceId, out resource);
+	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceID, out resource);
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.ContainsResourceRender(resourceID, renderType);
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.AddResource(resource);
 
-	public virtual void DeleteResource(string resourceID) => InternalRepository.DeleteResource(resourceID);
+	public virtual void RemoveResource(string resourceID) => InternalRepository.RemoveResource(resourceID);
 
-	public virtual bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page)=> InternalRepository.TryGetResourceGraph(resourceID, out page);
+	public virtual bool ContainsResourceGraph(string objectID) => InternalRepository.ContainsResourceGraph(objectID);
+
+	public virtual bool TryGetResourceGraph(string resourceID, out NotionObjectGraph graph)=> InternalRepository.TryGetResourceGraph(resourceID, out graph);
 
 	public virtual void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) => InternalRepository.AddResourceGraph(resourceID, pageGraph);
 
-	public virtual void DeleteResourceGraph(string resourceID) => InternalRepository.DeleteResourceGraph(resourceID);
+	public virtual void RemoveResourceGraph(string resourceID) => InternalRepository.RemoveResourceGraph(resourceID);
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) => InternalRepository.ImportResourceRender(resourceID, renderType, renderedFile);
 
-	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) => InternalRepository.DeleteResourceRender(resourceID, renderType);
+	public virtual void RemoveResourceRender(string resourceID, RenderType renderType) => InternalRepository.RemoveResourceRender(resourceID, renderType);
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.CalculateRenderSlug(resource, render, renderedFilename);
 

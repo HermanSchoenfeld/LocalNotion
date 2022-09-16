@@ -18,6 +18,9 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		Mode = mode;
 		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderMode = renderMode;
+
+	
+		// Resolve all the theme tokens
 		_tokens =
 			GetModeCorrectedTokens(Theme)
 			.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
@@ -61,16 +64,16 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		 => emojiObject.Emoji;
 
 	protected override string Render(ExternalFile externalFile)
-		=> externalFile.External.Url;
+		=> SanitizeUrl(externalFile.External.Url);
 
 	protected override string Render(UploadedFile uploadedFile)
-		 => Resolver.ResolveUploadedFileUrl(Page, uploadedFile, out _);
+		 => Resolver.ResolveResourceRender(Page, uploadedFile, out _);
 
 	protected override string Render(Link link)
 		=> RenderTemplate(
 				"text_link",
 				new NotionObjectTokens {
-					["url"] = link.Url,
+					["url"] = SanitizeUrl(link.Url),
 					["text"] = link.Url,
 				}
 			);
@@ -150,8 +153,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"page" => RenderTemplate(
 				"text_link",   // should be page_link (use svg's)
 				new NotionObjectTokens {
-					["url"] = Resolver.TryResolveLinkToResource(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
-					["text"] = Resolver.TryResolveLinkToResource(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
+					["url"] = Resolver.TryResolve(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
+					["text"] = Resolver.TryResolve(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
 				}
 			),
 			"database" => $"[{text.Mention.Type}]{text.Mention.Database.Id}",
@@ -168,7 +171,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				return RenderTemplate(
 					"text_link",
 					new NotionObjectTokens {
-						["url"] = link,
+						["url"] = SanitizeUrl(link),
 						["text"] = RenderInternal(null, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color, content)
 					}
 				);
@@ -332,7 +335,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						_ => RenderTemplate(
 								"cover",
 								new NotionObjectTokens {
-									["cover_url"] = this.Page.Cover ?? string.Empty,
+									["cover_url"] = SanitizeUrl(this.Page.Cover) ?? string.Empty,
 								}
 							)
 					},
@@ -347,7 +350,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						ThumbnailType.Image => RenderTemplate(
 							this.Page.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
 							new NotionObjectTokens {
-								["thumbnail_url"] = this.Page.Thumbnail.Data
+								["thumbnail_url"] = SanitizeUrl(this.Page.Thumbnail.Data)
 							}
 						),
 					},
@@ -419,7 +422,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 							  ["type"] = item.Type.GetAttribute<EnumMemberAttribute>().Value,
 							  ["data"] = item.Data,
 							  ["text"] = item.Text,
-							  ["url"] = item.Url,
+							  ["url"] = SanitizeUrl(item.Url),
 							  ["icon"] = item.Traits.HasFlag(BreadCrumbItemTraits.HasEmojiIcon) ?
 								   RenderTemplate(
 									   "icon_emoji",
@@ -489,7 +492,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderUnsupported(block);
 
 	protected override string Render(ChildPageBlock block) {
-		if (!Resolver.TryResolveLinkToResource(Page, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
+		if (!Resolver.TryResolve(Page, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved child page {block.Id}";
 
 
@@ -506,12 +509,12 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
 													"icon_image",
 													 new NotionObjectTokens(block) {
-														 ["url"] = localNotionPage.Thumbnail.Data
+														 ["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
 													 }
 												),
 						_ => string.Empty
 					},
-					["url"] = childPageUrl,
+					["url"] = SanitizeUrl(childPageUrl),
 					["title"] = block.ChildPage.Title,
 					["indicator"] = string.Empty,
 				}
@@ -651,7 +654,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			new NotionObjectTokens(block) {
 				["filename"] = filename,
 				["caption"] = Render(block.File.Caption),
-				["url"] = url,
+				["url"] = SanitizeUrl(url),
 				["size"] = string.Empty,
 			}
 		);
@@ -694,7 +697,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 
 	protected override string Render(LinkToPageBlock block) {
-		if (!Resolver.TryResolveLinkToResource(Page, block.LinkToPage.GetId(), RenderType.HTML, out var childPageUrl, out var resource))
+		if (!Resolver.TryResolve(Page, block.LinkToPage.GetId(), RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved page {block.LinkToPage.GetId()}";
 
 		return RenderTemplate(
@@ -715,7 +718,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 												),
 						_ => string.Empty
 					},
-					["url"] = childPageUrl,
+					["url"] = SanitizeUrl(childPageUrl),
 					["title"] = resource.Title,
 					["indicator"] = RenderTemplate("indicator_link")
 				}
@@ -823,7 +826,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderTemplate(
 			"embed_twitter",
 			new NotionObjectTokens(embedBlock) {
-				["url"] = embedBlock.Embed.Url,
+				["url"] = SanitizeUrl(embedBlock.Embed.Url),
 				["caption"] = Render(embedBlock.Embed.Caption)
 			}
 		);

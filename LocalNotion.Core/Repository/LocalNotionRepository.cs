@@ -9,7 +9,7 @@ namespace LocalNotion.Core;
 
 
 // Make ThreadSafe
-public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAsyncSaveable {
+public class LocalNotionRepository : ILocalNotionRepository {
 
 	public event EventHandlerEx<object> Loading;
 	public event EventHandlerEx<object> Loaded;
@@ -174,7 +174,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		var pathResolver = new PathResolver(Path.GetFullPath(registry.Paths.RepositoryPathR, Path.GetDirectoryName(registryPath)), registry.Paths);
 		await RemoveInternal(pathResolver, logger);
 		
-		// Delete any dangling renders
+		// Remove any dangling renders
 		foreach(var render in registry.Resources.SelectMany(x => x.Renders.Values).Select(x=>x.LocalPath)) {
 			var fullRenderPath = Path.Combine(pathResolver.GetRepositoryPath(FileSystemPathType.Absolute), render);
 			if (File.Exists(fullRenderPath)) {
@@ -184,38 +184,6 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 				} catch (Exception error) {
 					logger.Exception(error);
 				}
-			}
-		}
-	}
-
-	private static async Task RemoveInternal(IPathResolver pathResolver, ILogger logger = null) {
-		logger ??= new NoOpLogger();
-
-		var registryFile = pathResolver.GetRegistryFilePath(FileSystemPathType.Absolute);
-		
-		// Cleanup parent folder
-		var registryParentFolder = Tools.FileSystem.GetParentDirectoryPath(registryFile);
-		if (Directory.Exists(registryParentFolder) && !Tools.FileSystem.IsDirectoryEmpty(registryParentFolder)) {
-			logger.Info($"Removing {registryParentFolder}");
-			await Tools.FileSystem.DeleteDirectoryAsync(registryParentFolder);
-		}
-		
-		// Delete resource paths if exists
-		var repoPath = Tools.FileSystem.GetCaseCorrectDirectoryPath(pathResolver.GetRepositoryPath(FileSystemPathType.Absolute));
-		foreach(var resourceType in Enum.GetValues<LocalNotionResourceType>()) {
-			var resourceTypePath = pathResolver.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute);
-			if (Directory.Exists(resourceTypePath) && Tools.FileSystem.GetCaseCorrectDirectoryPath(resourceTypePath) != repoPath ) {
-				logger.Info($"Removing {resourceTypePath}");
-				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
-			}
-		}
-
-		// Delete internal resource paths if exists
-		foreach(var internalResourceType in Enum.GetValues<InternalResourceType>()) {
-			var resourceTypePath = pathResolver.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Absolute);
-			if (Directory.Exists(resourceTypePath) && !Tools.FileSystem.IsDirectoryEmpty(resourceTypePath)) {
-				logger.Info($"Removing {resourceTypePath}");
-				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
 			}
 		}
 	}
@@ -239,6 +207,9 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 	public async Task Load() {
 		CheckNotLoaded();
 		Guard.FileExists(_registryPath);
+
+		// First check for unfinished transaction
+		await SaveInternal_CompleteUnfinishedPhase(_registryPath);
 
 		// load the registry
 		_registry = await Task.Run(() => Tools.Json.ReadFromFile<LocalNotionRegistry>(_registryPath));
@@ -279,9 +250,15 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 	public async Task Save() {
 		CheckLoaded();
+		if (!RequiresSave)
+			return;
+		// 3-phased save approach ensures registry never corrupted if process abandoned mid-way
+		// note: Load will complete mid-run saves
 		var registryFile = Paths.GetRegistryFilePath(FileSystemPathType.Absolute);
-		await Task.Run(() => Tools.Json.WriteToFile(registryFile, _registry));
-		RequiresSave = false;
+		Guard.FileExists(registryFile);
+		await SaveInternal_PersistPhase(registryFile);
+		await SaveInternal_OverwritePhase(registryFile);
+		await SaveInternal_CleanPhase(registryFile);
 	}
 
 	public async Task Clear() {
@@ -290,7 +267,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		try {
 			await Task.Run(() =>_objectStore.Clear());
 			await Task.Run(() => _graphStore.Clear());
-			await Task.Run(() => Resources.Select(r => r.ID).ToArray().ForEach(DeleteResource));
+			await Task.Run(() => Resources.Select(r => r.ID).ToArray().ForEach(RemoveResource));
 			if (RequiresSave)
 				await Save();
 		} finally {
@@ -356,14 +333,20 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 			await Save();
 	}
 
-	public bool TryGetObject(string objectId, out IFuture<IObject> @object) {
+	public bool ContainsObject(string objectID) {
 		CheckLoaded();
-		var path = _objectStore.GetFilePath(objectId);
+		var path = _objectStore.GetFilePath(objectID);
+		return File.Exists(path);
+	}
+
+	public bool TryGetObject(string objectID, out IObject @object) {
+		CheckLoaded();
+		var path = _objectStore.GetFilePath(objectID);
 		if (!File.Exists(path)) {
 			@object = null;
 			return false;
 		}
-		@object = LazyLoad<IObject>.From(() => Tools.Json.ReadFromFile<IObject>(path));
+		@object = Tools.Json.ReadFromFile<IObject>(path);
 		return true;
 	}
 
@@ -373,18 +356,23 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		Tools.Json.WriteToFile(_objectStore.GetFilePath(@object.Id), @object);
 	}
 
-	public virtual void DeleteObject(string objectId) {
+	public virtual void RemoveObject(string objectID) {
 		CheckLoaded();
-		_objectStore.Delete(objectId);
+		_objectStore.Delete(objectID);
 	}
 
-	public virtual bool TryGetResourceGraph(string resourceID, out IFuture<NotionObjectGraph> page) {
+	public virtual bool ContainsResourceGraph(string resourceID) {
+		CheckLoaded();
+		return _graphStore.ContainsFile(resourceID);
+	}
+
+	public virtual bool TryGetResourceGraph(string resourceID, out NotionObjectGraph graph) {
 		CheckLoaded();
 		if (!_graphStore.ContainsFile(resourceID)) {
-			page = default;
+			graph = default;
 			return false;
 		}
-		page = LazyLoad<NotionObjectGraph>.From(() => Tools.Json.ReadFromFile<NotionObjectGraph>(_graphStore.GetFilePath(resourceID)));
+		graph = Tools.Json.ReadFromFile<NotionObjectGraph>(_graphStore.GetFilePath(resourceID));
 		return true;
 	}
 
@@ -397,7 +385,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		Tools.Json.WriteToFile(_graphStore.GetFilePath(resourceID), pageGraph);
 	}
 
-	public virtual void DeleteResourceGraph(string resourceID) {
+	public virtual void RemoveResourceGraph(string resourceID) {
 		CheckLoaded();
 		_graphStore.Delete(resourceID);
 	}
@@ -451,7 +439,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		NotifyResourceAdded(resource);
 	}
 
-	public virtual void DeleteResource(string resourceID) {
+	public virtual void RemoveResource(string resourceID) {
 		CheckLoaded();
 		Guard.ArgumentNotNullOrWhitespace(resourceID, nameof(resourceID));
 		if (!_resourcesByNID.TryGetValue(resourceID, out var resource))
@@ -459,29 +447,29 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 		NotifyResourceRemoving(resourceID);
 		
-		// Delete resource renders
+		// Remove resource renders
 		foreach(var render in resource.Renders)
-			DeleteResourceRenderInternal(resource, render.Key, render.Value);
+			RemoveResourceRenderInternal(resource, render.Key, render.Value);
 
-		// Delete resource folder if any
+		// Remove resource folder if any
 		if (Paths.UsesObjectIDSubFolders(resource.Type)) {
 			var resourceFolderPath = Paths.GetResourceFolderPath(resource.Type, resource.ID, FileSystemPathType.Absolute);
 			if (Directory.Exists(resourceFolderPath))
 				Tools.FileSystem.DeleteDirectory(resourceFolderPath);
 		}
 
-		// Delete graph
+		// Remove graph
 		if (_graphStore.ContainsFile(resourceID))
 			_graphStore.Delete(resourceID);
 
-		// Delete any attached files if applicable
+		// Remove any attached files if applicable
 		if (resource is LocalNotionPage page) {
 			if (page.Thumbnail.Type == ThumbnailType.Image && TryFindRenderBySlug(page.Thumbnail.Data, out var attachedFile, out _)) 
 				// TODO: reference count decrease (when added)
-				DeleteResource(attachedFile);
+				RemoveResource(attachedFile);
 			
 			if (!string.IsNullOrWhiteSpace(page.Cover) && TryFindRenderBySlug(page.Cover, out  attachedFile, out _))
-				DeleteResource(attachedFile);
+				RemoveResource(attachedFile);
 		}
 
 		RequiresSave = true;
@@ -550,24 +538,23 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 
 	}
 
-	public virtual void DeleteResourceRender(string resourceID, RenderType renderType) {
+	public virtual void RemoveResourceRender(string resourceID, RenderType renderType) {
 		CheckLoaded();
 		var resource = this.GetResource(resourceID);
 		if (!resource.Renders.TryGetValue(renderType, out var render))
 			return;
 		NotifyResourceUpdating(resourceID);
-		DeleteResourceRenderInternal(resource, renderType, render);
+		RemoveResourceRenderInternal(resource, renderType, render);
 		NotifyResourceUpdated(resource);
 	}
 
 	public string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {
-			
 		var slugBuilder = new List<string>();
-		var resourceTypeFolder = Paths.GetResourceTypeFolderPath(resource.Type, FileSystemPathType.Relative);
 
 		// Add resource type folder part (if has one)
+		var resourceTypeFolder = Paths.GetResourceTypeFolderPath(resource.Type, FileSystemPathType.Relative);
 		if (!string.IsNullOrWhiteSpace(resourceTypeFolder))
-			slugBuilder.Add(LocalNotionHelper.SanitizeSlug(Tools.FileSystem.GetParentDirectoryName(renderedFilename)));
+			slugBuilder.Add(resourceTypeFolder);
 			
 		// Add object if folder (if has one)
 		if (Paths.UsesObjectIDSubFolders(resource.Type))
@@ -585,7 +572,71 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		return slugBuilder.ToDelimittedString("/");
 	}
 
-	protected void DeleteResourceRenderInternal(LocalNotionResource resource, RenderType renderType, RenderEntry render) {
+	protected async Task SaveInternal_PersistPhase(string registryFile) {
+		var persistFile = registryFile + ".persist";
+		await Task.Run(() => Tools.Json.WriteToFile(persistFile, _registry));
+		var commitFile = registryFile + ".commit";
+		Tools.FileSystem.RenameFile(persistFile, commitFile);
+	}
+
+	protected async Task SaveInternal_OverwritePhase(string registryFile) {
+		var commitFile = registryFile + ".commit";
+		Guard.FileExists(commitFile);
+		await Tools.FileSystem.CopyFileAsync(commitFile, registryFile, true);
+		RequiresSave = false;
+	}
+
+	protected async Task SaveInternal_CleanPhase(string registryFile) {
+		var persistFile = registryFile + ".persist";
+		var commitFile = registryFile + ".commit";
+		if (File.Exists(persistFile))
+			await Tools.FileSystem.DeleteFileAsync(persistFile);
+
+		if (File.Exists(commitFile))
+			await Tools.FileSystem.DeleteFileAsync(commitFile);
+	}
+
+	protected async Task SaveInternal_CompleteUnfinishedPhase(string registryFile) {
+		var commitFile = registryFile + ".commit";
+		if (File.Exists(commitFile)) {
+			await SaveInternal_OverwritePhase(registryFile);
+		}
+		await SaveInternal_CleanPhase(registryFile);
+	}
+
+	protected static async Task RemoveInternal(IPathResolver pathResolver, ILogger logger = null) {
+		logger ??= new NoOpLogger();
+
+		var registryFile = pathResolver.GetRegistryFilePath(FileSystemPathType.Absolute);
+		
+		// Cleanup parent folder
+		var registryParentFolder = Tools.FileSystem.GetParentDirectoryPath(registryFile);
+		if (Directory.Exists(registryParentFolder) && !Tools.FileSystem.IsDirectoryEmpty(registryParentFolder)) {
+			logger.Info($"Removing {registryParentFolder}");
+			await Tools.FileSystem.DeleteDirectoryAsync(registryParentFolder);
+		}
+		
+		// Remove resource paths if exists
+		var repoPath = Tools.FileSystem.GetCaseCorrectDirectoryPath(pathResolver.GetRepositoryPath(FileSystemPathType.Absolute));
+		foreach(var resourceType in Enum.GetValues<LocalNotionResourceType>()) {
+			var resourceTypePath = pathResolver.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Absolute);
+			if (Directory.Exists(resourceTypePath) && Tools.FileSystem.GetCaseCorrectDirectoryPath(resourceTypePath) != repoPath ) {
+				logger.Info($"Removing {resourceTypePath}");
+				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
+			}
+		}
+
+		// Remove internal resource paths if exists
+		foreach(var internalResourceType in Enum.GetValues<InternalResourceType>()) {
+			var resourceTypePath = pathResolver.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Absolute);
+			if (Directory.Exists(resourceTypePath) && !Tools.FileSystem.IsDirectoryEmpty(resourceTypePath)) {
+				logger.Info($"Removing {resourceTypePath}");
+				await Tools.FileSystem.DeleteDirectoryAsync(resourceTypePath);
+			}
+		}
+	}
+
+	protected void RemoveResourceRenderInternal(LocalNotionResource resource, RenderType renderType, RenderEntry render) {
 		var fileToDelete = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
 		if (File.Exists(fileToDelete))
 			File.Delete(fileToDelete);
@@ -602,7 +653,7 @@ public class LocalNotionRepository : ILocalNotionRepository, IAsyncLoadable, IAs
 		var visited = new HashSet<string>();
 		while(!visited.Contains(objectID) && TryGetObject(objectID, out var obj)) {
 			visited.Add(objectID);
-			if (obj.Value.TryGetParent(out var parent)) {
+			if (obj.TryGetParent(out var parent)) {
 				switch(parent.Type) {
 					case ParentType.DatabaseId:
 					case ParentType.PageId:
