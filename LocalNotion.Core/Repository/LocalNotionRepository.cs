@@ -153,20 +153,26 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		return repo;
 	}
 
-	public static async Task Remove(string repoPath, ILogger logger = null) {
+	public static async Task<bool> Remove(string repoPath, ILogger logger = null) {
 		Guard.ArgumentNotNullOrEmpty(repoPath, nameof(repoPath));
 		Guard.DirectoryExists(repoPath);
 		logger ??= new NoOpLogger();
-		var registryFilePath = Path.Join(repoPath, LocalNotionPathProfile.Default.RegistryPathR);
-		if (File.Exists(registryFilePath))
-			await RemoveUsingRegistry(registryFilePath, logger);
+		var registryFilePath = Path.Join(repoPath, LocalNotionPathProfile.Default.RegistryPathR).ToUnixPath();
+		var removedSomething = false;
+		if (File.Exists(registryFilePath)) {
+			await RemoveViaRegistry(registryFilePath, logger);
+			removedSomething = true;
+		}
 
-		var registryParentFolder = Path.Join(repoPath, Tools.FileSystem.GetParentDirectoryPath(registryFilePath));
-		if (Directory.Exists(registryParentFolder))
+		var registryParentFolder = Tools.FileSystem.GetParentDirectoryPath(registryFilePath);
+		if (Directory.Exists(registryParentFolder) && registryParentFolder != repoPath) {
 			await Tools.FileSystem.DeleteDirectoryAsync(registryParentFolder); // this can happen if registry file is deleted but this folder was left
+			removedSomething = true;
+		}
+		return removedSomething;
 	}
 
-	public static async Task RemoveUsingRegistry(string registryPath, ILogger logger = null) {
+	public static async Task RemoveViaRegistry(string registryPath, ILogger logger = null) {
 		Guard.ArgumentNotNull(registryPath, nameof(registryPath));
 		Guard.FileExists(registryPath);
 		logger ??= new NoOpLogger();
@@ -335,8 +341,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public bool ContainsObject(string objectID) {
 		CheckLoaded();
-		var path = _objectStore.GetFilePath(objectID);
-		return File.Exists(path);
+		return _objectStore.ContainsFile(objectID);
 	}
 
 	public bool TryGetObject(string objectID, out IObject @object) {
@@ -353,7 +358,14 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	public void AddObject(IObject @object) {
 		CheckLoaded();
 		_objectStore.RegisterFile(@object.Id);
-		Tools.Json.WriteToFile(_objectStore.GetFilePath(@object.Id), @object);
+		Tools.Json.WriteToFile(_objectStore.GetFilePath(@object.Id), @object, FileMode.Create);  // note: RegisterFile creates a blank file
+	}
+
+	public virtual void UpdateObject(IObject @object) {
+		CheckLoaded();
+		Guard.Ensure(ContainsObject(@object.Id), $"Object not found: {@object.Id}");
+		var filePath = _objectStore.GetFilePath(@object.Id);
+		Tools.Json.WriteToFile(filePath, @object, FileMode.Create);
 	}
 
 	public virtual void RemoveObject(string objectID) {
@@ -376,13 +388,18 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		return true;
 	}
 
-	public virtual void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) {
+	public virtual void AddResourceGraph(NotionObjectGraph pageGraph) {
 		CheckLoaded();
-		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
 		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
-		Guard.Ensure(resourceID == pageGraph.ObjectID, $"Mismatch between argument object identifiers");
-		_graphStore.RegisterFile(resourceID);
-		Tools.Json.WriteToFile(_graphStore.GetFilePath(resourceID), pageGraph);
+		_graphStore.RegisterFile(pageGraph.ObjectID);
+		Tools.Json.WriteToFile(_graphStore.GetFilePath(pageGraph.ObjectID), pageGraph);
+	}
+
+	public virtual void UpdateResourceGraph(NotionObjectGraph graph) {
+		CheckLoaded();
+		Guard.Ensure(ContainsResourceGraph(graph.ObjectID), $"Graph not found: {graph.ObjectID}");
+		var filePath = _graphStore.GetFilePath(graph.ObjectID);
+		Tools.Json.WriteToFile(filePath, graph, FileMode.Create);
 	}
 
 	public virtual void RemoveResourceGraph(string resourceID) {
@@ -437,6 +454,22 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		_registry.Add(resource);
 		_resourcesByNID.Add(resource.ID, resource);
 		NotifyResourceAdded(resource);
+	}
+
+	public virtual void UpdateResource(LocalNotionResource resource) {
+		Guard.ArgumentNotNull(resource, nameof(resource));
+		Guard.Ensure(TryGetResource(resource.ID, out var resourceInstance),"Resource was not found");
+		
+		#warning This needs proper consideration 
+		// Client can provide partially hydrated object
+		// Dangling renders, etc
+		resourceInstance.ID = resource.ID;
+		//resourceInstance.ParentResourceID = resource.ParentResourceID;
+		resourceInstance.Title = resource.Title;
+		//resourceInstance.Renders = resource.Renders;   // due to ImportResourceRender, these should always be consistent!
+		
+		// Don't need to do anything
+		RequiresSave = true;
 	}
 
 	public virtual void RemoveResource(string resourceID) {
@@ -511,11 +544,13 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		NotifyResourceUpdating(resourceID);
 		string resourceRenderPath = null;
 		if (resource.Renders.ContainsKey(renderType)) {
+			// Remove existing render
 			var render = resource.Renders[renderType];
 			resourceRenderPath = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
 			if (File.Exists(resourceRenderPath))
 				File.Delete(resourceRenderPath);
 			resource.Renders.Remove(renderType);
+			_renderBySlug.Remove(render.Slug);
 		}
 
 		// Try to re-use prior render path (in ebook path profiles, we may have conflicting filenames so this ensures same filename is used)

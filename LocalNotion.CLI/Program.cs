@@ -356,9 +356,12 @@ $@"Local Notion Status:
 				}
 			}
 		} else {
-			await LocalNotionRepository.Remove(arguments.Path, consoleLogger);
+			if (await LocalNotionRepository.Remove(arguments.Path, consoleLogger))
+				consoleLogger.Info("Local Notion repository has been removed");
+			else
+				consoleLogger.Warning("No Local Notion repository was found");
 		}
-		consoleLogger.Info("Local Notion repository has been removed");
+		
 		return ERRORCODE_OK;
 	}
 
@@ -528,11 +531,11 @@ $@"Local Notion Status:
 		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] RenderAllPage = new[] { "render", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] Remove = new[] { "remove", "--confirm" };
+		string[] Remove = new[] { "remove", "--all" };
 		string[] HelpInit = new[] { "help", "init" };
-		
+
 		if (args.Length == 0)
-			args = PullPageForce;
+			args = PullCmd;
 #endif
 
 		try {

@@ -96,24 +96,25 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 	}
 
 	public override async Task Load() {
-		using (EnterWriteScope())
+		await using (EnterWriteScope())
 			await InternalRepository.Load();
 	}
 
 	public override async Task Save() {
-		using (EnterWriteScope())
+		await using (EnterWriteScope())
 			await InternalRepository.Save();
 	}
 
 	public override async Task Clear() {
-		using (EnterWriteScope())
+		await using (EnterWriteScope())
 			await InternalRepository.Clear();
 	}
 
 	public override async Task Clean() {
-		using (EnterWriteScope())
+		await using (EnterWriteScope())
 			await InternalRepository.Clean();
 	}
+
 	public override bool ContainsObject(string objectID) {
 		using (EnterReadScope()) 
 			return base.ContainsObject(objectID);
@@ -127,6 +128,11 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 	public override void AddObject(IObject @object) {
 		using (EnterWriteScope()) 
 			base.AddObject(@object);
+	}
+
+	public override void UpdateObject(IObject @object) {
+		using (EnterWriteScope())
+			base.UpdateObject(@object);
 	}
 
 	public override void RemoveObject(string objectID) {
@@ -159,6 +165,11 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.AddResource(resource);
 	}
 
+	public override void UpdateResource(LocalNotionResource resource) {
+		using (EnterWriteScope())
+			base.UpdateResource(resource);
+	}
+
 	public override void RemoveResource(string resourceID) {
 		using (EnterWriteScope())
 			base.RemoveResource(resourceID);
@@ -174,9 +185,9 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			return TryGetResourceGraph(resourceID, out page);
 	}
 
-	public override void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) {
+	public override void AddResourceGraph(NotionObjectGraph pageGraph) {
 		using (EnterWriteScope()) 
-			base.AddResourceGraph(resourceID, pageGraph);
+			base.AddResourceGraph(pageGraph);
 	}
 
 	public override void RemoveResourceGraph(string resourceID) {

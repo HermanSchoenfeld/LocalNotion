@@ -107,44 +107,55 @@ public class NotionSyncOrchestrator {
 			if (!Repository.TryGetPage(pageID, out var localPage) || localPage.LastEditedTime < notionPage.LastEditedTime || forceRefresh) {
 
 				// Hydrate into a LocalNotion page
-				var localNotionPage = LocalNotionHelper.ParsePage(notionPage);
-
-				// Hydrate NotionCMS properties (if applicable)
-				if (NotionCMSHelper.IsCMSPage(notionPage))
-					localNotionPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
+				if (localPage != null)
+					Repository.RemoveResource(localPage.ID);
+				localPage = LocalNotionHelper.ParsePage(notionPage);
 
 				// Fetch page object graph
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({pageID})");
 				var objects = new Dictionary<string, IObject>();
-				objects.Add(notionPage.Id, notionPage); // add root page object (will not fetch it and re-use it)
+				objects.Add(notionPage.Id, notionPage); // add root page object so prevent re-fetching via GetObjectGraph
 				var objectGraph = await NotionClient.Blocks.GetObjectGraph(pageID, objects);
 
-				// Extract a default summary
-				if (localNotionPage.CMSProperties is not null)
-					localNotionPage.CMSProperties.Summary = LocalNotionHelper.ExtractDefaultPageSummary(objectGraph, objects);
+				#region Extract a Notion CMS summaries (and future plugins)
 
+				// Hydrate NotionCMS properties (if applicable)
+				
+				if (NotionCMSHelper.IsCMSPage(notionPage))
+					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
+
+				if (localPage.CMSProperties is not null)
+					localPage.CMSProperties.Summary = LocalNotionHelper.ExtractDefaultPageSummary(objectGraph, objects);
+
+				#endregion
+				 
 				#region Download attached files
+
 				var linkResolver = UrlGeneratorFactory.Create(Repository);
 				// Download cover
-				if (localNotionPage.Cover != null && ShouldDownloadFile(localNotionPage.Cover)) {
+				if (localPage.Cover != null && ShouldDownloadFile(localPage.Cover)) {
 					// Cover is a Notion file
-					var file = await DownloadFile(localNotionPage.Cover, notionPage.Id, forceRefresh);
+					var file = await DownloadFile(localPage.Cover, notionPage.Id, forceRefresh);
 					if (file != null) {
-						localNotionPage.Cover = linkResolver.Resolve(localNotionPage, file.ID, RenderType.File, out _);
-						// update notion object with url (saved locally)
+						localPage.Cover = linkResolver.Resolve(localPage, file.ID, RenderType.File, out _);
+						// update notion object with url (this is a component object and saved with page)
 						notionPage.Cover.SetUrl($"resource://{file.ID}");
+
+						// track new file
 						downloadedResources.Add(file);
 					}
 				}
 
 				// Download thumbnail
-				if (localNotionPage.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localNotionPage.Thumbnail.Data)) {
+				if (localPage.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localPage.Thumbnail.Data)) {
 					// Thumbnail is a Notion file
-					var file = await DownloadFile(localNotionPage.Thumbnail.Data, notionPage.Id, forceRefresh);
+					var file = await DownloadFile(localPage.Thumbnail.Data, notionPage.Id, forceRefresh);
 					if (file != null) {
-						localNotionPage.Thumbnail.Data = linkResolver.Resolve(localNotionPage, file.ID, RenderType.File, out _);
-						// update notion object with url (saved locally)
+						localPage.Thumbnail.Data = linkResolver.Resolve(localPage, file.ID, RenderType.File, out _);
+						// update notion object with url (this is a component object and saved with page)
 						((FileObject)notionPage.Icon).SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
+
+						// track new file
 						downloadedResources.Add(file);
 					}
 				}
@@ -160,36 +171,29 @@ public class NotionSyncOrchestrator {
 
 				foreach (var file in uploadedFiles) {
 					var url = file.GetUrl();
-					if (!ShouldDownloadFile(url))
-						continue;
-
-					var downloadedFile = await DownloadFile(url, notionPage.Id, forceRefresh);
-					if (downloadedFile != null) {
-						file.SetUrl(LocalNotionRenderLink.GenerateUrl(downloadedFile.ID, RenderType.File));
-						downloadedResources.Add(downloadedFile);
+					if (ShouldDownloadFile(url)) {
+						var downloadedFile = await DownloadFile(url, notionPage.Id, forceRefresh);
+						if (downloadedFile != null) {
+							file.SetUrl(LocalNotionRenderLink.GenerateUrl(downloadedFile.ID, RenderType.File));
+							downloadedResources.Add(downloadedFile);
+						}
 					}
 				}
 
 				#endregion
 
+				#region Save Local Notion objects and resources
+
 				// Save notion objects (note: this saves Page object)
-				foreach (var obj in objects.Values) {
-					if (Repository.ContainsObject(obj.Id))
-						Repository.RemoveObject(obj.Id);
-					Repository.AddObject(obj);
-				}
-
-				// Save local notion page resource 
-				if (Repository.ContainsResource(pageID))
-					Repository.RemoveResource(pageID);
-
-				Repository.AddResource(localNotionPage);
-				downloadedResources.Add(localNotionPage);
+				foreach (var obj in objects.Values)
+					Repository.SaveObject(obj);
 
 				// Save the page graph (json file describing the object graph)
-				if (Repository.ContainsResourceGraph(pageID))
-					Repository.RemoveResourceGraph(pageID);
-				Repository.AddResourceGraph(pageID, objectGraph);
+				Repository.SavePageGraph(objectGraph);
+
+				// Save local notion page resource 
+				Repository.AddResource(localPage);
+				downloadedResources.Add(localPage);
 
 				// In order to support cyclic references between parent -> child pages in the case where
 				// no object-id folders are used, we generate blank stub at download time. This is because trying to predict
@@ -199,7 +203,10 @@ public class NotionSyncOrchestrator {
 				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Page))
 					Repository.ImportBlankResourceRender(pageID, renderType);
 
-				// Download any child pages
+				#endregion
+
+				#region Download any child pages
+
 				var childPages =
 					objectGraph
 						.VisitAll()
@@ -212,6 +219,8 @@ public class NotionSyncOrchestrator {
 					var subPageDownloads = await DownloadPage(childPage.Id, render, renderType, renderMode, faultTolerant, forceRefresh);
 					downloadedResources.AddRange(subPageDownloads);
 				}
+
+				#endregion
 
 			} else {
 				Logger.Info($"No changes detected");

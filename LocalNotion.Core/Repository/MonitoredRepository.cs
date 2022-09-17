@@ -10,9 +10,12 @@ using Notion.Client;
 namespace LocalNotion.Repository;
 
 /// <summary>
-/// A readonly <see cref="ILocalNotionRepository"/> implementation that monitors a Local Notion repository via <see cref="FileSystemWatcher"/> and reloads itself when it changes. This is suitable for scenarios where the application
-/// relies on a repository as a read-only data-store but doesn't want to open/close the repo every time it needs a resource (since this is expensive). Instead it loads it once, and on next resource request, it will reload itself if changed.
-public class MonitoredRepo : ILocalNotionRepository {
+/// A readonly <see cref="ILocalNotionRepository"/> implementation that monitors an external Local Notion repository via <see cref="FileSystemWatcher"/>. When
+/// a change is detected on the registry file, this proxy repository reloads itself. A <see cref="MonitoredRepository"/> is useful for scenarios where the
+/// application relies on a repository but does not update it. Thus it only wants read-only access to it. A ASP.NET Core web-application using Local Notion as
+/// a View store is a perfect example.
+/// </summary>
+public class MonitoredRepository : ILocalNotionRepository {
 	public event EventHandlerEx<object> Loading { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object> Loaded { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object>? Changing { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
@@ -28,7 +31,7 @@ public class MonitoredRepo : ILocalNotionRepository {
 	public event EventHandlerEx<object, string>? ResourceRemoving { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object, LocalNotionResource>? ResourceRemoved { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 
-	public MonitoredRepo(string repoFile) {
+	public MonitoredRepository(string repoFile) {
 		Guard.ArgumentNotNullOrEmpty(repoFile, nameof(repoFile));
 		Guard.FileExists(repoFile);
 		InternalRepository = Tools.Values.Future.Reloadable(() =>  (ILocalNotionRepository) LocalNotionRepository.Open(repoFile).ResultSafe());
@@ -48,7 +51,6 @@ public class MonitoredRepo : ILocalNotionRepository {
 	public virtual ILogger Logger => InternalRepository.Value.Logger;
 
 	public virtual string DefaultTemplate => InternalRepository.Value.DefaultTemplate;
-
 
 	public virtual IReadOnlyDictionary<string, string> ThemeMaps => InternalRepository.Value.ThemeMaps;
 	
@@ -74,11 +76,13 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual Task Clean() => throw new NotSupportedException();
 
-	public bool ContainsObject(string objectID) => InternalRepository.Value.ContainsObject(objectID);
+	public virtual bool ContainsObject(string objectID) => InternalRepository.Value.ContainsObject(objectID);
 
 	public virtual bool TryGetObject(string objectID, out IObject @object) => InternalRepository.Value.TryGetObject(objectID, out @object);
 
 	public virtual void AddObject(IObject @object) => throw new NotSupportedException();
+
+	public virtual void UpdateObject(IObject @object) => throw new NotSupportedException();
 
 	public virtual void RemoveObject(string objectID) => throw new NotSupportedException();
 
@@ -86,20 +90,23 @@ public class MonitoredRepo : ILocalNotionRepository {
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceID, out resource);
 
-	public bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
+	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 
-	public bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) 
-		=> InternalRepository.Value.TryFindRenderBySlug(slug, out resourceID, out renderType);
+	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) => InternalRepository.Value.TryFindRenderBySlug(slug, out resourceID, out renderType);
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.Value.AddResource(resource);
+
+	public virtual void UpdateResource(LocalNotionResource resource) => InternalRepository.Value.UpdateResource(resource);
 
 	public virtual void RemoveResource(string resourceID) => throw new NotSupportedException();
 
 	public virtual bool ContainsResourceGraph(string objectID) => InternalRepository.Value.ContainsResourceGraph(objectID);
 
+	public virtual void UpdateResourceGraph(NotionObjectGraph graph) => throw new NotSupportedException();
+
 	public virtual bool TryGetResourceGraph(string resourceID, out NotionObjectGraph page) => InternalRepository.Value.TryGetResourceGraph(resourceID, out page);
 
-	public virtual void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) => InternalRepository.Value.AddResourceGraph(resourceID, pageGraph);
+	public virtual void AddResourceGraph(NotionObjectGraph pageGraph) => InternalRepository.Value.AddResourceGraph(pageGraph);
 
 	public virtual void RemoveResourceGraph(string resourceID) => throw new NotSupportedException();
 

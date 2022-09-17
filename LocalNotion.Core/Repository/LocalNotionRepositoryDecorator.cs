@@ -62,6 +62,8 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual void AddObject(IObject @object) => InternalRepository.AddObject(@object);
 
+	public virtual void UpdateObject(IObject @object) => InternalRepository.UpdateObject(@object);
+
 	public virtual void RemoveObject(string objectID) => InternalRepository.RemoveObject(objectID);
 
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.ContainsResource(resourceID);
@@ -74,13 +76,17 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.AddResource(resource);
 
+	public virtual void UpdateResource(LocalNotionResource resource) => InternalRepository.UpdateResource(resource);
+
 	public virtual void RemoveResource(string resourceID) => InternalRepository.RemoveResource(resourceID);
 
 	public virtual bool ContainsResourceGraph(string objectID) => InternalRepository.ContainsResourceGraph(objectID);
 
+	public virtual void UpdateResourceGraph(NotionObjectGraph graph) => InternalRepository.UpdateResourceGraph(graph);
+
 	public virtual bool TryGetResourceGraph(string resourceID, out NotionObjectGraph graph)=> InternalRepository.TryGetResourceGraph(resourceID, out graph);
 
-	public virtual void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph) => InternalRepository.AddResourceGraph(resourceID, pageGraph);
+	public virtual void AddResourceGraph(NotionObjectGraph pageGraph) => InternalRepository.AddResourceGraph(pageGraph);
 
 	public virtual void RemoveResourceGraph(string resourceID) => InternalRepository.RemoveResourceGraph(resourceID);
 

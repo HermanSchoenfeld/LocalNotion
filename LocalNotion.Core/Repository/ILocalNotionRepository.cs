@@ -56,7 +56,7 @@ public interface ILocalNotionRepository  {
 
 	void AddObject(IObject @object);
 
-	//void UpdateObject(IObject @object);
+	void UpdateObject(IObject @object);
 
 	void RemoveObject(string objectID);
 
@@ -64,7 +64,9 @@ public interface ILocalNotionRepository  {
 
 	bool TryGetResourceGraph(string resourceID, out NotionObjectGraph graph);
 
-	void AddResourceGraph(string resourceID, NotionObjectGraph pageGraph);
+	void UpdateResourceGraph(NotionObjectGraph @object);
+
+	void AddResourceGraph(NotionObjectGraph pageGraph);
 
 	void RemoveResourceGraph(string resourceID);
 
@@ -73,6 +75,8 @@ public interface ILocalNotionRepository  {
 	bool TryGetResource(string resourceID, out LocalNotionResource resource);
 
 	void AddResource(LocalNotionResource resource);
+
+	void UpdateResource(LocalNotionResource resource);
 
 	void RemoveResource(string resourceID);
 
@@ -92,7 +96,7 @@ public interface ILocalNotionRepository  {
 public static class ILocalNotionRepositoryExtensions {
 
 	public static IScope EnterUpdateScope(this ILocalNotionRepository repository) 
-		=> new AsyncCallContextScope(repository.Save, default, CallContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
+		=> new AsyncContextScope(repository.Save, default, ContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
 
 	public static LocalNotionResource GetResource(this ILocalNotionRepository repository, string objectID)
 		=> repository.TryGetResource(objectID, out var resource) ? resource : throw new InvalidOperationException($"Resource '{objectID}' not found");
@@ -107,8 +111,22 @@ public static class ILocalNotionRepositoryExtensions {
 	public static IObject GetObject(this ILocalNotionRepository repository, string objectID)
 		=> repository.TryGetObject(objectID, out var @object) ? @object : throw new InvalidOperationException($"Object '{objectID}' not found");
 
+	public static void SaveObject(this ILocalNotionRepository repository, IObject @object) {
+		if (repository.ContainsObject(@object.Id))
+			repository.UpdateObject(@object);
+		else
+			repository.AddObject(@object);
+	}
+
 	public static NotionObjectGraph GetPageGraph(this ILocalNotionRepository repository, string pageID)
 		=> repository.TryGetResourceGraph(pageID, out var pageGraph) ? pageGraph : throw new InvalidOperationException($"Page '{pageID}' not found");
+
+	public static void SavePageGraph(this ILocalNotionRepository repository, NotionObjectGraph graph) {
+		if (repository.ContainsResourceGraph(graph.ObjectID))
+			repository.UpdateResourceGraph(graph);
+		else
+			repository.AddResourceGraph(graph);
+	}
 
 	public static bool TryGetPage(this ILocalNotionRepository repository, string pageID, out LocalNotionPage page) {
 		page = null;
@@ -136,6 +154,13 @@ public static class ILocalNotionRepositoryExtensions {
 		file = lnf;
 		return true;
 	}
+	
+	public static void SaveResource(this ILocalNotionRepository repository, LocalNotionResource resource) {
+		if (repository.ContainsResource(resource.ID))
+			repository.UpdateResource(resource);
+		else
+			repository.AddResource(resource);
+	}
 
 	public static LocalNotionFile GetFile(this ILocalNotionRepository repository, string fileID)
 		=> repository.TryGetFile(fileID, out var resource) ? resource : throw new InvalidOperationException($"File '{fileID}' not found");
@@ -154,5 +179,4 @@ public static class ILocalNotionRepositoryExtensions {
 		} while (repository.TryGetResource(resource.ParentResourceID, out resource));
 	}
 
-	
 }
