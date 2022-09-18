@@ -6,20 +6,20 @@ namespace LocalNotion.Core;
 
 public static class IBlocksClientExtensions {
 
-	public static async IAsyncEnumerable<IBlock> EnumerateChildrenAsync(this IBlocksClient blocksClient, string blockId) {
+	public static async IAsyncEnumerable<IBlock> EnumerateChildrenAsync(this IBlocksClient blocksClient, string blockId, CancellationToken cancellationToken) {
 		PaginatedList<IBlock> searchResult;
 		var parameters = new BlocksRetrieveChildrenParameters();
 		var cursor = parameters.StartCursor;
 		do {
 			parameters.StartCursor = cursor;
-			searchResult = await blocksClient.RetrieveChildrenAsync(blockId, parameters);
+			searchResult = await blocksClient.RetrieveChildrenAsync(blockId, parameters).WithCancellationToken(cancellationToken);
 			foreach(var result in searchResult.Results)
 				yield return result;
 			cursor = searchResult.NextCursor;
 		} while (searchResult.HasMore);
 	}
 
-	public static async Task<NotionObjectGraph> GetObjectGraph(this IBlocksClient blocksClient, string objectID, IDictionary<string, IObject> objects) {
+	public static async Task<NotionObjectGraph> GetObjectGraphAsync(this IBlocksClient blocksClient, string objectID, IDictionary<string, IObject> objects, CancellationToken cancellationToken = default) {
 		var root = new NotionObjectGraph {
 			ObjectID =	objectID,
 			Children = Array.Empty<NotionObjectGraph>()
@@ -32,8 +32,9 @@ public static class IBlocksClientExtensions {
 			await PopulateChildren(root);
 
 		async Task PopulateChildren(NotionObjectGraph parent) {
+			cancellationToken.ThrowIfCancellationRequested();
 			var children = new List<NotionObjectGraph>();
-			await foreach (var child in blocksClient.EnumerateChildrenAsync(parent.ObjectID)) {
+			await foreach (var child in blocksClient.EnumerateChildrenAsync(parent.ObjectID, cancellationToken)) {
 				var graphChild = new NotionObjectGraph { ObjectID = child.Id };
 				objects[child.Id] = child;
 				if (child.HasChildren && child is not ChildPageBlock)

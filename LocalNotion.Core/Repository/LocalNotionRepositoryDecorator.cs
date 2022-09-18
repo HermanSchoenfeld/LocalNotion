@@ -48,13 +48,13 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual bool RequiresSave => InternalRepository.RequiresSave;
 
-	public virtual Task Load() => InternalRepository.Load();
+	public virtual Task LoadAsync() => InternalRepository.LoadAsync();
 
-	public virtual Task Save() => InternalRepository.Save();
+	public virtual Task SaveAsync() => InternalRepository.SaveAsync();
 
-	public virtual Task Clear() => InternalRepository.Clear();
+	public virtual Task ClearAsync() => InternalRepository.ClearAsync();
 
-	public virtual Task Clean() => InternalRepository.Clean();
+	public virtual Task CleanAsync() => InternalRepository.CleanAsync();
 
 	public virtual bool ContainsObject(string objectID) => InternalRepository.ContainsObject(objectID);
 

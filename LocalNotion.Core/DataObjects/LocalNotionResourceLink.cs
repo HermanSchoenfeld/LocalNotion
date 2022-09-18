@@ -11,7 +11,7 @@ public class LocalNotionRenderLink {
 	[JsonProperty("render")]
 	public RenderType RenderType { get; set; }
 
-	public override string ToString() => $"resource://{ResourceID}:{Tools.Enums.GetSerializableName(RenderType)}";
+	public override string ToString() => $"resource://{ResourceID}:{Tools.Enums.GetSerializableOrientedName(RenderType)}";
 
 	public static string GenerateUrl(string resourceID, RenderType renderType) 
 		=> new LocalNotionRenderLink { ResourceID = resourceID, RenderType = renderType }.ToString();

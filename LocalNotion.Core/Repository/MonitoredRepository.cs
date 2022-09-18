@@ -68,13 +68,13 @@ public class MonitoredRepository : ILocalNotionRepository {
 
 	public virtual bool RequiresSave => InternalRepository.Value.RequiresSave;
 
-	public virtual Task Load() => InternalRepository.Value.Load();
+	public virtual Task LoadAsync() => InternalRepository.Value.LoadAsync();
 
-	public virtual Task Save() => throw new NotSupportedException();
+	public virtual Task SaveAsync() => throw new NotSupportedException();
 
-	public virtual Task Clear() => throw new NotSupportedException();
+	public virtual Task ClearAsync() => throw new NotSupportedException();
 
-	public virtual Task Clean() => throw new NotSupportedException();
+	public virtual Task CleanAsync() => throw new NotSupportedException();
 
 	public virtual bool ContainsObject(string objectID) => InternalRepository.Value.ContainsObject(objectID);
 

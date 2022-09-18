@@ -19,7 +19,7 @@ public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 
 		var pageGraph = Repository.GetPageGraph(pageID);
 
-		// Load the page objects
+		// LoadAsync the page objects
 		var pageObjects = await Task.Run(() => Repository.LoadObjects(pageGraph));
 
 

@@ -13,6 +13,14 @@ public static class IObjectExtensions {
 			_ => throw new NotSupportedException($"{obj.GetType()}")
 		};
 
+	public static DateTime? GetLastEditedDate(this IObject obj) 
+		=> obj switch {
+			Page page => page.LastEditedTime,
+			Database database => database.LastEditedTime,
+			Block block => block.LastEditedTime,
+			_ => default
+		};
+
 	public static bool HasFileAttachment(this IObject block)
 		=> block.GetType().IsIn(typeof(AudioBlock), typeof(FileBlock), typeof(ImageBlock), typeof(PDFBlock), typeof(VideoBlock), typeof(CalloutBlock)) && (block.GetFileAttachmentOrDefault() != null);
 

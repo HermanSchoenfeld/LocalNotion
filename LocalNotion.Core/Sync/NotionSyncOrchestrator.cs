@@ -27,24 +27,6 @@ public class NotionSyncOrchestrator {
 
 	protected ILocalNotionRepository Repository { get; }
 
-	public async Task<LocalNotionResourceType?> QualifyObject(string objectID) {
-		LocalNotionResourceType? objType = null;
-		if (LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _)) {
-			try {
-				var block = await NotionClient.Blocks.RetrieveAsync(objectID);
-				switch (block.Type) {
-					case BlockType.ChildDatabase:
-						objType = LocalNotionResourceType.Database;
-						break;
-					case BlockType.ChildPage:
-						objType = LocalNotionResourceType.Page;
-						break; ;
-				}
-			} catch {
-			}
-		}
-		return objType;
-	}
 
 	/// <summary>
 	/// Downloads and renders pages from a NotionCMS Database.
@@ -56,17 +38,29 @@ public class NotionSyncOrchestrator {
 	/// <param name="faultTolerant">Continues processing other items when failing on any individual item</param>
 	/// <param name="forceRefresh"></param>
 	/// <returns></returns>
-	public async Task<Page[]> DownloadDatabasePages(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<Page[]> DownloadDatabasePagesAsync(string cmsDatabaseID, DateTime? updatedOnFilter = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
+		var processedPages = new List<Page>();
 		await using (Repository.EnterUpdateScope()) {
 			// Fetch updated notion pages and transform into articles
-			var cmsPages = await QueryDatabasePages(cmsDatabaseID, updatedOnFilter);
+			var databasePages = QueryDatabasePagesAsync(cmsDatabaseID, updatedOnFilter, cancellationToken);
 
 			// Download
 			var downloadedResources = new List<LocalNotionResource>();
-			foreach (var page in cmsPages) {
+			await foreach (var page in databasePages.WithCancellation(cancellationToken)) {
+				cancellationToken.ThrowIfCancellationRequested();
 				try {
-					var downloads = await DownloadPage(page.Id, render: false, forceRefresh: forceRefresh); // rendering deferred to below
-					downloadedResources.AddRange(downloads);
+					if (!Repository.TryGetPage(page.Id, out var localPage) || localPage.LastEditedTime < page.LastEditedTime || forceRefresh) {
+						var downloads = await DownloadPageAsync(page.Id, render: false, forceRefresh: forceRefresh, cancellationToken: cancellationToken); // rendering deferred to below
+						downloadedResources.AddRange(downloads);
+						processedPages.Add(page);
+					} else {
+						Logger.Info($"No changes detected for '{page.GetTitle()}' ({page.Id})");
+						// Render the unchanged page if no render exists
+						if (render && !localPage.TryGetRender(renderType, out _))
+							downloadedResources.Add(localPage);
+					}
+				} catch (TaskCanceledException) {
+					throw;
 				} catch (Exception error) {
 					Logger.Error($"Failed to process page '{page.Id}'.");
 					Logger.Exception(error);
@@ -79,8 +73,11 @@ public class NotionSyncOrchestrator {
 			if (render) {
 				var renderer = new ResourceRenderer(Repository, Logger);
 				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
+					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(page.ID, renderType, renderMode);
+					} catch (TaskCanceledException) {
+						throw;
 					} catch (Exception error) {
 						Logger.Error($"Failed to render page  '{page.Title}' ({page.ID}).");
 						Logger.Exception(error);
@@ -90,11 +87,11 @@ public class NotionSyncOrchestrator {
 				}
 			}
 
-			return cmsPages;
+			return processedPages.ToArray();
 		}
 	}
 
-	public async Task<LocalNotionResource[]> DownloadPage(string pageID, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false) {
+	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNullOrWhitespace(pageID, nameof(pageID));
 		var downloadedResources = new List<LocalNotionResource>();
 
@@ -102,7 +99,7 @@ public class NotionSyncOrchestrator {
 
 			// Fetch page from Notion
 			Logger.Info($"Fetching page '{pageID}'");
-			var notionPage = await NotionClient.Pages.RetrieveAsync(pageID);
+			var notionPage = await NotionClient.Pages.RetrieveAsync(pageID).WithCancellationToken(cancellationToken);
 
 			if (!Repository.TryGetPage(pageID, out var localPage) || localPage.LastEditedTime < notionPage.LastEditedTime || forceRefresh) {
 
@@ -114,13 +111,13 @@ public class NotionSyncOrchestrator {
 				// Fetch page object graph
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({pageID})");
 				var objects = new Dictionary<string, IObject>();
-				objects.Add(notionPage.Id, notionPage); // add root page object so prevent re-fetching via GetObjectGraph
-				var objectGraph = await NotionClient.Blocks.GetObjectGraph(pageID, objects);
+				objects.Add(notionPage.Id, notionPage); // add root page object so prevent re-fetching via GetObjectGraphAsync
+				var objectGraph = await NotionClient.Blocks.GetObjectGraphAsync(pageID, objects, cancellationToken);
 
 				#region Extract a Notion CMS summaries (and future plugins)
 
 				// Hydrate NotionCMS properties (if applicable)
-				
+
 				if (NotionCMSHelper.IsCMSPage(notionPage))
 					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
 
@@ -128,14 +125,14 @@ public class NotionSyncOrchestrator {
 					localPage.CMSProperties.Summary = LocalNotionHelper.ExtractDefaultPageSummary(objectGraph, objects);
 
 				#endregion
-				 
+
 				#region Download attached files
 
 				var linkResolver = UrlGeneratorFactory.Create(Repository);
 				// Download cover
 				if (localPage.Cover != null && ShouldDownloadFile(localPage.Cover)) {
 					// Cover is a Notion file
-					var file = await DownloadFile(localPage.Cover, notionPage.Id, forceRefresh);
+					var file = await DownloadFileAsync(localPage.Cover, notionPage.Id, forceRefresh, cancellationToken);
 					if (file != null) {
 						localPage.Cover = linkResolver.Resolve(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
@@ -149,7 +146,7 @@ public class NotionSyncOrchestrator {
 				// Download thumbnail
 				if (localPage.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localPage.Thumbnail.Data)) {
 					// Thumbnail is a Notion file
-					var file = await DownloadFile(localPage.Thumbnail.Data, notionPage.Id, forceRefresh);
+					var file = await DownloadFileAsync(localPage.Thumbnail.Data, notionPage.Id, forceRefresh, cancellationToken);
 					if (file != null) {
 						localPage.Thumbnail.Data = linkResolver.Resolve(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
@@ -172,7 +169,7 @@ public class NotionSyncOrchestrator {
 				foreach (var file in uploadedFiles) {
 					var url = file.GetUrl();
 					if (ShouldDownloadFile(url)) {
-						var downloadedFile = await DownloadFile(url, notionPage.Id, forceRefresh);
+						var downloadedFile = await DownloadFileAsync(url, notionPage.Id, forceRefresh, cancellationToken);
 						if (downloadedFile != null) {
 							file.SetUrl(LocalNotionRenderLink.GenerateUrl(downloadedFile.ID, RenderType.File));
 							downloadedResources.Add(downloadedFile);
@@ -182,7 +179,7 @@ public class NotionSyncOrchestrator {
 
 				#endregion
 
-				#region Save Local Notion objects and resources
+				#region SaveAsync Local Notion objects and resources
 
 				// Save notion objects (note: this saves Page object)
 				foreach (var obj in objects.Values)
@@ -216,7 +213,7 @@ public class NotionSyncOrchestrator {
 						.ToArray();
 
 				foreach (var childPage in childPages) {
-					var subPageDownloads = await DownloadPage(childPage.Id, render, renderType, renderMode, faultTolerant, forceRefresh);
+					var subPageDownloads = await DownloadPageAsync(childPage.Id, render, renderType, renderMode, faultTolerant, forceRefresh, cancellationToken);
 					downloadedResources.AddRange(subPageDownloads);
 				}
 
@@ -231,13 +228,15 @@ public class NotionSyncOrchestrator {
 
 			// Render page
 			if (render) {
-				downloadedResources.Reverse(); // render child first
 				var renderer = new ResourceRenderer(Repository, Logger);
 				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
+					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(page.ID, renderType, renderMode);
+					} catch (TaskCanceledException) {
+						throw;
 					} catch (Exception error) {
-						Logger.Error($"Failed to process page  '{page.Title}' ({page.ID}). {error.ToDisplayString()}");
+						Logger.Error($"Failed to render page '{page.Title}' ({page.ID}).");
 						Logger.Exception(error);
 						if (!faultTolerant)
 							throw;
@@ -248,7 +247,7 @@ public class NotionSyncOrchestrator {
 		return downloadedResources.ToArray();
 	}
 
-	public async Task<LocalNotionFile> DownloadFile(string url, string parentResourceID, bool force = false) {
+	public async Task<LocalNotionFile> DownloadFileAsync(string url, string parentResourceID, bool force = false, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNull(url, nameof(url));
 		await using (Repository.EnterUpdateScope()) {
 			if (!LocalNotionHelper.TryParseNotionFileUrl(url, out var resourceID, out var filename)) {
@@ -271,10 +270,12 @@ public class NotionSyncOrchestrator {
 			Logger.Info($"Downloading: {filename} (resource: {resourceID})");
 			var tmpFile = Tools.FileSystem.GetTempFileName();
 			try {
-				var mimeType = await Tools.Web.DownloadFileAsync(url, tmpFile, verifySSLCert: false);
+				var mimeType = await Tools.Web.DownloadFileAsync(url, tmpFile, verifySSLCert: false, cancellationToken);
 				file = LocalNotionFile.Parse(resourceID, filename, parentResourceID, mimeType);
 				Repository.AddResource(file);
 				Repository.ImportResourceRender(resourceID, RenderType.File, tmpFile);
+			} catch (TaskCanceledException) {
+				throw;
 			} catch (Exception error) {
 				Logger.Exception(error);
 			} finally {
@@ -289,21 +290,18 @@ public class NotionSyncOrchestrator {
 	/// Remove articles and folders from file system that no longer link to a page in Notion
 	/// </summary>
 	/// <returns></returns>
-	public async Task PruneDeletedDatabasePages() {
+	public async Task PruneDeletedDatabasePagesAsync(CancellationToken cancellationToken = default) {
 		// TODO: implement this
 		throw new NotImplementedException();
 	}
 
-	public async Task<Page[]> QueryDatabasePages(string databaseID, DateTime? updatedOnOrAfter = null) {
+	public IAsyncEnumerable<Page> QueryDatabasePagesAsync(string databaseID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
 		Logger.Info($"Fetching updated pages for database '{databaseID}'{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
-		var results = await NotionClient.Databases.GetAllDatabaseRows(
-			databaseID,
-			new DatabasesQueryParameters {
-				Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null,
-			}
+		return NotionClient.Databases.EnumerateAsync(
+			databaseID, 
+			new DatabasesQueryParameters { Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null, },
+			cancellationToken
 		);
-		Logger.Info($"Found {results.Length} updated articles");
-		return results;
 	}
 
 	//public async Task<Page[]> QueryUpdatedNotionPages(string databaseID, string[] sourceFilters = null, string[] rootFilters = null, DateTime? updatedOnOrAfter = null) {

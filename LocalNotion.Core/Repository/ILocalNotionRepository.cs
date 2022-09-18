@@ -42,13 +42,13 @@ public interface ILocalNotionRepository  {
 
 	bool RequiresSave { get; }
 
-	Task Load();
+	Task LoadAsync();
 
-	Task Save();
+	Task SaveAsync();
 	
-	Task Clear();
+	Task ClearAsync();
 
-	Task Clean();
+	Task CleanAsync();
 
 	bool ContainsObject(string objectID);
 
@@ -96,7 +96,7 @@ public interface ILocalNotionRepository  {
 public static class ILocalNotionRepositoryExtensions {
 
 	public static IScope EnterUpdateScope(this ILocalNotionRepository repository) 
-		=> new AsyncContextScope(repository.Save, default, ContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
+		=> new AsyncContextScope(repository.SaveAsync, default, ContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
 
 	public static LocalNotionResource GetResource(this ILocalNotionRepository repository, string objectID)
 		=> repository.TryGetResource(objectID, out var resource) ? resource : throw new InvalidOperationException($"Resource '{objectID}' not found");

@@ -14,13 +14,14 @@ namespace LocalNotion.CLI;
 
 public static partial class Program {
 	public const int ERRORCODE_OK = 0;
-	public const int ERRORCODE_COMMANDLINE_ERROR = -1;
-	public const int ERRORCODE_REPO_NOT_FOUND = -2;
-	public const int ERRORCODE_REPO_ERROR = -3;
-	public const int ERRORCODE_REPO_NO_APIKEY = -4;
-	public const int ERRORCODE_NOT_IMPLEMENTED = -5;
-	public const int ERRORCODE_LICENSE_ERROR = -6;
-	public const int ERRORCODE_FAIL = -7;
+	public const int ERRORCODE_CANCELLED = -1;
+	public const int ERRORCODE_COMMANDLINE_ERROR = -2;
+	public const int ERRORCODE_REPO_NOT_FOUND = -3;
+	public const int ERRORCODE_REPO_ERROR = -4;
+	public const int ERRORCODE_REPO_NO_APIKEY = -5;
+	public const int ERRORCODE_NOT_IMPLEMENTED = -6;
+	public const int ERRORCODE_LICENSE_ERROR = -7;
+	public const int ERRORCODE_FAIL = -8;
 	
 	private static string GetDefaultRepoFolder() 
 		=> System.IO.Path.Combine(Environment.CurrentDirectory);
@@ -143,16 +144,17 @@ public static partial class Program {
 	
 	[Verb("list", HelpText = "Lists objects from Notion which can be pulled into Local Notion")]
 	public class ListContentsCommandArguments {
-		[Option('d', "db", HelpText = "Lists the page items of a database")]
-		public string Object { get; set; } = null;
+		
+		[Option('o', "objects", HelpText = "Filter by these objects (default lists workspace)")]
+		public IEnumerable<string> Objects { get; set; } = null;
 
-		[Option('a', "all", HelpText = "Lists all child objects (default shows workspace-level only)")]
+		[Option('a', "all", HelpText = "Include child items")]
 		public bool All { get; set; } = false;
 
 		[Option('f', "filter", HelpText = "Filter by object title")]
 		public string Filter { get; set; } = null;
 		
-		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
+		[Option('k', "key", HelpText = "Notion API key to (overrides key specified in repository)")]
 		public string APIKey { get; set; } = null;
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
@@ -265,7 +267,7 @@ public static partial class Program {
 
 	}
 
-	public static async Task<int> ExecuteStatusCommand(StatusRepositoryCommandArguments arguments) {
+	public static async Task<int> ExecuteStatusCommandAsync(StatusRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
 		if (!Directory.Exists(arguments.Path)) {
@@ -293,7 +295,7 @@ $@"Local Notion Status:
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecuteInitCommand(InitRepositoryCommandArguments arguments) {
+	public static async Task<int> ExecuteInitCommandAsync(InitRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
 		arguments.Path = ToFullPath(arguments.Path);
@@ -336,7 +338,7 @@ $@"Local Notion Status:
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecuteRemoveCommand(RemoveRepositoryCommandArguments arguments) {
+	public static async Task<int> ExecuteRemoveCommandAsync(RemoveRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		if (!arguments.All) {
 			foreach (var objectID in arguments.Objects) {
@@ -365,7 +367,7 @@ $@"Local Notion Status:
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecuteListRemoteCommand(ListContentsCommandArguments arguments) {
+	public static async Task<int> ExecuteListRemoteCommand(ListContentsCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		
 		string apiKey = default;
@@ -388,30 +390,64 @@ $@"Local Notion Status:
 
 		var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
 
-		if (string.IsNullOrWhiteSpace(arguments.Object)) {
+		if (!arguments.Objects.Any()) {
 			// List workspace level
-			consoleLogger.Info($"Listing workspace items{$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
+			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
 			var searchParameters = new SearchParameters { Query = arguments.Filter };
-			var results = client.Search.EnumerateAsync(searchParameters);
+			var results = client.Search.EnumerateAsync(searchParameters, cancellationToken);
 			if (!arguments.All) 
 				results = results.WhereAwait(async x => x is Database or Page && x.GetParent() is WorkspaceParent);
 			
-			await foreach(var obj in results)
-				consoleLogger.Info($"{Tools.Enums.GetSerializableName(obj.Object)} - {obj.Id} - {obj.GetTitle()}");
+			await foreach(var obj in results.WithCancellation(cancellationToken))
+				PrintObject(obj);
+				
 		} else {
 			// Lists database contents
-			consoleLogger.Info($"Listing database {arguments.Object} {$"filtering by {arguments.Filter} (NOTE: filtering database queries is not currently supported by Notion API)".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}");
-			//var searchParameters = new DatabasesQueryParameters { Query = arguments.Filter };
-			var searchParameters = new DatabasesQueryParameters();
-			var results = client.Databases.EnumerateAsync(arguments.Object, searchParameters);
-			await foreach(var obj in results)
-				consoleLogger.Info($"{Tools.Enums.GetSerializableName(obj.Object)} - {obj.Id} - {obj.GetTitle()}");
+			foreach(var @obj in arguments.Objects) {
+				switch(await client.QualifyObjectAsync(@obj, cancellationToken))  {
+					case (LocalNotionResourceType.Database, _): 
+						PrintObject(await client.Databases.RetrieveAsync(@obj));
+						if (arguments.All) {
+							var searchParameters = new DatabasesQueryParameters();
+							var results = client.Databases.EnumerateAsync(@obj, searchParameters, cancellationToken);
+							await foreach(var dbPage in results.WithCancellation(cancellationToken))
+								PrintObject(dbPage);
+						}
+
+						break;
+					case (LocalNotionResourceType.Page, _): 
+						PrintObject(await client.Pages.RetrieveAsync(@obj));
+							break;
+					default:
+						Console.WriteLine($"Unrecognized object: {@obj}");
+						break;
+
+				};
+
+				//Console.WriteLine($"Listing database {arguments.Object} {$"filtering by {arguments.Filter} (NOTE: filtering database queries is not currently supported by Notion API)".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}");
+				//var searchParameters = new DatabasesQueryParameters { Query = arguments.Filter };
+			}
+				
 		}
+
+		void PrintObject(IObject obj) {
+			Console.WriteLine($"{obj.Id}   {ToAcronym(obj.Object).PadRight(2)}   {obj.GetLastEditedDate():yyyy-MM-dd HH:mm}   {obj.GetTitle()}");
+		}
+
+		string ToAcronym(ObjectType objectType) 
+			=> objectType switch {
+				ObjectType.Page => "P",
+				ObjectType.Database => "DB",
+				ObjectType.Block => "B",
+				ObjectType.User => "U",
+				ObjectType.Comment => "C",
+				_ => throw new ArgumentOutOfRangeException(nameof(objectType), objectType, null)
+			};
 
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecutePullCommand(PullRepositoryCommandArguments arguments) {
+	public static async Task<int> ExecutePullCommandAsync(PullRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
 
@@ -427,24 +463,26 @@ $@"Local Notion Status:
 			var syncOrchestrator = new NotionSyncOrchestrator(client, repo);
 
 			foreach (var @obj in arguments.Objects) {
-				var objType = await syncOrchestrator.QualifyObject(@obj);
+				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				switch (objType) {
-					case null:
+					case (null, _):
 						consoleLogger.Info($"Unrecognized object: {@obj}");
 						break;
-					case LocalNotionResourceType.Database:
-						await syncOrchestrator.DownloadDatabasePages(
+					case (LocalNotionResourceType.Database, var lastEditedTime):
+
+						await syncOrchestrator.DownloadDatabasePagesAsync(
 							@obj,
 							arguments.FilterLastUpdatedOn,
 							arguments.Render,
 							arguments.RenderOutput,
 							arguments.RenderMode,
 							arguments.FaultTolerant,
-							arguments.Force
+							arguments.Force,
+							cancellationToken
 						);
 						break;
-					case LocalNotionResourceType.Page:
-						await syncOrchestrator.DownloadPage(@obj, arguments.Render, arguments.RenderOutput, arguments.RenderMode, arguments.FaultTolerant, arguments.Force);
+					case (LocalNotionResourceType.Page, var lastEditTimeNotion):
+						await syncOrchestrator.DownloadPageAsync(@obj, arguments.Render, arguments.RenderOutput, arguments.RenderMode, arguments.FaultTolerant, arguments.Force, cancellationToken);
 						break;
 					default:
 						consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
@@ -455,17 +493,24 @@ $@"Local Notion Status:
 		return 0;
 	}
 
-	public static async Task<int> ExecuteSyncCommand(SyncRepositoryCommandArguments arguments) {
+	public static async Task<int> ExecuteSyncCommandAsync(SyncRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		// TODO: needs transactional files to avoid corrupting repo
+		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
+	
+		Console.WriteLine($"Synchronizing every {arguments.PollFrequency} seconds (send Break or CTRL-C to stop)");
 		while(true) {
-			await ExecutePullCommand(arguments);
-			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency));
+			Console.WriteLine($"Synchronizing Updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+			arguments.FilterLastUpdatedOn = DateTime.Now;
+			var result = await ExecutePullCommandAsync(arguments, cancellationToken);
+			if (result != ERRORCODE_OK && !arguments.FaultTolerant) 
+				return result;
+			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
 			arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 		}
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecuteRenderCommand(RenderCommandArguments arguments) {
+	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
 		var renderer = new ResourceRenderer(repo, repo.Logger);
@@ -477,6 +522,7 @@ $@"Local Notion Status:
 
 		foreach (var resource in toRender) {
 			try {
+				cancellationToken.ThrowIfCancellationRequested();
 				renderer.RenderLocalResource(resource, arguments.RenderOutput, arguments.RenderMode);
 			} catch (Exception error) {
 				consoleLogger.Exception(error);
@@ -487,31 +533,33 @@ $@"Local Notion Status:
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecutePruneCommand(PruneCommandArguments arguments) {
+	public static async Task<int> ExecutePruneCommandAsync(PruneCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		consoleLogger.Warning("Local Notion pruning is not currently implemented");
 		return ERRORCODE_NOT_IMPLEMENTED;
 	}
 
-	public static async Task<int> ExecuteLicenseCommand(LicenseCommandArguments arguments) {
+	public static async Task<int> ExecuteLicenseCommandAsync(LicenseCommandArguments arguments, CancellationToken cancellationToken) {
 		SystemLog.Warning("Local Notion DRM is not currently implemented");
 		return ERRORCODE_NOT_IMPLEMENTED;
 	}
 
-	public static async Task<int> ProcessCommandLineErrors(IEnumerable<Error> errors) {
+	public static async Task<int> ProcessCommandLineErrorsAsync(IEnumerable<Error> errors) {
 		System.Threading.Thread.Sleep(200); // give time for output to flush to parent process
 		return ERRORCODE_COMMANDLINE_ERROR;
 	}
 
-	public static async Task<int> ExecuteCommand<T>(T args, Func<T, Task<int>> command) {
+	public static async Task<int> ExecuteCommandAsync<T>(T args, Func<T, CancellationToken, Task<int>> command, CancellationToken cancellationToken) {
 		try {
-			return await command(args);
+			return await command(args, cancellationToken);
+		} catch (TaskCanceledException tce) {
+			Console.WriteLine("Cancelled successfully");
+			return ERRORCODE_CANCELLED;
 		} catch (Exception error) {
 			SystemLog.Exception(error);
 			Console.WriteLine($"ERROR: {error.ToDisplayString()}");
 			return ERRORCODE_FAIL;
 		}
-		return ERRORCODE_OK;
 	}
 
 	/// <summary>
@@ -519,24 +567,26 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-#if DEBUG
-		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
-		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
-		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
-		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
-		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] RenderAllPage = new[] { "render", "--all" };
-		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] Remove = new[] { "remove", "--all" };
-		string[] HelpInit = new[] { "help", "init" };
+//#if DEBUG
+//		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
+//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+//		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
+//		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+//		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+//		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
+//		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+//		string[] RenderAllPage = new[] { "render", "--all" };
+//		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+//		string[] Remove = new[] { "remove", "--all" };
+//		string[] HelpInit = new[] { "help", "init" };
 
-		if (args.Length == 0)
-			args = PullCmd;
-#endif
+//		if (args.Length == 0)
+//			args = PullBug2Cmd;
+//#endif
 
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00")) {
@@ -546,28 +596,36 @@ $@"Local Notion Status:
 
 			HydrogenFramework.Instance.StartFramework();
 
+			var tcs = new CancellationTokenSource();
+			
+			Console.CancelKeyPress += (sender, args) => {
+				Console.WriteLine("Cancelling operation");
+				args.Cancel = true;
+				tcs.Cancel();
+			};
+
 			return await Parser.Default.ParseArguments< 
 				StatusRepositoryCommandArguments,
 				InitRepositoryCommandArguments,
 				RemoveRepositoryCommandArguments,
 				ListContentsCommandArguments,
-				PullRepositoryCommandArguments,
 				SyncRepositoryCommandArguments,
+				PullRepositoryCommandArguments,
 				RenderCommandArguments,
 				PruneCommandArguments,
 				LicenseCommandArguments,
 				int
 			>(args).MapResult(
-				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteStatusCommand),
-				(InitRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteInitCommand),
-				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteRemoveCommand),
-				(ListContentsCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteListRemoteCommand),
-				(PullRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecutePullCommand),
-				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteSyncCommand),
-				(RenderCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteRenderCommand),
-				(PruneCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecutePruneCommand),
-				(LicenseCommandArguments commandArgs) => ExecuteCommand(commandArgs, ExecuteLicenseCommand),
-				ProcessCommandLineErrors
+				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync, tcs.Token),
+				(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync, tcs.Token),
+				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync, tcs.Token),
+				(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListRemoteCommand, tcs.Token),
+				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync, tcs.Token),
+				(PullRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePullCommandAsync, tcs.Token),
+				(RenderCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRenderCommandAsync, tcs.Token),
+				(PruneCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePruneCommandAsync, tcs.Token),
+				(LicenseCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteLicenseCommandAsync, tcs.Token),
+				ProcessCommandLineErrorsAsync
 			);
 		} finally {
 			if (HydrogenFramework.Instance.IsStarted)

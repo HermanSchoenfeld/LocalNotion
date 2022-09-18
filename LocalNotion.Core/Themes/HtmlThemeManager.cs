@@ -56,7 +56,7 @@ public class HtmlThemeManager : IThemeManager {
 				htmlTemplateInfo.Tokens.Add($"include://{templateFile}", new HtmlThemeInfo.Token { Local = fileContents, Remote = fileContents });
 			}
 
-			// Load base theme if applicable
+			// LoadAsync base theme if applicable
 			if (!string.IsNullOrWhiteSpace(htmlTemplateInfo.Base)) {
 				 if (!TryGetTemplateInfoInternal(htmlTemplateInfo.Base, out var baseTemplateInfo, alreadyFetched))
 					return false;

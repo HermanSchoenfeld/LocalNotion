@@ -95,24 +95,24 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		}
 	}
 
-	public override async Task Load() {
+	public override async Task LoadAsync() {
 		await using (EnterWriteScope())
-			await InternalRepository.Load();
+			await InternalRepository.LoadAsync();
 	}
 
-	public override async Task Save() {
+	public override async Task SaveAsync() {
 		await using (EnterWriteScope())
-			await InternalRepository.Save();
+			await InternalRepository.SaveAsync();
 	}
 
-	public override async Task Clear() {
+	public override async Task ClearAsync() {
 		await using (EnterWriteScope())
-			await InternalRepository.Clear();
+			await InternalRepository.ClearAsync();
 	}
 
-	public override async Task Clean() {
+	public override async Task CleanAsync() {
 		await using (EnterWriteScope())
-			await InternalRepository.Clean();
+			await InternalRepository.CleanAsync();
 	}
 
 	public override bool ContainsObject(string objectID) {

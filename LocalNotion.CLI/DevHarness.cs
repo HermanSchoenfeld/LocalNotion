@@ -39,7 +39,7 @@
 ////}
 
 //try {
-////    await orchestrator.DownloadPage(HowToArticleID);
+////    await orchestrator.DownloadPageAsync(HowToArticleID);
 //  //  orchestrator.RenderLocalResource(HowToArticleID, RenderType.HTML, RenderMode.ReadOnly);
 //    //orchestrator.RenderLocalResource(EmbeddedArticleID, RenderType.HTML, RenderMode.ReadOnly);
 //} catch (Exception error) {
@@ -47,7 +47,7 @@
 //}
 
 
-//await orchestrator.DownloadDatabasePages(DatabaseId2);
+//await orchestrator.DownloadDatabasePagesAsync(DatabaseId2);
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,13 +72,13 @@
 ////await PrintPage(ColumnBlockInfo);
 
 ////async Task PrintAllDatabase() {
-////	var notionClient = NotionClientFactory.ExecuteInitCommand(new ClientOptions { AuthToken = APIKey });
+////	var notionClient = NotionClientFactory.ExecuteInitCommandAsync(new ClientOptions { AuthToken = APIKey });
 ////	Console.WriteLine("Databases");
 ////	Console.WriteLine("=========");
 ////	var databases = await notionClient.Search.GetAllDatabases();
 ////	var renderer = new TextRenderer(notionClient);
 ////	foreach (var database in databases)
-////		renderer.ExecuteRenderCommand(database);
+////		renderer.ExecuteRenderCommandAsync(database);
 ////}
 
 ////async Task PrintDatabaseRows(string databaseId) {
@@ -90,11 +90,11 @@
 ////	for(var i = 0; i < rows.Length; i++) {
 ////		var row = rows[i];
 ////		Console.Write($"{i}");
-////		await consoleRenderer.ExecuteRenderCommand(row);
+////		await consoleRenderer.ExecuteRenderCommandAsync(row);
 ////	}
 ////}
 
 ////async Task PrintPage(string pageID) {
-////	await consoleRenderer.ExecuteRenderCommand(pageID);
+////	await consoleRenderer.ExecuteRenderCommandAsync(pageID);
 ////	//var xxx = blocks;
 ////}

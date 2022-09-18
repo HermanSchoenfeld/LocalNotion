@@ -149,7 +149,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		Tools.Json.WriteToFile(registryFile, registry);
 
 		var repo = new LocalNotionRepository(registryFile, logger);
-		await repo.Load();
+		await repo.LoadAsync();
 		return repo;
 	}
 
@@ -206,11 +206,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		if (!File.Exists(registryFile))
 			throw new FileNotFoundException(registryFile);
 		var repo = new LocalNotionRepository(registryFile, logger);
-		await repo.Load();
+		await repo.LoadAsync();
 		return repo;
 	}
 
-	public async Task Load() {
+	public async Task LoadAsync() {
 		CheckNotLoaded();
 		Guard.FileExists(_registryPath);
 
@@ -250,16 +250,16 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		RequiresLoad = false;
 
-		await Clean();
+		await CleanAsync();
 		
 	}
 
-	public async Task Save() {
+	public async Task SaveAsync() {
 		CheckLoaded();
 		if (!RequiresSave)
 			return;
 		// 3-phased save approach ensures registry never corrupted if process abandoned mid-way
-		// note: Load will complete mid-run saves
+		// note: LoadAsync will complete mid-run saves
 		var registryFile = Paths.GetRegistryFilePath(FileSystemPathType.Absolute);
 		Guard.FileExists(registryFile);
 		await SaveInternal_PersistPhase(registryFile);
@@ -267,7 +267,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		await SaveInternal_CleanPhase(registryFile);
 	}
 
-	public async Task Clear() {
+	public async Task ClearAsync() {
 		NotifyClearing();
 		SuppressNotifications = true;
 		try {
@@ -275,14 +275,14 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			await Task.Run(() => _graphStore.Clear());
 			await Task.Run(() => Resources.Select(r => r.ID).ToArray().ForEach(RemoveResource));
 			if (RequiresSave)
-				await Save();
+				await SaveAsync();
 		} finally {
 			SuppressNotifications = false;
 		}
 		NotifyCleared();
 	}
 
-	public async Task Clean() {
+	public async Task CleanAsync() {
 		// TODO: only cleans when ObjectID folders are used, need to 
 		// - clean dangling renders
 
@@ -336,7 +336,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		// This can happen when resources are fixed
 		if (RequiresSave) 
-			await Save();
+			await SaveAsync();
 	}
 
 	public bool ContainsObject(string objectID) {

@@ -50,6 +50,8 @@ public class ResourceRenderer : IResourceRenderer {
 		try {
 			renderer.Render(tmpFile);
 			output = _repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
+		} catch (TaskCanceledException) {
+			throw;
 		} catch (Exception error) {
 			// Save exception to rendered file (for html)
 			Tools.Exceptions.ExecuteIgnoringException(() => {
