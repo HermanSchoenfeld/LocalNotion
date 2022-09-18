@@ -482,7 +482,7 @@ $@"Local Notion Status:
 						);
 						break;
 					case (LocalNotionResourceType.Page, var lastEditTimeNotion):
-						await syncOrchestrator.DownloadPageAsync(@obj, arguments.Render, arguments.RenderOutput, arguments.RenderMode, arguments.FaultTolerant, arguments.Force, cancellationToken);
+						await syncOrchestrator.DownloadPageAsync(@obj, lastEditTimeNotion, arguments.Render, arguments.RenderOutput, arguments.RenderMode, arguments.FaultTolerant, arguments.Force, cancellationToken);
 						break;
 					default:
 						consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
@@ -567,26 +567,26 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-//#if DEBUG
-//		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
-//		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
-//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-//		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-//		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
-//		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] RenderAllPage = new[] { "render", "--all" };
-//		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] Remove = new[] { "remove", "--all" };
-//		string[] HelpInit = new[] { "help", "init" };
+#if DEBUG
+		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
+		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
+		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
+		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] RenderAllPage = new[] { "render", "--all" };
+		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] Remove = new[] { "remove", "--all" };
+		string[] HelpInit = new[] { "help", "init" };
 
-//		if (args.Length == 0)
-//			args = PullBug2Cmd;
-//#endif
+		if (args.Length == 0)
+			args = PullPage;
+#endif
 
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00")) {

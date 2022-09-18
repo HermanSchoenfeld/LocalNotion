@@ -7,18 +7,17 @@ using System.Threading.Tasks;
 
 namespace LocalNotion.Core;
 
-	public interface INotionCMS {
-		IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories);
+public interface INotionCMS {
 
-		string[] GetRoots();
+	IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories);
 
-		string[] GetSubCategories(string root, params string[] categories);
+	string[] GetRoots();
 
-		bool TryLookupResourceBySlug(string slug, out string resourceID);
+	string[] GetSubCategories(string root, params string[] categories);
 
+	bool TryLookupResourceBySlug(string slug, out string resourceID);
 
-	}
-
+}
 
 public static class INotionCMSExtensions {
 
