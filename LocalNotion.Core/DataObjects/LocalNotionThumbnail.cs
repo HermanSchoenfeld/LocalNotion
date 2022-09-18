@@ -12,5 +12,5 @@ public class LocalNotionThumbnail {
 	[JsonProperty("data", NullValueHandling = NullValueHandling.Ignore)]
 	public string Data { get; set; }
 
-	public static LocalNotionThumbnail None { get; } = new() { Type = ThumbnailType.None };
+	public static LocalNotionThumbnail None => new() { Type = ThumbnailType.None };
 }

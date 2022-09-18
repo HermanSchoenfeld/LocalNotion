@@ -112,9 +112,13 @@ public static class ILocalNotionRepositoryExtensions {
 		=> repository.TryGetObject(objectID, out var @object) ? @object : throw new InvalidOperationException($"Object '{objectID}' not found");
 
 	public static void SaveObject(this ILocalNotionRepository repository, IObject @object) {
-		if (repository.ContainsObject(@object.Id))
+		if (repository.ContainsObject(@object.Id)) {
+			var xxx = repository.GetObject(@object.Id);
+			if (xxx is Page page && @object is ChildPageBlock childPageBlock) {
+				var yyy = xxx;
+			}
 			repository.UpdateObject(@object);
-		else
+		}  else
 			repository.AddObject(@object);
 	}
 

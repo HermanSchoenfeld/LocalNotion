@@ -176,8 +176,8 @@ public static partial class Program {
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
 
-		[Option('u', "last-updated-on", HelpText = "Filters objects not edited on or after this date")]
-		public DateTime? FilterLastUpdatedOn { get; set; } = null;
+		//[Option('u', "last-updated-on", HelpText = "Filters objects not edited on or after this date")]
+		//public DateTime? FilterLastUpdatedOn { get; set; } = null;
 
 		//[Option("filter-source", HelpText = "Only sync CMS pages whose 'Source' property matches at least one from this list.")]
 		//public IEnumerable<string> FilterSources { get; set; } = Array.Empty<string>();
@@ -472,7 +472,7 @@ $@"Local Notion Status:
 
 						await syncOrchestrator.DownloadDatabasePagesAsync(
 							@obj,
-							arguments.FilterLastUpdatedOn,
+							//arguments.FilterLastUpdatedOn,
 							arguments.Render,
 							arguments.RenderOutput,
 							arguments.RenderMode,
@@ -494,18 +494,20 @@ $@"Local Notion Status:
 	}
 
 	public static async Task<int> ExecuteSyncCommandAsync(SyncRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
-		// TODO: needs transactional files to avoid corrupting repo
+		// NOTE: FilterLastUpdateOn not requied since SyncOrchestrator intelligently determines 
+		// what to fetch
+
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 	
 		Console.WriteLine($"Synchronizing every {arguments.PollFrequency} seconds (send Break or CTRL-C to stop)");
 		while(true) {
 			Console.WriteLine($"Synchronizing Updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-			arguments.FilterLastUpdatedOn = DateTime.Now;
+			//arguments.FilterLastUpdatedOn = DateTime.Now;
 			var result = await ExecutePullCommandAsync(arguments, cancellationToken);
 			if (result != ERRORCODE_OK && !arguments.FaultTolerant) 
 				return result;
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
-			arguments.FilterLastUpdatedOn = DateTime.UtcNow;
+			//arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 		}
 		return ERRORCODE_OK;
 	}
@@ -585,7 +587,7 @@ $@"Local Notion Status:
 		string[] HelpInit = new[] { "help", "init" };
 
 		if (args.Length == 0)
-			args = PullPage;
+			args = PullBug2Cmd;
 #endif
 
 		try {

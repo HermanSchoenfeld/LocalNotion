@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Notion.Client;
 
 namespace LocalNotion.Core;
 
@@ -17,4 +18,5 @@ public class NotionObjectGraph {
 				yield return childVal;
 		}
 	}
+
 }
