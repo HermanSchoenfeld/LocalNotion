@@ -90,6 +90,8 @@ public class MonitoredRepository : ILocalNotionRepository {
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceID, out resource);
 
+	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) => InternalRepository.Value.GetChildObjects(resourceID);
+
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 
 	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) => InternalRepository.Value.TryFindRenderBySlug(slug, out resourceID, out renderType);
@@ -98,7 +100,7 @@ public class MonitoredRepository : ILocalNotionRepository {
 
 	public virtual void UpdateResource(LocalNotionResource resource) => InternalRepository.Value.UpdateResource(resource);
 
-	public virtual void RemoveResource(string resourceID) => throw new NotSupportedException();
+	public virtual void RemoveResource(string resourceID, bool removeChildren) => throw new NotSupportedException();
 
 	public virtual bool ContainsResourceGraph(string objectID) => InternalRepository.Value.ContainsResourceGraph(objectID);
 

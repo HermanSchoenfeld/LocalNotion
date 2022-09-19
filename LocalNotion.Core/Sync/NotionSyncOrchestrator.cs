@@ -64,10 +64,9 @@ public class NotionSyncOrchestrator {
 			}
 
 			// Remove deleted resources
-			var localDBItems = Repository.Resources.Where(x => x.ParentResourceID == databaseID).Select(x => x.ID).ToArray();
+			var localDBItems = Repository.GetChildObjects(databaseID).Select(x => x.ID).ToArray();
 			foreach(var oldItem in localDBItems.Except(databasePageIDs)) {
-				Logger.Info($"Removing `{Repository.GetResource(oldItem).Title}` ({oldItem})");
-				Repository.RemoveResource(oldItem);
+				Repository.RemoveResource(oldItem, true);
 			}
 
 			// Render
@@ -87,7 +86,6 @@ public class NotionSyncOrchestrator {
 					}
 				}
 			}
-
 			return processedPages.ToArray();
 		}
 	}
@@ -120,6 +118,7 @@ public class NotionSyncOrchestrator {
 				await FetchNotionPage();
 
 			var containsPage = Repository.TryGetPage(pageID, out localPage);
+			var oldChildResources = Repository.GetChildObjects(pageID).ToArray();
 			var pageDifferent= containsPage && localPage.LastEditedTime != knownNotionLastEditTime;
 			var shouldDownload = !containsPage || pageDifferent || forceRefresh;
 
@@ -136,7 +135,7 @@ public class NotionSyncOrchestrator {
 
 				// Remove local page (if applicable)				
 				if (containsPage)
-					Repository.RemoveResource(pageID);
+					Repository.RemoveResource(pageID, false);  // dangling child resources removed below
 
 				// Hydrate the fetched page from notion
 				localPage = LocalNotionHelper.ParsePage(notionPage);
@@ -296,6 +295,15 @@ public class NotionSyncOrchestrator {
 				downloadedResources.Add(localPage);
 
 			#endregion
+
+			#region Remove old child resources
+
+			foreach (var childResource in oldChildResources.Except(Repository.GetChildObjects(pageID), ProjectionEqualityComparer.Create<LocalNotionResource, string>(r => r.ID))) {
+				Logger.Info($"Removing '{childResource.Title}' ({childResource.ID})");
+				Repository.RemoveResource(childResource.ID, true);
+			}
+
+			#endregion
 			
 			#region Render page and child-pages
 
@@ -339,7 +347,7 @@ public class NotionSyncOrchestrator {
 					Logger.Info($"Skipped downloading already existing file '{resourceID}/{filename}'");
 					return file;
 				}
-				Repository.RemoveResource(resourceID);
+				Repository.RemoveResource(resourceID, true);
 			}
 
 			Logger.Info($"Downloading: {filename} (resource: {resourceID})");
@@ -378,38 +386,6 @@ public class NotionSyncOrchestrator {
 			cancellationToken
 		);
 	}
-
-	//public async Task<Page[]> QueryUpdatedNotionPages(string databaseID, string[] sourceFilters = null, string[] rootFilters = null, DateTime? updatedOnOrAfter = null) {
-	//	Logger.Info($"Fetching updated articles{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
-	//	var filters = new List<Filter>();
-	//	var notionSourceFilter = 
-	//		new CompoundFilter( 
-	//			or: (sourceFilters ?? Array.Empty<string>())
-	//			    .Where(x => !string.IsNullOrWhiteSpace(x))
-	//			    .Select(x => new RichTextFilter(Constants.LocationPropertyName, x))
-	//				.Cast<Filter>()
-	//				.ToList()
-	//		);
-
-	//	var notionRootFilter = 
-	//		new CompoundFilter( 
-	//			or: (rootFilters ?? Array.Empty<string>())
-	//			    .Where(x => !string.IsNullOrWhiteSpace(x))
-	//			    .Select(x => new RichTextFilter(Constants.RootCategoryPropertyName, x))
-	//			    .Cast<Filter>()
-	//			    .ToList()
-	//		);
-	//	var notionUpdateOnFilter = updatedOnOrAfter != null ? new DateFilter("Edited On", onOrAfter: updatedOnOrAfter) : null;
-	//	var topLevelAndFilters = new Filter[] { notionSourceFilter, notionRootFilter, notionUpdateOnFilter }.Where(x => x != null).ToList();
-	//	var results = await NotionClient.Databases.GetAllDatabaseRows(
-	//		databaseID,
-	//		new DatabasesQueryParameters {
-	//			Filter = filters.Count > 0 ? new CompoundFilter(and: topLevelAndFilters) : null
-	//		}
-	//	);
-	//	Logger.Info($"Found {results.Length} updated articles");
-	//	return results;
-	//}
 
 	private bool ShouldDownloadFile(string url)
 		// We only download user files uploaded to notion (or everything is force download is on)

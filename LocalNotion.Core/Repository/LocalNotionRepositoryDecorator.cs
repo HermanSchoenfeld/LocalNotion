@@ -72,13 +72,15 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceID, out resource);
 
+	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) => InternalRepository.GetChildObjects(resourceID);
+
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.ContainsResourceRender(resourceID, renderType);
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.AddResource(resource);
 
 	public virtual void UpdateResource(LocalNotionResource resource) => InternalRepository.UpdateResource(resource);
 
-	public virtual void RemoveResource(string resourceID) => InternalRepository.RemoveResource(resourceID);
+	public virtual void RemoveResource(string resourceID, bool removeChildren) => InternalRepository.RemoveResource(resourceID, removeChildren);
 
 	public virtual bool ContainsResourceGraph(string objectID) => InternalRepository.ContainsResourceGraph(objectID);
 

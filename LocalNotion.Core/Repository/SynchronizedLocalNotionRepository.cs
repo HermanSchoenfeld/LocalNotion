@@ -170,9 +170,9 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			base.UpdateResource(resource);
 	}
 
-	public override void RemoveResource(string resourceID) {
+	public override void RemoveResource(string resourceID, bool removeChildren) {
 		using (EnterWriteScope())
-			base.RemoveResource(resourceID);
+			base.RemoveResource(resourceID, removeChildren);
 	}
 
 	public override bool ContainsResourceGraph(string objectID) {

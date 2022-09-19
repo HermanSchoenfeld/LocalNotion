@@ -145,10 +145,10 @@ public static partial class Program {
 	[Verb("list", HelpText = "Lists objects from Notion which can be pulled into Local Notion")]
 	public class ListContentsCommandArguments {
 		
-		[Option('o', "objects", HelpText = "Filter by these objects (default lists workspace)")]
+		[Option('o', HelpText = "Filter by these objects (default lists workspace)")]
 		public IEnumerable<string> Objects { get; set; } = null;
 
-		[Option('a', "all", HelpText = "Include child items")]
+		[Option('a', HelpText = "Include child items")]
 		public bool All { get; set; } = false;
 
 		[Option('f', "filter", HelpText = "Filter by object title")]
@@ -167,7 +167,7 @@ public static partial class Program {
 	[Verb("pull", HelpText = "Pulls Notion objects into a Local Notion repository")]
 	public class PullRepositoryCommandArguments {
 
-		[Option('o', "objects", HelpText = "List of Notion objects to pull (i.e. pages, databases, workspaces)")]
+		[Option('o', "objects", Group = "target", HelpText = "List of Notion objects to pull (i.e. pages, databases)")]
 		public IEnumerable<string> Objects { get; set; } = null;
 		
 		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
@@ -175,9 +175,6 @@ public static partial class Program {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
-
-		//[Option('u', "last-updated-on", HelpText = "Filters objects not edited on or after this date")]
-		//public DateTime? FilterLastUpdatedOn { get; set; } = null;
 
 		//[Option("filter-source", HelpText = "Only sync CMS pages whose 'Source' property matches at least one from this list.")]
 		//public IEnumerable<string> FilterSources { get; set; } = Array.Empty<string>();
@@ -348,7 +345,7 @@ $@"Local Notion Status:
 					continue;
 				}
 				if (repo.ContainsResource(objectID)) {
-					repo.RemoveResource(objectID);
+					repo.RemoveResource(objectID, true);
 					consoleLogger.Info($"Removed resource: {objectID}");
 				}
 
@@ -367,7 +364,7 @@ $@"Local Notion Status:
 		return ERRORCODE_OK;
 	}
 
-	public static async Task<int> ExecuteListRemoteCommand(ListContentsCommandArguments arguments, CancellationToken cancellationToken) {
+	public static async Task<int> ExecuteListCommand(ListContentsCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		
 		string apiKey = default;
@@ -375,17 +372,15 @@ $@"Local Notion Status:
 		if (!string.IsNullOrWhiteSpace(arguments.APIKey)) {
 			apiKey = arguments.APIKey;
 		} else {
-			if (!Directory.Exists(arguments.Path)) {
-				consoleLogger.Error($"Repository not found: {arguments.Path}");
-				return ERRORCODE_REPO_NOT_FOUND;
+			if (LocalNotionRepository.Exists(arguments.Path)) {
+				var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+				apiKey = repo.DefaultNotionApiKey;
 			}
-			var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
-			apiKey = repo.DefaultNotionApiKey;
 		}
 		
 		if (string.IsNullOrWhiteSpace(apiKey)) {
 			consoleLogger.Info("No API key was specified in argument or registered in repository");
-			return -1;
+			return ERRORCODE_COMMANDLINE_ERROR;
 		}
 
 		var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
@@ -423,11 +418,7 @@ $@"Local Notion Status:
 						break;
 
 				};
-
-				//Console.WriteLine($"Listing database {arguments.Object} {$"filtering by {arguments.Filter} (NOTE: filtering database queries is not currently supported by Notion API)".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}");
-				//var searchParameters = new DatabasesQueryParameters { Query = arguments.Filter };
 			}
-				
 		}
 
 		void PrintObject(IObject obj) {
@@ -569,29 +560,29 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-#if DEBUG
-		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
-		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
-		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
-		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] RenderAllPage = new[] { "render", "--all" };
-		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] Remove = new[] { "remove", "--all" };
-		string[] HelpInit = new[] { "help", "init" };
+//#if DEBUG
+//		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
+//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+//		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
+//		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+//		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+//		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
+//		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+//		string[] RenderAllPage = new[] { "render", "--all" };
+//		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+//		string[] Remove = new[] { "remove", "--all" };
+//		string[] HelpInit = new[] { "help", "init" };
 
-		if (args.Length == 0)
-			args = PullBug2Cmd;
-#endif
+//		if (args.Length == 0)
+//			args = HelpInit;
+//#endif
 
 		try {
-			if (DateTime.Now > DateTime.Parse("2022-09-23 00:00")) {
+			if (DateTime.Now > DateTime.Parse("2022-10-23 00:00")) {
 				Console.WriteLine("Software has expired");
 				return ERRORCODE_LICENSE_ERROR;
 			}
@@ -601,7 +592,7 @@ $@"Local Notion Status:
 			var tcs = new CancellationTokenSource();
 			
 			Console.CancelKeyPress += (sender, args) => {
-				Console.WriteLine("Cancelling operation");
+				Console.WriteLine("Cancelling");
 				args.Cancel = true;
 				tcs.Cancel();
 			};
@@ -621,7 +612,7 @@ $@"Local Notion Status:
 				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync, tcs.Token),
 				(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync, tcs.Token),
 				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync, tcs.Token),
-				(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListRemoteCommand, tcs.Token),
+				(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListCommand, tcs.Token),
 				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync, tcs.Token),
 				(PullRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePullCommandAsync, tcs.Token),
 				(RenderCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRenderCommandAsync, tcs.Token),

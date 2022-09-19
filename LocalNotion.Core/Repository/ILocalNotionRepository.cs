@@ -78,7 +78,9 @@ public interface ILocalNotionRepository  {
 
 	void UpdateResource(LocalNotionResource resource);
 
-	void RemoveResource(string resourceID);
+	void RemoveResource(string resourceID, bool removeChildren);
+
+	IEnumerable<LocalNotionResource> GetChildObjects(string resourceID);
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 

@@ -194,6 +194,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		}
 	}
 
+	public static bool Exists(string repositoryFolder) {
+		Guard.ArgumentNotNull(repositoryFolder, nameof(repositoryFolder));
+		return Directory.Exists(repositoryFolder) &&  File.Exists(PathResolver.ResolveDefaultRegistryFilePath(repositoryFolder));
+	}
+
 	public static Task<LocalNotionRepository> Open(string repositoryFolder, ILogger logger = null) {
 		Guard.ArgumentNotNull(repositoryFolder, nameof(repositoryFolder));
 		if (!Directory.Exists(repositoryFolder))
@@ -273,7 +278,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		try {
 			await Task.Run(() =>_objectStore.Clear());
 			await Task.Run(() => _graphStore.Clear());
-			await Task.Run(() => Resources.Select(r => r.ID).ToArray().ForEach(RemoveResource));
+			await Task.Run(() => Resources.Select(r => r.ID).ToArray().ForEach(x => RemoveResource(x, false)));
 			if (RequiresSave)
 				await SaveAsync();
 		} finally {
@@ -459,7 +464,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	public virtual void UpdateResource(LocalNotionResource resource) {
 		Guard.ArgumentNotNull(resource, nameof(resource));
 		Guard.Ensure(TryGetResource(resource.ID, out var resourceInstance),"Resource was not found");
-		
+		throw new NotImplementedException("Try removing/adding for now");
 		#warning This needs proper consideration 
 		// Client can provide partially hydrated object
 		// Dangling renders, etc
@@ -472,7 +477,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		RequiresSave = true;
 	}
 
-	public virtual void RemoveResource(string resourceID) {
+	public virtual void RemoveResource(string resourceID, bool removeChildren) {
 		CheckLoaded();
 		Guard.ArgumentNotNullOrWhitespace(resourceID, nameof(resourceID));
 		if (!_resourcesByNID.TryGetValue(resourceID, out var resource))
@@ -499,17 +504,27 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		if (resource is LocalNotionPage page) {
 			if (page.Thumbnail.Type == ThumbnailType.Image && TryFindRenderBySlug(page.Thumbnail.Data, out var attachedFile, out _)) 
 				// TODO: reference count decrease (when added)
-				RemoveResource(attachedFile);
+				RemoveResource(attachedFile, removeChildren);
 			
 			if (!string.IsNullOrWhiteSpace(page.Cover) && TryFindRenderBySlug(page.Cover, out  attachedFile, out _))
-				RemoveResource(attachedFile);
+				RemoveResource(attachedFile, removeChildren);
 		}
+
+		// Remove child resource if any
+		if (removeChildren) {
+			foreach(var child in GetChildObjects(resourceID))
+				RemoveResource(child.ID, removeChildren);
+		}
+
 
 		RequiresSave = true;
 		_registry.Remove(resource);
 		_resourcesByNID.Remove(resourceID);
 		NotifyResourceRemoved(resource);
 	}
+
+	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) 
+		=> Resources.Where(x => x.ParentResourceID == resourceID).ToArray();  // ToArray ensures enumeration completes as 
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
@@ -734,18 +749,21 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	}
 	
 	protected virtual void OnResourceAdded(LocalNotionResource resource) {
+		Logger.Info($"Added resource '{resource.Title}' ({resource.ID})");
 	}
 
 	protected virtual void OnResourceUpdating(string resourceID) {
 	}
 	
 	protected virtual void OnResourceUpdated(LocalNotionResource resource) {
+		Logger.Info($"Updated resource '{resource.Title}' ({resource.ID})");
 	}
 
 	protected virtual void OnResourceRemoving(string resourceID) {
 	}
 	
 	protected virtual void OnResourceRemoved(LocalNotionResource resource) {
+		Logger.Info($"Removed resource '{resource.Title}' ({resource.ID})");
 	}
 
 	protected void NotifyLoading() {
