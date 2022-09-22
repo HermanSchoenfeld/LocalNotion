@@ -98,7 +98,7 @@ public interface ILocalNotionRepository  {
 public static class ILocalNotionRepositoryExtensions {
 
 	public static IScope EnterUpdateScope(this ILocalNotionRepository repository) 
-		=> new AsyncContextScope(repository.SaveAsync, default, ContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
+		=> new TaskContextScope(repository.SaveAsync, ContextScopePolicy.None, "[LocalNotion Scope]:" + repository.Paths.GetRegistryFilePath(FileSystemPathType.Absolute));
 
 	public static LocalNotionResource GetResource(this ILocalNotionRepository repository, string objectID)
 		=> repository.TryGetResource(objectID, out var resource) ? resource : throw new InvalidOperationException($"Resource '{objectID}' not found");
@@ -115,10 +115,6 @@ public static class ILocalNotionRepositoryExtensions {
 
 	public static void SaveObject(this ILocalNotionRepository repository, IObject @object) {
 		if (repository.ContainsObject(@object.Id)) {
-			var xxx = repository.GetObject(@object.Id);
-			if (xxx is Page page && @object is ChildPageBlock childPageBlock) {
-				var yyy = xxx;
-			}
 			repository.UpdateObject(@object);
 		}  else
 			repository.AddObject(@object);

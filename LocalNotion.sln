@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion.Core", "LocalNo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion.CLI", "LocalNotion.CLI\LocalNotion.CLI.csproj", "{DE1D2590-0B79-491B-B876-26561D468221}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.Communications", "..\Hydrogen\src\Hydrogen.Communications\Hydrogen.Communications.csproj", "{236B6958-1D17-4B1E-AAF6-1A3A019FA773}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{DE1D2590-0B79-491B-B876-26561D468221}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DE1D2590-0B79-491B-B876-26561D468221}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DE1D2590-0B79-491B-B876-26561D468221}.Release|Any CPU.Build.0 = Release|Any CPU
+		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -70,6 +76,7 @@ Global
 		{CF0B3899-4A08-45EA-BB13-707FA49B8EBE} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 		{FD223FFE-0EB6-4CBF-96BB-C8008B76B72D} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 		{CB582BF8-5A78-4F05-905F-27E139485294} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
+		{236B6958-1D17-4B1E-AAF6-1A3A019FA773} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B9202D58-E7A4-4F4A-ADD7-CBB52A9A9BC8}
