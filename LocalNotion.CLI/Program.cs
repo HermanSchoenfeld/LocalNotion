@@ -23,6 +23,8 @@ public static partial class Program {
 	public const int ERRORCODE_LICENSE_ERROR = -7;
 	public const int ERRORCODE_FAIL = -8;
 	
+	private static CancellationTokenSource CancelProgram { get; } = new CancellationTokenSource();
+
 	private static string GetDefaultRepoFolder() 
 		=> System.IO.Path.Combine(Environment.CurrentDirectory);
 
@@ -61,9 +63,16 @@ public static partial class Program {
 		Website,
 
 	}
+
+	public abstract class CommandArgumentsBase {
+		
+		[Option("cancel-trigger", Hidden = true)]
+		public string CancelTriggerPath { get; set; } = null;
+
+	}
 	
 	[Verb("status", HelpText = "Provides status of the Local Notion repository")]
-	public class StatusRepositoryCommandArguments {
+	public class StatusRepositoryCommandArguments : CommandArgumentsBase {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
@@ -75,7 +84,7 @@ public static partial class Program {
 
 	
 	[Verb("init", HelpText = "Creates a Local Notion repository")]
-	public class InitRepositoryCommandArguments {
+	public class InitRepositoryCommandArguments : CommandArgumentsBase {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
@@ -126,7 +135,7 @@ public static partial class Program {
 
 	
 	[Verb("remove", HelpText = "Remove resources from a Local Notion repository")]
-	public class RemoveRepositoryCommandArguments {
+	public class RemoveRepositoryCommandArguments : CommandArgumentsBase {
 
 		[Option('r', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
@@ -143,12 +152,12 @@ public static partial class Program {
 	}
 	
 	[Verb("list", HelpText = "Lists objects from Notion which can be pulled into Local Notion")]
-	public class ListContentsCommandArguments {
+	public class ListContentsCommandArguments : CommandArgumentsBase {
 		
-		[Option('o', HelpText = "Filter by these objects (default lists workspace)")]
+		[Option('o', "objects", HelpText = "Filter by these objects (default lists workspace)")]
 		public IEnumerable<string> Objects { get; set; } = null;
 
-		[Option('a', HelpText = "Include child items")]
+		[Option('a', "all", HelpText = "Include child items")]
 		public bool All { get; set; } = false;
 
 		[Option('f', "filter", HelpText = "Filter by object title")]
@@ -165,7 +174,7 @@ public static partial class Program {
 	}
 
 	[Verb("pull", HelpText = "Pulls Notion objects into a Local Notion repository")]
-	public class PullRepositoryCommandArguments {
+	public class PullRepositoryCommandArguments : CommandArgumentsBase {
 
 		[Option('o', "objects", Group = "target", HelpText = "List of Notion objects to pull (i.e. pages, databases)")]
 		public IEnumerable<string> Objects { get; set; } = null;
@@ -203,7 +212,7 @@ public static partial class Program {
 	}
 
 	[Verb("sync", HelpText = "Synchronizes a Local Notion repository with Notion (until process manually terminated)")]
-	public class SyncRepositoryCommandArguments : PullRepositoryCommandArguments{
+	public class SyncRepositoryCommandArguments : PullRepositoryCommandArguments {
 
 		[Option('f', "poll-frequency", Default = 30, HelpText = "How often to poll Notion for changes")]
 		public int PollFrequency { get; set; } 
@@ -211,7 +220,7 @@ public static partial class Program {
 	}
 			
 	[Verb("render", HelpText = "Renders a Local Notion object (using local state only)")]
-	public class RenderCommandArguments {
+	public class RenderCommandArguments : CommandArgumentsBase {
 
 		[Option('r', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
@@ -237,7 +246,7 @@ public static partial class Program {
 	}
 
 	[Verb("prune", HelpText = "Removes objects from a Local Notion that no longer exist in Notion")]
-	public class PruneCommandArguments {
+	public class PruneCommandArguments : CommandArgumentsBase {
 
 		[Option('r', "path", HelpText = "Path to Local Notion repository (default current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
@@ -251,7 +260,7 @@ public static partial class Program {
 	}
 
 	[Verb("license", HelpText = "Manages Local Notion license")]
-	public class LicenseCommandArguments {
+	public class LicenseCommandArguments : CommandArgumentsBase {
 
 		[Option('a', "activate", HelpText = "Local Notion key.")]
 		public string ProductKey { get; set; } = string.Empty;
@@ -545,9 +554,19 @@ $@"Local Notion Status:
 		return ERRORCODE_COMMANDLINE_ERROR;
 	}
 
-	public static async Task<int> ExecuteCommandAsync<T>(T args, Func<T, CancellationToken, Task<int>> command, CancellationToken cancellationToken) {
+	public static async Task<int> ExecuteCommandAsync<T>(T args, Func<T, CancellationToken, Task<int>> command) where T : CommandArgumentsBase {
 		try {
-			return await command(args, cancellationToken);
+			Guard.ArgumentNotNull(args, nameof(args));
+			using var disposables = new Disposables();
+			if (args.CancelTriggerPath != null && File.Exists(args.CancelTriggerPath)) {
+				var monitor = Tools.FileSystem.MonitorFile(args.CancelTriggerPath, (changeType, path) => { 
+					if (changeType == WatcherChangeTypes.Deleted)
+						CancelProgram.Cancel();
+				});
+				disposables.Add(monitor);
+			}
+
+			return await command(args, CancelProgram.Token);
 		} catch (TaskCanceledException tce) {
 			Console.WriteLine("Cancelled successfully");
 			return ERRORCODE_CANCELLED;
@@ -558,32 +577,34 @@ $@"Local Notion Status:
 		}
 	}
 
+
 	/// <summary>
 	/// The main entry point for the application.
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-#if DEBUG
-		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
-		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
-		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
-		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] RenderAllPage = new[] { "render", "--all" };
-		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] Remove = new[] { "remove", "--all" };
-		string[] HelpInit = new[] { "help", "init" };
-		string[] Version = new[] { "version" };
+//#if DEBUG
+//		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
+//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+//		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
+//		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+//		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+//		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
+//		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+//		string[] RenderAllPage = new[] { "render", "--all" };
+//		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+//		string[] Remove = new[] { "remove", "--all" };
+//		string[] HelpInit = new[] { "help", "init" };
+//		string[] Version = new[] { "version" };
+//		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt"};
 
-		if (args.Length == 0)
-			args = Version;
-#endif
+//		if (args.Length == 0)
+//			args = ListWithTrigger;
+//#endif
 
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-10-23 00:00")) {
@@ -592,13 +613,11 @@ $@"Local Notion Status:
 			}
 
 			HydrogenFramework.Instance.StartFramework();
-
-			var tcs = new CancellationTokenSource();
 			
 			Console.CancelKeyPress += (sender, args) => {
 				Console.WriteLine("Cancelling");
 				args.Cancel = true;
-				tcs.Cancel();
+				CancelProgram.Cancel();
 			};
 
 			return await Parser.Default.ParseArguments< 
@@ -613,15 +632,15 @@ $@"Local Notion Status:
 				LicenseCommandArguments,
 				int
 			>(args).MapResult(
-				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync, tcs.Token),
-				(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync, tcs.Token),
-				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync, tcs.Token),
-				(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListCommand, tcs.Token),
-				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync, tcs.Token),
-				(PullRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePullCommandAsync, tcs.Token),
-				(RenderCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRenderCommandAsync, tcs.Token),
-				(PruneCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePruneCommandAsync, tcs.Token),
-				(LicenseCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteLicenseCommandAsync, tcs.Token),
+				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync),
+				(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync),
+				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync),
+				(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListCommand),
+				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync),
+				(PullRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePullCommandAsync),
+				(RenderCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRenderCommandAsync),
+				(PruneCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePruneCommandAsync),
+				(LicenseCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteLicenseCommandAsync),
 				ProcessCommandLineErrorsAsync
 			);
 		} finally {
