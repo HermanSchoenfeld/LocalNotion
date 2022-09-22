@@ -600,10 +600,10 @@ $@"Local Notion Status:
 //		string[] Remove = new[] { "remove", "--all" };
 //		string[] HelpInit = new[] { "help", "init" };
 //		string[] Version = new[] { "version" };
-//		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt"};
+//		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 
 //		if (args.Length == 0)
-//			args = ListWithTrigger;
+//			args = PullCmd;
 //#endif
 
 		try {
