@@ -25,9 +25,19 @@ public class ProcessSentry {
 
 	public virtual void SendCtrlC() => _controlCTrigger.Fire();
 
-	public virtual Task<int> Run(string arguments = null, TextWriter output = null)  {
+	public async Task<bool> CanRun(CancellationToken cancellationToken = default)  {
+		try {
+			await RunProcess(FileName, null, null, null,  cancellationToken);
+		} catch (Exception ex) {
+			return false;
+		}
+		return true;
+	}
+		
+
+	public virtual Task<int> Run(string arguments = null, TextWriter output = null, CancellationToken cancellationToken = default)  {
 		using IScope lockScope = MultiInstance ? new NoOpScope() : _lock.EnterWriteScope(); // not Blocks on EnterWriteScope even on async
-		return RunProcess(FileName, arguments, output, _controlCTrigger);
+		return RunProcess(FileName, arguments, output, _controlCTrigger, cancellationToken);
 	}
 
 
@@ -59,9 +69,11 @@ public class ProcessSentry {
 
 		if (!process.Start())
 			throw new InvalidOperationException($"Unable to start process: {fileName}");
-		
-		process.BeginOutputReadLine();
-		process.BeginErrorReadLine();
+
+		if (!process.HasExited) {
+			Tools.Exceptions.ExecuteIgnoringException(process.BeginOutputReadLine);
+			Tools.Exceptions.ExecuteIgnoringException(process.BeginErrorReadLine);
+		}
 
 		await process.WaitForExitAsync();
 		return process.ExitCode;
@@ -87,16 +99,28 @@ public class LocalNotionSentry : ProcessSentry {
 	private string FileTriggerPath { get; set; }
 
 	public async Task<bool> IsInstalledAsync(CancellationToken cancellationToken = default) 
-		=> await Run("version", Output) == 0;
+		=> await CanRun(cancellationToken) && await Run("version", Output, cancellationToken) == 0;
+
+
+	public async Task<int> GetStatus(string path, TextWriter output, CancellationToken cancellationToken = default)  {
+		Guard.ArgumentNotNullOrEmpty(path, nameof(path));
+		Guard.DirectoryExists(path);
+		return await Run($"status -p {path}", output, cancellationToken);
+	}
+
+
+	public async Task<bool> List(string notionApiKey, CancellationToken cancellationToken = default) 
+		=> await Run($"list -k {notionApiKey} -a", Output) == 0;
+
 
 	public async Task<bool> List(CancellationToken cancellationToken = default) 
 		=> await Run("list -k YOUR_NOTION_API_KEY_HERE -a", Output) == 0;
 
 
-	public override async Task<int> Run(string arguments = null, TextWriter output = null) {
+	public override async Task<int> Run(string arguments = null, TextWriter output = null, CancellationToken cancellationToken = default) {
 		FileTriggerPath = Path.GetTempFileName();
 		await using var disposable = new ActionDisposable(SendCtrlC);
-		return await base.Run($"{arguments} --cancel-trigger \"{FileTriggerPath}\"", output);
+		return await base.Run($"{arguments} --cancel-trigger \"{FileTriggerPath}\"", output, cancellationToken);
 	}
 }
 

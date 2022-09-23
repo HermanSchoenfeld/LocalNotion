@@ -13,16 +13,7 @@ using System.Security.AccessControl;
 namespace LocalNotion.CLI;
 
 public static partial class Program {
-	public const int ERRORCODE_OK = 0;
-	public const int ERRORCODE_CANCELLED = -1;
-	public const int ERRORCODE_COMMANDLINE_ERROR = -2;
-	public const int ERRORCODE_REPO_NOT_FOUND = -3;
-	public const int ERRORCODE_REPO_ERROR = -4;
-	public const int ERRORCODE_REPO_NO_APIKEY = -5;
-	public const int ERRORCODE_NOT_IMPLEMENTED = -6;
-	public const int ERRORCODE_LICENSE_ERROR = -7;
-	public const int ERRORCODE_FAIL = -8;
-	
+
 	private static CancellationTokenSource CancelProgram { get; } = new CancellationTokenSource();
 
 	private static string GetDefaultRepoFolder() 
@@ -278,7 +269,7 @@ public static partial class Program {
 
 		if (!Directory.Exists(arguments.Path)) {
 			consoleLogger.Error($"Repository not found: {arguments.Path}");
-			return ERRORCODE_REPO_NOT_FOUND;
+			return Constants.ERRORCODE_REPO_NOT_FOUND;
 		}
 
 		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
@@ -298,7 +289,7 @@ $@"Local Notion Status:
 		foreach(var internalResourceType in Enum.GetValues<InternalResourceType>()) 
 			Console.WriteLine($"\t\t{internalResourceType}: {repo.Paths.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Relative)}");
 		
-		return ERRORCODE_OK;
+		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecuteInitCommandAsync(InitRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
@@ -341,7 +332,7 @@ $@"Local Notion Status:
 			logger: consoleLogger
 		);
 		consoleLogger.Info("Location Notion repository has been created");
-		return ERRORCODE_OK;
+		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecuteRemoveCommandAsync(RemoveRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
@@ -370,7 +361,7 @@ $@"Local Notion Status:
 				consoleLogger.Warning("No Local Notion repository was found");
 		}
 		
-		return ERRORCODE_OK;
+		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecuteListCommand(ListContentsCommandArguments arguments, CancellationToken cancellationToken) {
@@ -389,7 +380,7 @@ $@"Local Notion Status:
 		
 		if (string.IsNullOrWhiteSpace(apiKey)) {
 			consoleLogger.Info("No API key was specified in argument or registered in repository");
-			return ERRORCODE_COMMANDLINE_ERROR;
+			return Constants.ERRORCODE_COMMANDLINE_ERROR;
 		}
 
 		var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
@@ -444,7 +435,7 @@ $@"Local Notion Status:
 				_ => throw new ArgumentOutOfRangeException(nameof(objectType), objectType, null)
 			};
 
-		return ERRORCODE_OK;
+		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecutePullCommandAsync(PullRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
@@ -504,12 +495,12 @@ $@"Local Notion Status:
 			Console.WriteLine($"Synchronizing Updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 			//arguments.FilterLastUpdatedOn = DateTime.Now;
 			var result = await ExecutePullCommandAsync(arguments, cancellationToken);
-			if (result != ERRORCODE_OK && !arguments.FaultTolerant) 
+			if (result != Constants.ERRORCODE_OK && !arguments.FaultTolerant) 
 				return result;
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
 			//arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 		}
-		return ERRORCODE_OK;
+		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {
@@ -519,7 +510,7 @@ $@"Local Notion Status:
 		var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects;
 		if (!toRender.Any()) {
 			consoleLogger.Warning("Nothing to render");
-			return ERRORCODE_OK;
+			return Constants.ERRORCODE_OK;
 		}
 
 		foreach (var resource in toRender) {
@@ -532,26 +523,26 @@ $@"Local Notion Status:
 					throw;
 			}
 		}
-		return ERRORCODE_OK;
+		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecutePruneCommandAsync(PruneCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		consoleLogger.Warning("Local Notion pruning is not currently implemented");
-		return ERRORCODE_NOT_IMPLEMENTED;
+		return Constants.ERRORCODE_NOT_IMPLEMENTED;
 	}
 
 	public static async Task<int> ExecuteLicenseCommandAsync(LicenseCommandArguments arguments, CancellationToken cancellationToken) {
 		SystemLog.Warning("Local Notion DRM is not currently implemented");
-		return ERRORCODE_NOT_IMPLEMENTED;
+		return Constants.ERRORCODE_NOT_IMPLEMENTED;
 	}
 
 	public static async Task<int> ProcessCommandLineErrorsAsync(IEnumerable<Error> errors) {
 		System.Threading.Thread.Sleep(200); // give time for output to flush to parent process
 		if (errors.Count() == 1 && errors.Single() is VersionRequestedError)
-			return ERRORCODE_OK;
+			return Constants.ERRORCODE_OK;
 
-		return ERRORCODE_COMMANDLINE_ERROR;
+		return Constants.ERRORCODE_COMMANDLINE_ERROR;
 	}
 
 	public static async Task<int> ExecuteCommandAsync<T>(T args, Func<T, CancellationToken, Task<int>> command) where T : CommandArgumentsBase {
@@ -569,11 +560,11 @@ $@"Local Notion Status:
 			return await command(args, CancelProgram.Token);
 		} catch (TaskCanceledException tce) {
 			Console.WriteLine("Cancelled successfully");
-			return ERRORCODE_CANCELLED;
+			return Constants.ERRORCODE_CANCELLED;
 		} catch (Exception error) {
 			SystemLog.Exception(error);
 			Console.WriteLine($"ERROR: {error.ToDisplayString()}");
-			return ERRORCODE_FAIL;
+			return Constants.ERRORCODE_FAIL;
 		}
 	}
 
@@ -609,7 +600,7 @@ $@"Local Notion Status:
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-10-23 00:00")) {
 				Console.WriteLine("Software has expired");
-				return ERRORCODE_LICENSE_ERROR;
+				return Constants.ERRORCODE_LICENSE_ERROR;
 			}
 
 			HydrogenFramework.Instance.StartFramework();

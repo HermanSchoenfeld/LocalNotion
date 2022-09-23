@@ -42,4 +42,13 @@ public static class Constants {
 	public const bool DefaultDownloadExternalContent = false;
 
 
+	public const int ERRORCODE_OK = 0;
+	public const int ERRORCODE_CANCELLED = -1;
+	public const int ERRORCODE_COMMANDLINE_ERROR = -2;
+	public const int ERRORCODE_REPO_NOT_FOUND = -3;
+	public const int ERRORCODE_REPO_ERROR = -4;
+	public const int ERRORCODE_REPO_NO_APIKEY = -5;
+	public const int ERRORCODE_NOT_IMPLEMENTED = -6;
+	public const int ERRORCODE_LICENSE_ERROR = -7;
+	public const int ERRORCODE_FAIL = -8;
 }
