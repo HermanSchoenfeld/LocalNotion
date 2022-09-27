@@ -23,6 +23,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion.CLI", "LocalNot
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.Communications", "..\Hydrogen\src\Hydrogen.Communications\Hydrogen.Communications.csproj", "{236B6958-1D17-4B1E-AAF6-1A3A019FA773}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.NETCore", "..\Hydrogen\src\Hydrogen.NETCore\Hydrogen.NETCore.csproj", "{093E0E90-B4E6-47D1-9C47-20B93D9934BA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,6 +67,10 @@ Global
 		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{236B6958-1D17-4B1E-AAF6-1A3A019FA773}.Release|Any CPU.Build.0 = Release|Any CPU
+		{093E0E90-B4E6-47D1-9C47-20B93D9934BA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{093E0E90-B4E6-47D1-9C47-20B93D9934BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{093E0E90-B4E6-47D1-9C47-20B93D9934BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{093E0E90-B4E6-47D1-9C47-20B93D9934BA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -77,6 +83,7 @@ Global
 		{FD223FFE-0EB6-4CBF-96BB-C8008B76B72D} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 		{CB582BF8-5A78-4F05-905F-27E139485294} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 		{236B6958-1D17-4B1E-AAF6-1A3A019FA773} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
+		{093E0E90-B4E6-47D1-9C47-20B93D9934BA} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B9202D58-E7A4-4F4A-ADD7-CBB52A9A9BC8}

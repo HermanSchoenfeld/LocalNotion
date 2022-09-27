@@ -1,14 +1,9 @@
 ﻿using Hydrogen;
 using Hydrogen.Application;
-using Hydrogen.Data;
 using Notion.Client;
-using LocalNotion;
 using CommandLine;
-using System.IO;
 using System.Runtime.Serialization;
 using LocalNotion.Core;
-using System.Drawing;
-using System.Security.AccessControl;
 
 namespace LocalNotion.CLI;
 
@@ -50,8 +45,8 @@ public static partial class Program {
 		[EnumMember(Value = "publishing")]
 		Publishing,
 
-		[EnumMember(Value = "website")]
-		Website,
+		[EnumMember(Value = "webhosting")]
+		WebHosting,
 
 	}
 
@@ -72,7 +67,6 @@ public static partial class Program {
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 	}
-
 	
 	[Verb("init", HelpText = "Creates a Local Notion repository")]
 	public class InitRepositoryCommandArguments : CommandArgumentsBase {
@@ -123,7 +117,6 @@ public static partial class Program {
 		public string BaseUrlOverride { get; set; } = null;
 	
 	}
-
 	
 	[Verb("remove", HelpText = "Remove resources from a Local Notion repository")]
 	public class RemoveRepositoryCommandArguments : CommandArgumentsBase {
@@ -206,8 +199,7 @@ public static partial class Program {
 	public class SyncRepositoryCommandArguments : PullRepositoryCommandArguments {
 
 		[Option('f', "poll-frequency", Default = 30, HelpText = "How often to poll Notion for changes")]
-		public int PollFrequency { get; set; } 
-
+		public int PollFrequency { get; set; }
 	}
 			
 	[Verb("render", HelpText = "Renders a Local Notion object (using local state only)")]
@@ -264,6 +256,21 @@ public static partial class Program {
 
 	}
 
+	[Verb("service", HelpText = "Runs as service")]
+	public class ServiceCommandArguments {
+
+		[Option('o', "objects", Required = true, Group = "target", HelpText = "List of Notion objects to pull (i.e. pages, databases)")]
+		public IEnumerable<string> Objects { get; set; } = null;
+
+		[Option('p', "path", Required = true, HelpText = "Path to Local Notion repository (or registry)")]
+		public string Path { get; set; }
+
+		[Option('f', "poll-frequency", Default = 30, HelpText = "How often to poll Notion for changes")]
+		public int PollFrequency { get; set; } 
+
+	}
+
+
 	public static async Task<int> ExecuteStatusCommandAsync(StatusRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
@@ -303,9 +310,10 @@ $@"Local Notion Status:
 			LocalNotionProfileDescriptor.Backup => LocalNotionPathProfile.Backup,
 			LocalNotionProfileDescriptor.Offline => LocalNotionPathProfile.Offline,
 			LocalNotionProfileDescriptor.Publishing => LocalNotionPathProfile.Publishing,
-			LocalNotionProfileDescriptor.Website => LocalNotionPathProfile.WebHosting,
+			LocalNotionProfileDescriptor.WebHosting => LocalNotionPathProfile.WebHosting,
 			_ => throw new NotSupportedException(arguments.Profile.ToString())
 		};
+
 		if (!string.IsNullOrWhiteSpace(arguments.BaseUrlOverride))
 			pathProfile.BaseUrl = arguments.BaseUrlOverride;;
 		if (!string.IsNullOrWhiteSpace(arguments.DatabasePathOverride))
@@ -574,28 +582,30 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-//#if DEBUG
-//		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
-//		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
-//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-//		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-//		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
-//		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] RenderAllPage = new[] { "render", "--all" };
-//		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] Remove = new[] { "remove", "--all" };
-//		string[] HelpInit = new[] { "help", "init" };
-//		string[] Version = new[] { "version" };
-//		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
+#if DEBUG
+		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
+		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
+		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
+		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
+		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] RenderAllPage = new[] { "render", "--all" };
+		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] Remove = new[] { "remove", "--all" };
+		string[] HelpInit = new[] { "help", "init" };
+		string[] Version = new[] { "version" };
+		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 
-//		if (args.Length == 0)
-//			args = PullCmd;
-//#endif
+		if (args.Length == 0)
+			args = RenderPage;
+#endif
 
 		try {
 			if (DateTime.Now > DateTime.Parse("2022-10-23 00:00")) {

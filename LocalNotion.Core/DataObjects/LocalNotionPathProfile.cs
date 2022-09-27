@@ -152,10 +152,7 @@ public class LocalNotionPathProfile {
 	/// </summary>
 	public static LocalNotionPathProfile WebHosting => new () {
 		BaseUrl = "/",
-		PagesPathR = string.Empty,
-		FilesPathR = string.Empty,
-		DatabasesPathR = string.Empty,
-		WorkspacePathR = string.Empty,
+		Mode = LocalNotionMode.Online
 	};
 
 }

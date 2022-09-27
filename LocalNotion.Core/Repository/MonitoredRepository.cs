@@ -15,7 +15,7 @@ namespace LocalNotion.Repository;
 /// application relies on a repository but does not update it. Thus it only wants read-only access to it. A ASP.NET Core web-application using Local Notion as
 /// a View store is a perfect example.
 /// </summary>
-public class MonitoredRepository : ILocalNotionRepository {
+public class MonitoredRepository : DisposableResource, ILocalNotionRepository, IDisposable {
 	public event EventHandlerEx<object> Loading { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object> Loaded { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object>? Changing { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
@@ -31,17 +31,23 @@ public class MonitoredRepository : ILocalNotionRepository {
 	public event EventHandlerEx<object, string>? ResourceRemoving { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object, LocalNotionResource>? ResourceRemoved { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 
-	public MonitoredRepository(string repoFile) {
-		Guard.ArgumentNotNullOrEmpty(repoFile, nameof(repoFile));
-		Guard.FileExists(repoFile);
-		InternalRepository = Tools.Values.Future.Reloadable(() =>  (ILocalNotionRepository) LocalNotionRepository.Open(repoFile).ResultSafe());
-		var fileMonitor = new FileSystemWatcher(repoFile);
-		fileMonitor.Changed += (object sender, FileSystemEventArgs args) => {
-			if (args.ChangeType.HasFlag(WatcherChangeTypes.Changed)) {
-				InternalRepository.Invalidate();
-				Changed?.Invoke(this);
+	public MonitoredRepository(string repositoryFolder) {
+		Guard.ArgumentNotNullOrEmpty(repositoryFolder, nameof(repositoryFolder));
+		Guard.DirectoryExists(repositoryFolder);
+		var registryFile = PathResolver.ResolveDefaultRegistryFilePath(repositoryFolder);
+		Guard.FileExists(registryFile);
+		InternalRepository = Tools.Values.Future.Reloadable(() =>  (ILocalNotionRepository) LocalNotionRepository.OpenRegistry(registryFile).ResultSafe());
+		var fileMonitor = Tools.FileSystem.MonitorFile(
+			registryFile, 
+			(WatcherChangeTypes changeType, string file) => {
+				if (changeType.HasFlag(WatcherChangeTypes.Changed)) {
+					InternalRepository.Invalidate();
+					Changed?.Invoke(this);
+				}
 			}
-		};
+		);
+
+		Disposables.Add(fileMonitor);
 	}
 
 	private Reloadable<ILocalNotionRepository> InternalRepository { get; }

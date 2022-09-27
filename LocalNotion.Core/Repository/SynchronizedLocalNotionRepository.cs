@@ -11,7 +11,7 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		_syncObj = new SynchronizedObject();
 	}
 
-	public ISynchronizedObject<Scope, Scope> ParentSyncObject { 
+	public ISynchronizedObject ParentSyncObject { 
 		get => _syncObj.ParentSyncObject; 
 		set => _syncObj.ParentSyncObject = value; 
 	}
@@ -96,22 +96,22 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 	}
 
 	public override async Task LoadAsync() {
-		await using (EnterWriteScope())
+		using (EnterWriteScope())
 			await InternalRepository.LoadAsync();
 	}
 
 	public override async Task SaveAsync() {
-		await using (EnterWriteScope())
+		using (EnterWriteScope())
 			await InternalRepository.SaveAsync();
 	}
 
 	public override async Task ClearAsync() {
-		await using (EnterWriteScope())
+		using (EnterWriteScope())
 			await InternalRepository.ClearAsync();
 	}
 
 	public override async Task CleanAsync() {
-		await using (EnterWriteScope())
+		using (EnterWriteScope())
 			await InternalRepository.CleanAsync();
 	}
 
@@ -210,8 +210,8 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			return base.CalculateRenderSlug(resource, render, renderedFilename);
 	}
 
-	public Scope EnterReadScope() => _syncObj.EnterReadScope();
+	public IDisposable EnterReadScope() => _syncObj.EnterReadScope();
 
-	public Scope EnterWriteScope() => _syncObj.EnterWriteScope();
+	public IDisposable EnterWriteScope() => _syncObj.EnterWriteScope();
 
 }

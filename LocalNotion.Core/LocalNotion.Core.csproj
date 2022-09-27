@@ -478,7 +478,9 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\..\..\notion-sdk-net\Src\Notion.Client\Notion.Client.csproj" />
 	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
+	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.NETCore\Hydrogen.NETCore.csproj" />
 	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
+	  <ProjectReference Include="..\..\sphere10.com\Sphere10.Company.BusinessLogic\Sphere10.Company.BusinessLogic.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

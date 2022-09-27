@@ -40,7 +40,7 @@ public class RemoteUrlResolver : UrlResolverBase {
 			url = render.Slug;
 		}
 
-		url = $"{Repository.Paths.GetRemoteHostedBaseUrl()}/{url.TrimStart("/")}";
+		url = $"{Repository.Paths.GetRemoteHostedBaseUrl().TrimEnd("/")}/{url.TrimStart("/")}";
 
 		return true;
 	}
