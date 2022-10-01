@@ -3,6 +3,7 @@ using Notion.Client;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
+using AngleSharp.Html.Parser;
 
 namespace LocalNotion.Core;
 
@@ -875,7 +876,14 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	}
 
 	protected virtual string CleanUpHtml(string html) {
-		var parser = new AngleSharp.Html.Parser.HtmlParser();
+		if (Theme.SuppressFormatting)
+			return html;
+
+		var options = new HtmlParserOptions {
+			IsEmbedded = true,
+			IsScripting = true
+		};
+		var parser = new HtmlParser(options);
 		var document = parser.ParseDocument(html);
 		var sw = new StringWriter();
 		var formatter = new CleanHtmlFormatter();

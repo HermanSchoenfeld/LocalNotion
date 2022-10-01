@@ -181,4 +181,10 @@ public static class ILocalNotionRepositoryExtensions {
 		} while (repository.TryGetResource(resource.ParentResourceID, out resource));
 	}
 
+	public static RenderEntry FindRenderBySlug(this ILocalNotionRepository repository, string slug, out LocalNotionResource resource) {
+		if (!repository.TryFindRenderBySlug(slug, out var resourceID, out var renderType))
+			throw new InvalidOperationException($"No render with slug '{slug}' was found");
+		resource = repository.GetResource(slug);
+		return resource.Renders[renderType];
+	}
 }

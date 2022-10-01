@@ -20,6 +20,8 @@ public class HtmlThemeInfo : ThemeInfo {
 	[JsonProperty("online_url", NullValueHandling = NullValueHandling.Ignore)]
 	public string OnlineUrl { get; set; } = string.Empty;
 
+	[JsonProperty("SuppressFormatting", DefaultValueHandling = DefaultValueHandling.Ignore)]
+	public bool SuppressFormatting { get; set; } = false;
 	
 	// The tokens below get filled with users custom tokens and all template files (key is "/folder/file.txt" value is fully resolved absolute path)
 	[JsonProperty("tokens")]  

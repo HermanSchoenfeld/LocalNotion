@@ -216,6 +216,13 @@
 	  <None Remove="Themes\.root\readonly\toggle_open.html" />
 	  <None Remove="Themes\.root\readonly\to_do.html" />
 	  <None Remove="Themes\.root\readonly\user.html" />
+	  <None Remove="Themes\embedded\.config.json" />
+	  <None Remove="Themes\embedded\editable\page.offline.html" />
+	  <None Remove="Themes\embedded\editable\page.online.html" />
+	  <None Remove="Themes\embedded\page.offline.html" />
+	  <None Remove="Themes\embedded\page.online.html" />
+	  <None Remove="Themes\embedded\readonly\page.offline.html" />
+	  <None Remove="Themes\embedded\readonly\page.online.html" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -459,6 +466,13 @@
 	  <EmbeddedResource Include="Themes\demo\page.offline.html" />
 	  <EmbeddedResource Include="Themes\demo\resources\local-notion\js\table_of_contents.js" />
 	  <EmbeddedResource Include="Themes\.root\.config.json" />
+	  <EmbeddedResource Include="Themes\embedded\.config.json" />
+	  <EmbeddedResource Include="Themes\embedded\editable\page.offline.html" />
+	  <EmbeddedResource Include="Themes\embedded\editable\page.online.html" />
+	  <EmbeddedResource Include="Themes\embedded\page.offline.html" />
+	  <EmbeddedResource Include="Themes\embedded\page.online.html" />
+	  <EmbeddedResource Include="Themes\embedded\readonly\page.offline.html" />
+	  <EmbeddedResource Include="Themes\embedded\readonly\page.online.html" />
 	</ItemGroup>
 
 	

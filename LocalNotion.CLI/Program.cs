@@ -546,7 +546,7 @@ $@"Local Notion Status:
 	}
 
 	public static async Task<int> ProcessCommandLineErrorsAsync(IEnumerable<Error> errors) {
-		System.Threading.Thread.Sleep(200); // give time for output to flush to parent process
+		await Task.Delay(200); // give time for output to flush to parent process
 		if (errors.Count() == 1 && errors.Single() is VersionRequestedError)
 			return Constants.ERRORCODE_OK;
 
