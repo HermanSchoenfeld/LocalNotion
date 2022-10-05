@@ -7,12 +7,12 @@ using Hydrogen;
 using Microsoft.Win32;
 
 namespace LocalNotion.Core {
-	public class NotionCms : INotionCMS {
+	public class LocalNotionCMS : ILocalNotionCMS {
 		private readonly ICache<string, string> _resourceBySlug;
 		private readonly ICache<string, string[]> _articlesByCategorySlug;
 		private readonly ICache<string, string[]> _categoriesByCategorySlug;
 
-		public NotionCms(ILocalNotionRepository repository) {
+		public LocalNotionCMS(ILocalNotionRepository repository) {
 			Repository = repository;
 			Repository.Changed += _ => FlushCache();
 

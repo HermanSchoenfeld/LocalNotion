@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace LocalNotion.Core;
 
-public interface INotionCMS {
+public interface ILocalNotionCMS {
 
 	IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories);
 
@@ -21,7 +21,7 @@ public interface INotionCMS {
 
 public static class INotionCMSExtensions {
 
-	public static string LookupResourceBySlug(this INotionCMS cms, string slug)
+	public static string LookupResourceBySlug(this ILocalNotionCMS cms, string slug)
 		=> cms.TryLookupResourceBySlug(slug, out var resourceID) ? resourceID : throw new InvalidOperationException($"No resource addressable by the slug '{slug}' was found");
 
 }

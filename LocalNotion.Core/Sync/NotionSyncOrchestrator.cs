@@ -29,7 +29,7 @@ public class NotionSyncOrchestrator {
 	protected ILocalNotionRepository Repository { get; }
 
 	/// <summary>
-	/// Downloads and renders pages from a NotionCMS Database.
+	/// Downloads and renders pages from a LocalNotionCMS Database.
 	/// </summary>
 	/// <param name="databaseID">Notion ID of the CMS Database</param>
 	/// <param name="sourceFilter">Filter for Source property on CMS Database</param>
@@ -161,10 +161,10 @@ public class NotionSyncOrchestrator {
 
 				// Hydrate a Notion CMS summaries (and future plugins)
 				if (NotionCMSHelper.IsCMSPage(notionPage)) {
-					// Page is a NotionCMS page
+					// Page is a LocalNotionCMS page
 					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
 				}  else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
-					// Page has a NotionCMS page ancestor, so propagate CMS properties down
+					// Page has a LocalNotionCMS page ancestor, so propagate CMS properties down
 					localPage.CMSProperties = NotionCMSHelper.ParseCMSPropertiesAsChildPage(notionPage, parentPage);
 				}
 
