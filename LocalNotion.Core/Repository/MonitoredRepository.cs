@@ -100,7 +100,7 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 
-	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) => InternalRepository.Value.TryFindRenderBySlug(slug, out resourceID, out renderType);
+	public virtual bool TryFindRenderBySlug(string slug, out UrlSlugLookup result) => InternalRepository.Value.TryFindRenderBySlug(slug, out result);
 
 	public virtual void AddResource(LocalNotionResource resource) => InternalRepository.Value.AddResource(resource);
 

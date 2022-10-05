@@ -7,10 +7,11 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
+public record UrlSlugLookup(string ResourceID, RenderType RenderType, string CaseCorrectSlug);
+
 
 // Make ThreadSafe
 public class LocalNotionRepository : ILocalNotionRepository {
-
 	public event EventHandlerEx<object> Loading;
 	public event EventHandlerEx<object> Loaded;
 	public event EventHandlerEx<object> Changing;
@@ -31,7 +32,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	private GuidStringFileStore _graphStore;
 	
 	private IDictionary<string, LocalNotionResource> _resourcesByNID;
-	private IDictionary<string, (string, RenderType)> _renderBySlug;
+	private IDictionary<string, UrlSlugLookup> _renderBySlug;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
 
@@ -230,11 +231,21 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		// create the resource lookup table
 		_resourcesByNID = _registry.Resources.ToDictionary(x => x.ID);
+
+		// Create the slug lookup table
 		_renderBySlug = 
 			_registry
 			.Resources
-			.SelectMany(resource => resource.Renders.Select(render => (resource,render)))
-			.ToDictionary(x => x.render.Value.Slug, x => (x.resource.ID, x.render.Key)); // possible exception if duplicate slug found in repo
+			.SelectMany(resource => resource.Renders.Select(render => (render.Value.Slug, resource, render)))
+			.Concat(
+				_registry
+					.Resources
+					.Where(r => r is LocalNotionPage { CMSProperties.CustomSlug: not null })
+					.Cast<LocalNotionPage>()
+					.Select(x => (x.CMSProperties.CustomSlug, (LocalNotionResource)x, x.Renders.Single(z => z.Key == RenderType.HTML)))
+			)
+			.Distinct(x => x.Item1, StringComparer.InvariantCultureIgnoreCase) 
+            .ToDictionary(x => x.Item1, x => new UrlSlugLookup(x.Item2.ID, x.Item3.Key, x.Item1), StringComparer.InvariantCultureIgnoreCase); // possible exception if duplicate slug found in repo
 
 		// Prepare repository logger
 		_logger.Add(
@@ -416,6 +427,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource localNotionResource) {
 		CheckLoaded();
+		if (resourceID == null) {
+			localNotionResource = null;
+			return false;
+		}
+
 		if (!_resourcesByNID.TryGetValue(resourceID, out var resource)) {
 			localNotionResource = null;
 			return false;
@@ -452,8 +468,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 				Directory.CreateDirectory(resourceFolder);
 		}
 
-		// Try to determine the object parent by calculating the path back up to the 
-		resource.ParentResourceID = CalculateResourceParent(resource.ID);
+		// Update slug cache with CMS properties (if applicable)
+		if (resource is LocalNotionPage { CMSProperties.CustomSlug: not null } lnp && lnp.TryGetRender(RenderType.HTML, out var render)) {
+			_renderBySlug[lnp.CMSProperties.CustomSlug] = new(resource.ID, RenderType.HTML, lnp.CMSProperties.CustomSlug);
+		}
 
 		RequiresSave = true;
 		_registry.Add(resource);
@@ -502,18 +520,23 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		// Remove any attached files if applicable
 		if (resource is LocalNotionPage page) {
-			if (page.Thumbnail.Type == ThumbnailType.Image && TryFindRenderBySlug(page.Thumbnail.Data, out var attachedFile, out _)) 
+			if (page.Thumbnail.Type == ThumbnailType.Image && TryFindRenderBySlug(page.Thumbnail.Data, out var attachedFileRender)) 
 				// TODO: reference count decrease (when added)
-				RemoveResource(attachedFile, removeChildren);
+				RemoveResource(attachedFileRender.ResourceID, removeChildren);
 			
-			if (!string.IsNullOrWhiteSpace(page.Cover) && TryFindRenderBySlug(page.Cover, out  attachedFile, out _))
-				RemoveResource(attachedFile, removeChildren);
+			if (!string.IsNullOrWhiteSpace(page.Cover) && TryFindRenderBySlug(page.Cover, out attachedFileRender))
+				RemoveResource(attachedFileRender.ResourceID, removeChildren);
 		}
 
 		// Remove child resource if any
 		if (removeChildren) {
 			foreach(var child in GetChildObjects(resourceID))
 				RemoveResource(child.ID, removeChildren);
+		}
+
+		// Update slug cache with CMS properties (if applicable)
+		if (resource is LocalNotionPage { CMSProperties.CustomSlug: not null } lnp && lnp.TryGetRender(RenderType.HTML, out _)) {
+			_renderBySlug.Remove(lnp.CMSProperties.CustomSlug);
 		}
 
 
@@ -538,16 +561,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		return File.Exists(file);
 	}
 
-	public virtual bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) {
-		if (_renderBySlug.TryGetValue(slug, out var render)) {
-			resourceID = render.Item1;
-			renderType = render.Item2;
-			return true;
-		}
-		resourceID = default;
-		renderType = default;
-		return false;
-	}
+	public virtual bool TryFindRenderBySlug(string slug, out UrlSlugLookup result) 
+		 => _renderBySlug.TryGetValue(slug, out result);
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
@@ -580,7 +595,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		};
 		resource.Renders[renderType] =renderEntry;
 		if (!_renderBySlug.ContainsKey(renderEntry.Slug))
-			_renderBySlug.Add(renderEntry.Slug, (resourceID, renderType));
+			_renderBySlug.Add(renderEntry.Slug, new (resourceID, renderType, renderEntry.Slug));
 
 		RequiresSave = true;
 		NotifyResourceUpdated(resource);
@@ -696,30 +711,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		RequiresSave = true;
 	}
 
-	/// <summary>
-	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
-	/// </summary>
-	protected string CalculateResourceParent(string objectID) {
-		var visited = new HashSet<string>();
-		while(!visited.Contains(objectID) && TryGetObject(objectID, out var obj)) {
-			visited.Add(objectID);
-			if (obj.TryGetParent(out var parent)) {
-				switch(parent.Type) {
-					case ParentType.DatabaseId:
-					case ParentType.PageId:
-					case ParentType.Workspace:
-						return parent.GetId();
-					case ParentType.Unknown:
-					case ParentType.BlockId:
-					default:
-						// object 
-						objectID = parent.GetId();
-						break;
-				}
-			}
-		}
-		return null;
-	}
 
 	protected virtual void OnLoading() {
 	}

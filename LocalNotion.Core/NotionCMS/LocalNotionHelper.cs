@@ -31,6 +31,14 @@ internal class NotionCMSHelper {
 		return result;
 	}
 
+	public static CMSProperties ParseCMSPropertiesAsChildPage(Page childPage, LocalNotionPage parentPage) { 
+		Guard.ArgumentNotNull(childPage, nameof(childPage));
+		Guard.ArgumentNotNull(parentPage, nameof(parentPage));
+		var result = new CMSProperties();
+		ParseCMSPropertiesAsChildPage(childPage, parentPage, result);
+		return result;
+	}
+
 	public static CMSProperties ParseCMSProperties(Page page, CMSProperties result) {
 		Guard.ArgumentNotNull(page, nameof(page));
 
@@ -59,6 +67,27 @@ internal class NotionCMSHelper {
 		NormalizeCategories(result);
 		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.CustomSlug = CalculateCMSSlug(pageTitle, result);
+		return result;
+	}
+
+	public static CMSProperties ParseCMSPropertiesAsChildPage(Page childPage, LocalNotionPage parentPage, CMSProperties result) {
+		Guard.ArgumentNotNull(childPage, nameof(childPage));
+		Guard.ArgumentNotNull(parentPage, nameof(parentPage));
+		Guard.Argument(parentPage.CMSProperties != null, nameof(parentPage), "No CMS properties were defined on parent page");
+
+		var parentCMSProps = parentPage.CMSProperties;
+		var pageTitle = childPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		result.PublishOn = parentCMSProps.PublishOn;
+		result.Status = parentCMSProps.Status;
+		result.Location = parentCMSProps.Location;
+		result.CustomSlug = $"{parentCMSProps.CustomSlug.TrimEnd("/")}/{Tools.Url.ToUrlSlug(pageTitle)}";
+		result.Root = parentCMSProps.Root;
+		result.Category1 = parentCMSProps.Category1;
+		result.Category2 = parentCMSProps.Category2;
+		result.Category3 = parentCMSProps.Category3;
+		result.Category4 = parentCMSProps.Category4;
+		result.Category5 = parentCMSProps.Category5;
+		result.Summary = null;
 		return result;
 	}
 

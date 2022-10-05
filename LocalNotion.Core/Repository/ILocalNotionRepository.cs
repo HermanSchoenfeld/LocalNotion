@@ -84,7 +84,7 @@ public interface ILocalNotionRepository  {
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 
-	bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType);
+	bool TryFindRenderBySlug(string slug, out UrlSlugLookup result);
 	
 	string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile);
 
@@ -182,9 +182,9 @@ public static class ILocalNotionRepositoryExtensions {
 	}
 
 	public static RenderEntry FindRenderBySlug(this ILocalNotionRepository repository, string slug, out LocalNotionResource resource) {
-		if (!repository.TryFindRenderBySlug(slug, out var resourceID, out var renderType))
+		if (!repository.TryFindRenderBySlug(slug, out var render))
 			throw new InvalidOperationException($"No render with slug '{slug}' was found");
 		resource = repository.GetResource(slug);
-		return resource.Renders[renderType];
+		return resource.Renders[render.RenderType];
 	}
 }

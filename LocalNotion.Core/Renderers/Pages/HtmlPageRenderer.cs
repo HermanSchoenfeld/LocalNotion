@@ -10,7 +10,7 @@ namespace LocalNotion.Core;
 public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, IUrlResolver resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
+	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
 		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
 		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
 		Guard.ArgumentNotNullOrWhitespace(theme, nameof(theme));
@@ -21,7 +21,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		RenderMode = renderMode;
 
 	
-		// Resolve all the theme tokens
+		// Generate all the theme tokens
 		_tokens =
 			GetModeCorrectedTokens(Theme)
 			.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
@@ -68,7 +68,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> SanitizeUrl(externalFile.External.Url);
 
 	protected override string Render(UploadedFile uploadedFile)
-		 => Resolver.ResolveResourceRender(Page, uploadedFile, out _);
+		 => Resolver.GenerateUploadedFileLink(Page, uploadedFile, out _);
 
 	protected override string Render(Link link)
 		=> RenderTemplate(
@@ -154,8 +154,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"page" => RenderTemplate(
 				"text_link",   // should be page_link (use svg's)
 				new NotionObjectTokens {
-					["url"] = Resolver.TryResolve(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
-					["text"] = Resolver.TryResolve(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
+					["url"] = Resolver.TryGenerate(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
+					["text"] = Resolver.TryGenerate(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
 				}
 			),
 			"database" => $"[{text.Mention.Type}]{text.Mention.Database.Id}",
@@ -493,9 +493,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> RenderUnsupported(block);
 
 	protected override string Render(ChildPageBlock block) {
-		if (!Resolver.TryResolve(Page, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
+		if (!Resolver.TryGenerate(Page, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved child page {block.Id}";
-
 
 		return RenderTemplate(
 				"page_link",
@@ -698,7 +697,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 
 	protected override string Render(LinkToPageBlock block) {
-		if (!Resolver.TryResolve(Page, block.LinkToPage.GetId(), RenderType.HTML, out var childPageUrl, out var resource))
+		if (!Resolver.TryGenerate(Page, block.LinkToPage.GetId(), RenderType.HTML, out var childPageUrl, out var resource))
 			return $"Unresolved page {block.LinkToPage.GetId()}";
 
 		return RenderTemplate(

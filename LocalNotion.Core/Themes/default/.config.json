@@ -1,46 +1,35 @@
 ﻿{
   "type": "html",
-
   "base": ".root",
-
-  "online_url": "https://cdn.jsdelivr.net/gh/sphere10/cdn/local-notion/templates/default",
-
+  "online_url": "https://cdn.jsdelivr.net/gh/sphere10/cdn/local-notion/themes/default",
   "tokens": {
     "TableCssClass": {
       "offline": "table table-bordered shadow p-3 mb-5 bg-body rounded",
       "online": "table table-bordered shadow p-3 mb-5 bg-body rounded"
     },
-
     "TableRowCssClass": {
       "offline": "",
       "online": ""
     },
-
     "TableHeaderRowCssClass": {
       "offline": "table-active fw-bold",
       "online": "table-active fw-bold"
     },
-
     "TableCellCssClass": {
       "offline": "",
       "online": ""
     },
-
     "TableHeaderCellCssClass": {
       "offline": "table-active fw-bold",
       "online": "table-active fw-bold"
     },
-
-
     "SomeTokenName": {
       "offline": "This value is used for offline rendering",
       "online": "This value is used for online rendering"
     },
-
     "SomeOtherTokenName": {
       "offline": "Same as above, this value is used for offline rendering",
       "online": "Same as above, this value is used for online rendering"
     }
-
   }
 }

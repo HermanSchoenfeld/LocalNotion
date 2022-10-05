@@ -3,13 +3,16 @@
 namespace LocalNotion.Core;
 
 
-public abstract class UrlResolverBase : IUrlResolver {
+public abstract class LinkGeneratorBase : ILinkGenerator {
 
-	protected UrlResolverBase(ILocalNotionRepository repository) {
+	protected LinkGeneratorBase(ILocalNotionRepository repository) {
 		Repository = repository;
 	}
 
+	public abstract LocalNotionMode Mode { get; }
+
 	public ILocalNotionRepository Repository { get; }
+
 
 	public bool TryResolveResourceRender(string url, out LocalNotionResource resource, out RenderEntry entry) {
 		resource = default;
@@ -28,13 +31,13 @@ public abstract class UrlResolverBase : IUrlResolver {
 		} else {
 			// Try to resolve by slug
 
-			if (!Repository.TryFindRenderBySlug(url, out var resourceID, out var renderType))
+			if (!Repository.TryFindRenderBySlug(url, out var result))
 				return false;
 			
-			if (!Repository.TryGetResource(resourceID, out resource))
+			if (!Repository.TryGetResource(result.ResourceID, out resource))
 				return false;
 
-			if (!resource.TryGetRender(renderType, out entry))
+			if (!resource.TryGetRender(result.RenderType, out entry))
 				return false;
 		}
 
@@ -42,6 +45,6 @@ public abstract class UrlResolverBase : IUrlResolver {
 			
 	}
 
-	public abstract bool TryResolve(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource);
+	public abstract bool TryGenerate(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource);
 
 }

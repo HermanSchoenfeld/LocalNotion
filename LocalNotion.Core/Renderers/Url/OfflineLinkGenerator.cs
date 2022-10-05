@@ -6,12 +6,14 @@ namespace LocalNotion.Core;
 /// <summary>
 /// Resolves URLs to local resources used in offline scenarios.
 /// </summary>
-public class LocalUrlResolver : UrlResolverBase {
+public class OfflineLinkGenerator : LinkGeneratorBase {
 
-	public LocalUrlResolver(ILocalNotionRepository repository) : base(repository) {
+	public OfflineLinkGenerator(ILocalNotionRepository repository) : base(repository) {
 	}
 
-	public override bool TryResolve(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
+	public override LocalNotionMode Mode => LocalNotionMode.Offline;
+
+	public override bool TryGenerate(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
 		url = default;
 
 		if (from.ID == toResourceID) {

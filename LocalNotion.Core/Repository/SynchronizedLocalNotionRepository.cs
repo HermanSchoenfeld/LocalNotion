@@ -145,9 +145,9 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 			return base.ContainsResource(resourceID);
 	}
 
-	public override bool TryFindRenderBySlug(string slug, out string resourceID, out RenderType renderType) {
+	public override bool TryFindRenderBySlug(string slug, out UrlSlugLookup result) {
 		using (EnterReadScope())
-			return base.TryFindRenderBySlug(slug, out resourceID, out renderType);
+			return base.TryFindRenderBySlug(slug, out result);
 	}
 
 	public override bool TryGetResource(string resourceID, out LocalNotionResource localNotionResource) {

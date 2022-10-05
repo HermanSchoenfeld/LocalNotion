@@ -6,7 +6,7 @@ namespace LocalNotion.Core;
 
 public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
-	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IUrlResolver resolver,  IBreadCrumbGenerator breadCrumbGenerator, Action<string, TOutput> fileSerializer) {
+	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILinkGenerator resolver,  IBreadCrumbGenerator breadCrumbGenerator, Action<string, TOutput> fileSerializer) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
 		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
@@ -28,7 +28,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected IDictionary<string, IObject> PageObjects { get; set; }
 
-	protected IUrlResolver Resolver { get; }
+	protected ILinkGenerator Resolver { get; }
 
 	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
@@ -116,7 +116,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected string SanitizeUrl(string url) {
 		if (LocalNotionRenderLink.TryParse(url, out var link))  
-			return Resolver.Resolve(Page, link.ResourceID, link.RenderType, out _);
+			return Resolver.Generate(Page, link.ResourceID, link.RenderType, out _);
 		return url;
 	}
 
@@ -184,7 +184,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 					RenderVideoEmbed(block, externalFile.External.Url);
 			}
 			case UploadedFile uploadedFile: {
-				var url = Resolver.ResolveResourceRender(Page, uploadedFile, out _);
+				var url = Resolver.GenerateUploadedFileLink(Page, uploadedFile, out _);
 				return RenderVideoEmbed(block, url);
 			}
 			default:

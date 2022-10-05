@@ -586,10 +586,12 @@ $@"Local Notion Status:
 		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
 		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
 		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
+		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
 		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
 		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] PullBug3Cmd = new[] { "pull", "-o", "68944996-582b-453f-994f-d5562f4a6730", "--force" };
 		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
@@ -604,7 +606,7 @@ $@"Local Notion Status:
 		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 
 		if (args.Length == 0)
-			args = RenderPage;
+			args = RenderBug2Page;
 #endif
 
 		try {

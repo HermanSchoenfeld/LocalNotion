@@ -4,21 +4,21 @@ namespace LocalNotion.Core;
 
 public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
-	public BreadCrumbGenerator(ILocalNotionRepository repository, IUrlResolver urlResolver) {
+	public BreadCrumbGenerator(ILocalNotionRepository repository, ILinkGenerator linkGenerator) {
 		Guard.ArgumentNotNull(repository, nameof(repository));
-		Guard.ArgumentNotNull(urlResolver, nameof(urlResolver));
+		Guard.ArgumentNotNull(linkGenerator, nameof(linkGenerator));
 		Repository = repository;
-		UrlResolver = urlResolver;
+		LinkGenerator = linkGenerator;
 	}
 
 	protected ILocalNotionRepository Repository { get; }
 
-	protected IUrlResolver UrlResolver { get; }
+	protected ILinkGenerator LinkGenerator { get; }
 
 	public virtual BreadCrumb CalculateBreadcrumb(LocalNotionResource from) {
 		const string DefaultUrl = "#";
 
-		var ancestors = Repository.GetResourceAncestry(from.ID).TakeUntilInclusive(x => x is LocalNotionPage { CMSProperties: not null }).ToArray();
+		var ancestors = Repository.GetResourceAncestry(from.ID).ToArray();
 		if (ancestors.Length == 0)
 			return BreadCrumb.Empty;
 
@@ -45,7 +45,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			//IsRoot			= 1 << 6,
 			//IsWorkspace		= 1 << 7,
 
-			var hasUrl = UrlResolver.TryResolve(from, item.ID, RenderType.HTML, out var url, out var resource);
+			var hasUrl = LinkGenerator.TryGenerate(from, item.ID, RenderType.HTML, out var url, out var resource);
 			traits.SetFlags(BreadCrumbItemTraits.HasUrl, hasUrl);
 			if (!hasUrl)
 				url = DefaultUrl;
@@ -82,35 +82,63 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 			trail.Add(breadCrumbItem);
 
-			// if current item is a CMS item, the remainder of trail is extracted from he slug
-			if (isCmsPage) {
+			#region if current item is a CMS item (and we're in online mode), the remainder of trail is extracted from the slug
+			if (LinkGenerator.Mode == LocalNotionMode.Online && isCmsPage) {
 				var cmsPage = (LocalNotionPage)item;
 				var slugParts = cmsPage.CMSProperties.CustomSlug.Split('/');
 
-				foreach (var slugAncestor in slugParts.Reverse().WithDescriptions()) {
-					if (slugAncestor.Index == 0)
-						continue; ;
-
+				for(var j = slugParts.Length - 2; j >= 0; j--) {     // note: j skips tip because only intereted in ancestors
+					var slug = slugParts.Take(j+1).ToDelimittedString("/");
 					traits = BreadCrumbItemTraits.HasUrl;
-
-					if (slugAncestor.Description.HasFlag(EnumeratedItemDescription.Last))
-						traits.SetFlags(BreadCrumbItemTraits.IsRoot, true);
-					else
-						traits.SetFlags(BreadCrumbItemTraits.IsCategory, true);
-
-					url = slugParts.Take(slugParts.Length - slugAncestor.Index).ToDelimittedString("/");
-
-					trail.Add(new BreadCrumbItem {
-						Type = LocalNotionResourceType.Page,
-						Text = SelectCMSCategory(cmsPage.CMSProperties, slugParts.Length - slugAncestor.Index - 1),
-						Data = string.Empty,
-						Traits = traits,
-						Url = url
-
-					});
+					LocalNotionResourceType type = LocalNotionResourceType.Page; // what about DB?
+					string title = null;
+					if (Repository.TryFindRenderBySlug(slug, out var slugResult)) {
+						// TODO: what about if DB?
+						traits.SetFlags(BreadCrumbItemTraits.IsPage);
+						traits.SetFlags(BreadCrumbItemTraits.IsCMSPage);
+						url = LinkGenerator.Generate(from, slugResult.ResourceID, RenderType.HTML, out resource);
+						title = resource.Title;;
+						if (resource is LocalNotionPage lnp) {
+							data = lnp.Thumbnail.Data;
+							switch (lnp.Thumbnail.Type) {
+								case ThumbnailType.None:
+									break;
+								case ThumbnailType.Emoji:
+									traits.SetFlags(BreadCrumbItemTraits.HasIcon, true);
+									traits.SetFlags(BreadCrumbItemTraits.HasEmojiIcon, true);
+									break;
+								case ThumbnailType.Image:
+									traits.SetFlags(BreadCrumbItemTraits.HasIcon, true);
+									traits.SetFlags(BreadCrumbItemTraits.HasImageIcon, true);
+									break;
+								default:
+									throw new ArgumentOutOfRangeException();
+							}
+						}
+					} else {
+						traits.SetFlags(j == 0 ? BreadCrumbItemTraits.IsRoot : BreadCrumbItemTraits.IsCategory);
+						title =  SelectCMSCategory(cmsPage.CMSProperties, j);
+						data = string.Empty;
+						url = $"/{slug.TrimStart("/")}";
+					}
+					trail.Add(
+						new BreadCrumbItem {
+							Type = LocalNotionResourceType.Page,
+							Text = title,
+							Data = data,
+							Traits = traits,
+							Url = url
+						}
+					);
 				}
+			 
+
+				// Break outer foreach loop
 				break;
-			}
+			} 
+
+			#endregion
+
 		}
 		trail.Reverse();
 		return new BreadCrumb {

@@ -13,7 +13,7 @@ public static class PageRenderFactory {
 				var template = page is { CMSProperties: not null } && !string.IsNullOrWhiteSpace(page.CMSProperties.Root) && repository.ThemeMaps.TryGetValue(page.CMSProperties.Root, out var rootTemplate) ?
 					rootTemplate :
 					repository.DefaultTemplate;
-				var urlGenerator = UrlGeneratorFactory.Create(repository);
+				var urlGenerator = LinkGeneratorFactory.Create(repository);
 				var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
 				return new HtmlPageRenderer(renderMode, repository.Paths.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager, template);
 			case RenderType.PDF:

@@ -140,6 +140,10 @@ public class NotionSyncOrchestrator {
 				// Hydrate the fetched page from notion
 				localPage = LocalNotionHelper.ParsePage(notionPage);
 
+				// Determine the parent page
+				localPage.ParentResourceID = CalculateResourceParent(localPage.ID);
+
+
 				// Fetch page graph from notion
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({notionPage.Id})");
 				pageObjects = new Dictionary<string, IObject>();
@@ -156,23 +160,28 @@ public class NotionSyncOrchestrator {
 					.ToList();
 
 				// Hydrate a Notion CMS summaries (and future plugins)
-				if (NotionCMSHelper.IsCMSPage(notionPage))
+				if (NotionCMSHelper.IsCMSPage(notionPage)) {
+					// Page is a NotionCMS page
 					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
+				}  else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
+					// Page has a NotionCMS page ancestor, so propagate CMS properties down
+					localPage.CMSProperties = NotionCMSHelper.ParseCMSPropertiesAsChildPage(notionPage, parentPage);
+				}
 
-				if (localPage.CMSProperties is not null)
+				if (localPage.CMSProperties != null && localPage.CMSProperties.Summary is null)
 					localPage.CMSProperties.Summary = LocalNotionHelper.ExtractDefaultPageSummary(pageGraph, pageObjects);
 
 				#endregion
 
 				#region Download attached files
 
-				var linkResolver = UrlGeneratorFactory.Create(Repository);
+				var linkResolver = LinkGeneratorFactory.Create(Repository);
 				// Download cover
 				if (localPage.Cover != null && ShouldDownloadFile(localPage.Cover)) {
 					// Cover is a Notion file
 					var file = await DownloadFileAsync(localPage.Cover, notionPage.Id, forceRefresh, cancellationToken);
 					if (file != null) {
-						localPage.Cover = linkResolver.Resolve(localPage, file.ID, RenderType.File, out _);
+						localPage.Cover = linkResolver.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
 						notionPage.Cover.SetUrl($"resource://{file.ID}");
 
@@ -186,7 +195,7 @@ public class NotionSyncOrchestrator {
 					// Thumbnail is a Notion file
 					var file = await DownloadFileAsync(localPage.Thumbnail.Data, notionPage.Id, forceRefresh, cancellationToken);
 					if (file != null) {
-						localPage.Thumbnail.Data = linkResolver.Resolve(localPage, file.ID, RenderType.File, out _);
+						localPage.Thumbnail.Data = linkResolver.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
 						((FileObject)notionPage.Icon).SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
 
@@ -236,7 +245,7 @@ public class NotionSyncOrchestrator {
 
 				// In order to support cyclic references between parent -> child pages in the case where
 				// no object-id folders are used, we generate blank stub at download time. This is because trying to predict
-				// the render as IUrlResolver's do is unreliable due to potential for conflicting filenames.
+				// the render as ILinkGenerator's do is unreliable due to potential for conflicting filenames.
 				// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
 				// issue.
 				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Page))
@@ -342,6 +351,7 @@ public class NotionSyncOrchestrator {
 				} else throw new InvalidOperationException($"Url is not a recognized notion file url and downloading external content is not enabled. Url: '{url}'");
 			}
 
+
 			if (Repository.TryGetFile(resourceID, out var file)) {
 				if (!force && Repository.ContainsResourceRender(resourceID, RenderType.File)) {
 					Logger.Info($"Skipped downloading already existing file '{resourceID}/{filename}'");
@@ -355,6 +365,7 @@ public class NotionSyncOrchestrator {
 			try {
 				var mimeType = await Tools.Web.DownloadFileAsync(url, tmpFile, verifySSLCert: false, cancellationToken);
 				file = LocalNotionFile.Parse(resourceID, filename, parentResourceID, mimeType);
+				file.ParentResourceID = CalculateResourceParent(file.ID);
 				Repository.AddResource(file);
 				Repository.ImportResourceRender(resourceID, RenderType.File, tmpFile);
 			} catch (TaskCanceledException) {
@@ -405,5 +416,31 @@ public class NotionSyncOrchestrator {
 		var urlBytes = Encoding.ASCII.GetBytes(url);
 		var result = LocalNotionHelper.ObjectGuidToId(new Guid(Hashers.Hash(CHF.Blake2b_128, urlBytes)));
 		return result;
+	}
+
+
+	/// <summary>
+	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
+	/// </summary>
+	protected string CalculateResourceParent(string objectID) {
+		var visited = new HashSet<string>();
+		while(!visited.Contains(objectID) && Repository.TryGetObject(objectID, out var obj)) {
+			visited.Add(objectID);
+			if (obj.TryGetParent(out var parent)) {
+				switch(parent.Type) {
+					case ParentType.DatabaseId:
+					case ParentType.PageId:
+					case ParentType.Workspace:
+						return parent.GetId();
+					case ParentType.Unknown:
+					case ParentType.BlockId:
+					default:
+						// object 
+						objectID = parent.GetId();
+						break;
+				}
+			}
+		}
+		return null;
 	}
 }
