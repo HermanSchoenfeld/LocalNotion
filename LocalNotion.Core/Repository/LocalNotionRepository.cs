@@ -7,9 +7,6 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public record UrlSlugLookup(string ResourceID, RenderType RenderType, string CaseCorrectSlug);
-
-
 // Make ThreadSafe
 public class LocalNotionRepository : ILocalNotionRepository {
 	public event EventHandlerEx<object> Loading;
@@ -32,7 +29,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	private GuidStringFileStore _graphStore;
 	
 	private IDictionary<string, LocalNotionResource> _resourcesByNID;
-	private IDictionary<string, UrlSlugLookup> _renderBySlug;
+	private IDictionary<string, CachedSlug> _renderBySlug;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
 
@@ -245,7 +242,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 					.Select(x => (x.CMSProperties.CustomSlug, (LocalNotionResource)x, x.Renders.Single(z => z.Key == RenderType.HTML)))
 			)
 			.Distinct(x => x.Item1, StringComparer.InvariantCultureIgnoreCase) 
-            .ToDictionary(x => x.Item1, x => new UrlSlugLookup(x.Item2.ID, x.Item3.Key, x.Item1), StringComparer.InvariantCultureIgnoreCase); // possible exception if duplicate slug found in repo
+            .ToDictionary(x => x.Item1, x => new CachedSlug(x.Item2.ID, x.Item3.Key, x.Item1), StringComparer.InvariantCultureIgnoreCase); // possible exception if duplicate slug found in repo
 
 		// Prepare repository logger
 		_logger.Add(
@@ -561,7 +558,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		return File.Exists(file);
 	}
 
-	public virtual bool TryFindRenderBySlug(string slug, out UrlSlugLookup result) 
+	public virtual bool TryFindRenderBySlug(string slug, out CachedSlug result) 
 		 => _renderBySlug.TryGetValue(slug, out result);
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {

@@ -84,7 +84,7 @@ public interface ILocalNotionRepository  {
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 
-	bool TryFindRenderBySlug(string slug, out UrlSlugLookup result);
+	bool TryFindRenderBySlug(string slug, out CachedSlug result);
 	
 	string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile);
 
