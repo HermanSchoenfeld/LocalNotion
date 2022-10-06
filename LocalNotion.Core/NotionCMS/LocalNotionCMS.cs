@@ -34,7 +34,7 @@ namespace LocalNotion.Core {
 			_articlesByCategorySlug = new BulkFetchActionCache<string, string[]>(
 				() => {
 					var result = new LookupEx<string, string>(StringComparer.InvariantCultureIgnoreCase);
-					foreach (var article in Repository.Resources.Where(r => r.Type == LocalNotionResourceType.Page).Cast<LocalNotionPage>()) {
+					foreach (var article in Repository.Resources.Where(r => r is LocalNotionPage { CMSProperties: not null }).Cast<LocalNotionPage>()) {
 						var categoryKey = NotionCMSHelper.CreateCategorySlug(article.CMSProperties.Root, article.CMSProperties.Category1, article.CMSProperties.Category2, article.CMSProperties.Category3, article.CMSProperties.Category4, article.CMSProperties.Category5);
 						result.Add(categoryKey, article.ID);
 					}
@@ -81,7 +81,10 @@ namespace LocalNotion.Core {
 		public ILocalNotionRepository Repository { get; }
 
 		public IEnumerable<LocalNotionPage> GetNotionCMSPages(string root, params string[] categories) {
-			return _articlesByCategorySlug[NotionCMSHelper.CreateCategorySlug(root, categories)].Select(nid => Repository.GetResource(nid)).Cast<LocalNotionPage>();
+			var categoryKey =NotionCMSHelper.CreateCategorySlug(root, categories);
+			if (_articlesByCategorySlug.ContainsCachedItem(categoryKey))
+				return _articlesByCategorySlug[categoryKey].Select(nid => Repository.GetResource(nid)).Cast<LocalNotionPage>();
+			return Enumerable.Empty<LocalNotionPage>();
 		}
 
 		public string[] GetRoots() {
