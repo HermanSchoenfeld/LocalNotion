@@ -56,10 +56,8 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 	
 	public virtual ILogger Logger => InternalRepository.Value.Logger;
 
-	public virtual string DefaultTemplate => InternalRepository.Value.DefaultTemplate;
+	public virtual string DefaultTheme => InternalRepository.Value.DefaultTheme;
 
-	public virtual IReadOnlyDictionary<string, string> ThemeMaps => InternalRepository.Value.ThemeMaps;
-	
 	public virtual IPathResolver Paths => InternalRepository.Value.Paths;
 
 	public virtual string DefaultNotionApiKey => InternalRepository.Value.DefaultNotionApiKey;

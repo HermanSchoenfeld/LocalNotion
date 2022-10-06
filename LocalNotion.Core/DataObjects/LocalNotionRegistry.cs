@@ -16,9 +16,6 @@ public class LocalNotionRegistry {
 	[JsonProperty("default_theme")]
 	public string DefaultTheme { get; set; } = "default";
 
-	[JsonProperty("theme_maps", NullValueHandling = NullValueHandling.Ignore)]
-	public IDictionary<string, string> ThemeMaps { get; set; } = new Dictionary<string, string>();
-
 	[JsonProperty("paths")]
 	public LocalNotionPathProfile Paths { get; set; } = LocalNotionPathProfile.Backup;
 

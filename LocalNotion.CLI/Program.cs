@@ -606,7 +606,7 @@ $@"Local Notion Status:
 		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 
 		if (args.Length == 0)
-			args = RenderBug2Page;
+			args = PullCmd;
 #endif
 
 		try {

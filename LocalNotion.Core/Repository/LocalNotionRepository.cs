@@ -56,9 +56,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public ILogger Logger => _logger;
 
-	public string DefaultTemplate => _registry.DefaultTheme;
-
-	public IReadOnlyDictionary<string, string> ThemeMaps => _registry.ThemeMaps.AsReadOnly();
+	public string DefaultTheme => _registry.DefaultTheme;
 
 	public IPathResolver Paths { get; private set; }
 
@@ -82,7 +80,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		string theme = null,
 		LogLevel logLevel = LogLevel.Info,
 		LocalNotionPathProfile pathProfile = null,
-		IDictionary<string, string> rootTemplates = null,
 		ILogger logger = null
 	) {
 		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
@@ -108,9 +105,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			LogLevel = logLevel,
 			Resources = Array.Empty<LocalNotionResource>()
 		};
-
-		if (rootTemplates != null)
-			registry.ThemeMaps = rootTemplates.ToDictionary();
 
 		
 		// Create folders

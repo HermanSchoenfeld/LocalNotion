@@ -10,7 +10,7 @@ internal class NotionCMSHelper {
 		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
 		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&
-		   page.Properties.ContainsKey(Constants.LocationPropertyName) &&
+		   page.Properties.ContainsKey(Constants.ThemePropertyName) &&
 		   page.Properties.ContainsKey(Constants.SlugPropertyName) &&
 		   page.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
 		   page.Properties.ContainsKey(Constants.Category1PropertyName) &&
@@ -55,7 +55,7 @@ internal class NotionCMSHelper {
 
 		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
 		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSItemStatus.Hidden);
-		result.Location = page.GetPropertyDisplayValue(Constants.LocationPropertyName).ToNullWhenWhitespace();
+		result.Theme = page.GetPropertyDisplayValue(Constants.ThemePropertyName).ToNullWhenWhitespace();
 		result.CustomSlug = page.GetPropertyDisplayValue(Constants.SlugPropertyName).ToNullWhenWhitespace();
 		result.Root = page.GetPropertyDisplayValue(Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
 		result.Category1 = page.GetPropertyDisplayValue(Constants.Category1PropertyName).ToNullWhenWhitespace();
@@ -79,7 +79,7 @@ internal class NotionCMSHelper {
 		var pageTitle = childPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.PublishOn = parentCMSProps.PublishOn;
 		result.Status = parentCMSProps.Status;
-		result.Location = parentCMSProps.Location;
+		result.Theme = parentCMSProps.Theme;
 		result.CustomSlug = $"{parentCMSProps.CustomSlug.TrimEnd("/")}/{Tools.Url.ToUrlSlug(pageTitle)}";
 		result.Root = parentCMSProps.Root;
 		result.Category1 = parentCMSProps.Category1;

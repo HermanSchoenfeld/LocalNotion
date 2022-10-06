@@ -7,7 +7,7 @@ public static class Constants {
 	public const string TitlePropertyName = "Item";
 	public const string PublishOnPropertyName = "Publish On";
 	public const string StatusPropertyName = "Status";
-	public const string LocationPropertyName = "Location";
+	public const string ThemePropertyName = "Theme";
 	public const string SlugPropertyName = "Custom Slug";
 	public const string RootCategoryPropertyName = "Root";
 	public const string Category1PropertyName = "Category1";

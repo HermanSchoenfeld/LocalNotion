@@ -10,12 +10,10 @@ public static class PageRenderFactory {
 		switch(renderType){
 			case RenderType.HTML: 
 				var themeManager = new HtmlThemeManager(repository.Paths, logger);
-				var template = page is { CMSProperties: not null } && !string.IsNullOrWhiteSpace(page.CMSProperties.Root) && repository.ThemeMaps.TryGetValue(page.CMSProperties.Root, out var rootTemplate) ?
-					rootTemplate :
-					repository.DefaultTemplate;
+				var theme = page is { CMSProperties.Theme: not null } && Directory.Exists(repository.Paths.GetThemePath(page.CMSProperties.Theme, FileSystemPathType.Absolute)) ? page.CMSProperties.Theme : repository.DefaultTheme;
 				var urlGenerator = LinkGeneratorFactory.Create(repository);
 				var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
-				return new HtmlPageRenderer(renderMode, repository.Paths.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager, template);
+				return new HtmlPageRenderer(renderMode, repository.Paths.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager, theme);
 			case RenderType.PDF:
 			case RenderType.File:
 			default:

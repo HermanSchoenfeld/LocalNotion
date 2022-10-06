@@ -44,7 +44,7 @@ internal class LocalNotionHelper {
 		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
 		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&
-		   page.Properties.ContainsKey(Constants.LocationPropertyName) &&
+		   page.Properties.ContainsKey(Constants.ThemePropertyName) &&
 		   page.Properties.ContainsKey(Constants.SlugPropertyName) &&
 		   page.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
 		   page.Properties.ContainsKey(Constants.Category1PropertyName) &&

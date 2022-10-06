@@ -15,8 +15,8 @@ public class CMSProperties {
 	[JsonProperty("custom_slug")]
 	public string CustomSlug { get; set; }
 
-	[JsonProperty("location", NullValueHandling = NullValueHandling.Ignore)]
-	public string Location { get; set; }
+	[JsonProperty("theme", NullValueHandling = NullValueHandling.Ignore)]
+	public string Theme { get; set; }
 
 	[JsonProperty("root", NullValueHandling = NullValueHandling.Ignore)]
 	public string Root { get; set; }
