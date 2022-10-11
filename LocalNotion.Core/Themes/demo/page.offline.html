@@ -13,7 +13,7 @@
 </head>
 
 <body class="ln-page-{style}">
-    <div class="ln-page-content">
+    <div id="{page_name}" class="ln-page-content">
         {cover}
         <div class="container mx-auto mx-5">
             <main>
@@ -36,12 +36,11 @@
                 {page_title}
                 {children}
             </main>
-
         </div>
     </div>
     <script src="{theme://resources/jquery/jquery.min.js}"></script>
     <script src="{theme://resources/bootstrap/bootstrap.bundle.min.js}"></script>
-    <script src="{theme://resources/local-notion/js/table_of_contents.js}"></script>
+    <script src="{theme://resources/local-notion/js/toc.js}"></script>
     <script async id="MathJax-script" src="{theme://resources/mathjax/tex-mml-chtml.js}"></script>
     <script async src="{theme://resources/prism/prism.js}"></script>
     <script async src="{theme://resources/twitter/widgets.js}" charset="utf-8"></script>

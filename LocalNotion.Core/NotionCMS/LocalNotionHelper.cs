@@ -66,7 +66,12 @@ internal class NotionCMSHelper {
 		result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName).ToNullWhenWhitespace();
 		NormalizeCategories(result);
 		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
-		result.CustomSlug = CalculateCMSSlug(pageTitle, result);
+		if (string.IsNullOrWhiteSpace(result.CustomSlug))
+			result.CustomSlug = CalculateCMSSlug(pageTitle, result);
+
+		// Process slug tokens if any
+		if (result.CustomSlug != null)
+			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, page.Id, Tools.Url.ToHtmlDOMObjectID(page.Id, Constants.PageNameDomObjectPrefix) , result);
 		return result;
 	}
 
@@ -80,7 +85,7 @@ internal class NotionCMSHelper {
 		result.PublishOn = parentCMSProps.PublishOn;
 		result.Status = parentCMSProps.Status;
 		result.Theme = parentCMSProps.Theme;
-		result.CustomSlug = $"{parentCMSProps.CustomSlug.TrimEnd("/")}/{Tools.Url.ToUrlSlug(pageTitle)}";
+		result.CustomSlug = CalculateCMSChildPageSlug(parentCMSProps.CustomSlug, pageTitle);
 		result.Root = parentCMSProps.Root;
 		result.Category1 = parentCMSProps.Category1;
 		result.Category2 = parentCMSProps.Category2;
@@ -88,6 +93,10 @@ internal class NotionCMSHelper {
 		result.Category4 = parentCMSProps.Category4;
 		result.Category5 = parentCMSProps.Category5;
 		result.Summary = null;
+
+		// Process slug tokens if any
+		if (result.CustomSlug != null)
+			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, Tools.Url.ToHtmlDOMObjectID(childPage.Id, Constants.PageNameDomObjectPrefix) , result);
 		return result;
 	}
 
@@ -144,6 +153,10 @@ internal class NotionCMSHelper {
 			LocalNotionHelper.SanitizeSlug(cmsProperties.CustomSlug) :
 			CreatePageSlug(pageTitle, cmsProperties.Root, cmsProperties.Category1, cmsProperties.Category2, cmsProperties.Category3, cmsProperties.Category4, cmsProperties.Category5);
 
+	public static string CalculateCMSChildPageSlug(string parentPageSlug, string childPageTitle) 
+		=> $"{Tools.Url.StripAnchorTag(parentPageSlug).Trim('/')}/{Tools.Url.ToUrlSlug(childPageTitle)}";
+	
+
 	public static string CreatePageSlug(string title, string root, string category1, string category2, string category3, string category4, string category5)
 		=> CreateCategorySlug(root, category1, category2, category3, category4, category5) + "/" + LocalNotionHelper.SanitizeSlug($"{Tools.Url.ToUrlSlug(title)}");
 
@@ -153,11 +166,32 @@ internal class NotionCMSHelper {
 	public static string CreateCategorySlug(string root, string[] categories)
 		=> LocalNotionHelper.SanitizeSlug(
 		  	 new[] { root }.Concat(categories)
-			 .TakeWhile(x => !string.IsNullOrWhiteSpace(x))
+			 .TakeWhile(x => !string.IsNullOrEmpty(x))
 			 .Select(Tools.Url.ToUrlSlug)
 			 .ToDelimittedString("/")
 		);
 
+
+	public static string ProcessSlugTokens(string slug, string pageID, string pageName, CMSProperties properties) 
+		=> Tools.Text.FormatWithDictionary(
+			slug,
+			new Dictionary<string, object>() {
+				["id"] = pageID,
+				["page_name"] = pageName ?? string.Empty,
+				["publish_on"] = properties.PublishOn,
+				["status"] = Tools.Enums.GetSerializableOrientedName(properties.Status) ?? string.Empty,
+				["custom_slug"] = properties.CustomSlug ?? string.Empty,
+				["theme"] = properties.Theme ?? string.Empty,
+				["root"] = properties.Root ?? string.Empty,
+				["category1"] = properties.Category1 ?? string.Empty,
+				["category2"] = properties.Category2 ?? string.Empty,
+				["category3"] = properties.Category3 ?? string.Empty,
+				["category4"] = properties.Category4 ?? string.Empty,
+				["category5"] = properties.Category5 ?? string.Empty
+			},
+			true
+		);
+	
 
 }
 

@@ -46,11 +46,12 @@ public class NotionSyncOrchestrator {
 			var databasePageIDs = new List<string>();
 			// Download
 			var downloadedResources = new List<LocalNotionResource>();
+			var sequence = 0;
 			await foreach (var page in databasePages.WithCancellation(cancellationToken)) {
 				cancellationToken.ThrowIfCancellationRequested();
 				try {
 					databasePageIDs.Add(page.Id);
-					var downloads = await DownloadPageAsync(page.Id, page.LastEditedTime, render: false, forceRefresh: forceRefresh, cancellationToken: cancellationToken); // rendering deferred to below
+					var downloads = await DownloadPageAsync(page.Id, page.LastEditedTime, sequence: sequence++, render: false, forceRefresh: forceRefresh, cancellationToken: cancellationToken); // rendering deferred to below
 					downloadedResources.AddRange(downloads);
 					processedPages.Add(page);
 				} catch (TaskCanceledException) {
@@ -90,7 +91,7 @@ public class NotionSyncOrchestrator {
 		}
 	}
 
-	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
+	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, int? sequence = null, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNull(pageID, nameof(pageID));
 		var downloadedResources = new List<LocalNotionResource>();
 
@@ -121,6 +122,8 @@ public class NotionSyncOrchestrator {
 			var oldChildResources = Repository.GetChildObjects(pageID).ToArray();
 			var pageDifferent= containsPage && localPage.LastEditedTime != knownNotionLastEditTime;
 			var shouldDownload = !containsPage || pageDifferent || forceRefresh;
+			var lastKnownParent = localPage?.ParentResourceID;
+			var lastKnownSequence = localPage?.Sequence;
 
 			#endregion
 
@@ -139,6 +142,10 @@ public class NotionSyncOrchestrator {
 
 				// Hydrate the fetched page from notion
 				localPage = LocalNotionHelper.ParsePage(notionPage);
+
+				// sequence of page in database is determined by caller (or taken from last save so long as the parent hasn't changed)
+				// TODO: uncomment this when Notion return table records in correct order
+				//localPage.Sequence = sequence ?? (localPage.ParentResourceID == lastKnownParent ? lastKnownSequence : null);   
 
 				// Determine the parent page
 				localPage.ParentResourceID = CalculateResourceParent(localPage.ID);
@@ -163,7 +170,13 @@ public class NotionSyncOrchestrator {
 				if (NotionCMSHelper.IsCMSPage(notionPage)) {
 					// Page is a LocalNotionCMS page
 					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
-				}  else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
+
+					// HACK: Allow user to specify the LocalNotionPage.Sequence property since NotionAPI doesn't yet
+					// return page records in correct order, or provide a way to determine their order.
+					if (int.TryParse(localPage.CMSProperties.Category1, out var explicitSequence)) 
+						localPage.Sequence = explicitSequence;
+
+				} else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
 					// Page has a LocalNotionCMS page ancestor, so propagate CMS properties down
 					localPage.CMSProperties = NotionCMSHelper.ParseCMSPropertiesAsChildPage(notionPage, parentPage);
 				}
@@ -256,6 +269,13 @@ public class NotionSyncOrchestrator {
 			} else {
 				#region CASE: Page already downloaded and is unchanged
 
+				// Case: the page is unchanged but it was moved within the table, thus sequence is different
+				// TODO: uncomment this when Notion return table records in correct order
+				//if (localPage.Sequence != sequence && sequence != null) {
+				//	localPage.Sequence = sequence; 
+				//	Repository.UpdateResource(localPage);
+				//}
+
 				// Fetch local versions of page objcets and graph
 				// since we still need to downlaod  child pages (and if
 				// any are changed, this page needs re-rendering)
@@ -293,7 +313,7 @@ public class NotionSyncOrchestrator {
 
 			foreach (var childPage in childPages) {
 				// We call download to sub-pages but with rendering off, only top-level will ever render itself and all children
-				var subPageDownloads = await DownloadPageAsync(childPage.Item1, childPage.Item2, false, renderType, renderMode, faultTolerant, forceRefresh, cancellationToken);
+				var subPageDownloads = await DownloadPageAsync(childPage.Item1, childPage.Item2, false, renderType, renderMode, null, faultTolerant, forceRefresh, cancellationToken);
 				downloadedResources.AddRange(subPageDownloads);
 			}
 

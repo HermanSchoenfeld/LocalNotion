@@ -20,7 +20,7 @@ public class HtmlThemeManager : IThemeManager {
 
 	private ILogger Logger { get; }
 
-	public bool TryLoadTemplate(string theme, out ThemeInfo themeInfo) {
+	public bool TryLoadTheme(string theme, out ThemeInfo themeInfo) {
 		var fetched = new HashSet<string>(StringComparer.InvariantCultureIgnoreCase);
 		return TryGetTemplateInfoInternal(theme, out themeInfo, fetched);
 

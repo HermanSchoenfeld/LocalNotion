@@ -1,7 +1,6 @@
 ﻿using Hydrogen;
 using Notion.Client;
 using System.Runtime.Serialization;
-using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Html.Parser;
 
@@ -15,7 +14,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
 		Guard.ArgumentNotNullOrWhitespace(theme, nameof(theme));
 		ThemeManager = themeManager;
-		Theme = (HtmlThemeInfo)ThemeManager.LoadTemplate(theme);
+		Theme = (HtmlThemeInfo)ThemeManager.LoadTheme(theme);
 		Mode = mode;
 		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderMode = renderMode;
@@ -329,6 +328,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"page",
 				new NotionObjectTokens(page) {
 					["title"] = this.Page.Title,   // html title
+					["page_name"] = Tools.Url.ToHtmlDOMObjectID(page.Id, Constants.PageNameDomObjectPrefix),
 					["page_title"] = RenderTemplate("page_title", new() { ["text"] = this.Page.Title }),   // title on the page 
 					["style"] = "wide",
 					["cover"] = this.Page.Cover switch {

@@ -233,6 +233,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 					.Resources
 					.Where(r => r is LocalNotionPage { CMSProperties.CustomSlug: not null })
 					.Cast<LocalNotionPage>()
+					.Where(x => x.Renders.ContainsKey(RenderType.HTML))
 					.Select(x => (x.CMSProperties.CustomSlug, (LocalNotionResource)x, x.Renders.Single(z => z.Key == RenderType.HTML)))
 			)
 			.Distinct(x => x.Item1, StringComparer.InvariantCultureIgnoreCase) 
@@ -471,17 +472,28 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	}
 
 	public virtual void UpdateResource(LocalNotionResource resource) {
+		// NOTE: Dangerous implementation. This could result in dangling resources/renders. Only invoke this method
+		// if changing fields
 		Guard.ArgumentNotNull(resource, nameof(resource));
 		Guard.Ensure(TryGetResource(resource.ID, out var resourceInstance),"Resource was not found");
-		throw new NotImplementedException("Try removing/adding for now");
-		#warning This needs proper consideration 
-		// Client can provide partially hydrated object
-		// Dangling renders, etc
-		resourceInstance.ID = resource.ID;
-		//resourceInstance.ParentResourceID = resource.ParentResourceID;
+		Guard.Ensure(resource.Type == resourceInstance.Type, "Cannot update resource type");
 		resourceInstance.Title = resource.Title;
-		//resourceInstance.Renders = resource.Renders;   // due to ImportResourceRender, these should always be consistent!
-		
+		resourceInstance.ID = resource.ID;
+		resourceInstance.Renders = resource.Renders;
+
+		if (resource is LocalNotionEditableResource lner) {
+			var lnerInstance = (LocalNotionEditableResource)resourceInstance;
+			lnerInstance.LastEditedTime = lner.LastEditedTime;
+			lnerInstance.Sequence = lner.Sequence;
+		}
+
+		if (resource is LocalNotionPage lnp) {
+			var lnpInstance = (LocalNotionPage)resourceInstance;
+			lnpInstance.Cover = lnp.Cover;
+			lnpInstance.Title = lnp.Title;
+			lnpInstance.CMSProperties = lnp.CMSProperties;
+		}
+
 		// Don't need to do anything
 		RequiresSave = true;
 	}

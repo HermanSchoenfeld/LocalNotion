@@ -62,7 +62,7 @@
 	  <None Remove="Themes\default\resources\local-notion\css\editable.css" />
 	  <None Remove="Themes\default\resources\local-notion\css\readonly.css" />
 	  <None Remove="Themes\default\resources\local-notion\js\noop.js" />
-	  <None Remove="Themes\default\resources\local-notion\js\table_of_contents.js" />
+	  <None Remove="Themes\default\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\default\resources\mathjax\output\chtml.js" />
 	  <None Remove="Themes\default\resources\mathjax\output\chtml\fonts\tex.js" />
 	  <None Remove="Themes\default\resources\mathjax\output\chtml\fonts\woff-v2\MathJax_AMS-Regular.woff" />
@@ -114,7 +114,7 @@
 	  <None Remove="Themes\default\user.html" />
 	  <None Remove="Themes\demo\.config.json" />
 	  <None Remove="Themes\demo\page.offline.html" />
-	  <None Remove="Themes\demo\resources\local-notion\js\table_of_contents.js" />
+	  <None Remove="Themes\demo\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\.root\.config.json" />
 	  <None Remove="Themes\.root\editable\audio.html" />
 	  <None Remove="Themes\.root\editable\bulleted_list.html" />
@@ -412,7 +412,7 @@
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\css\readonly.css" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\css\common.css" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\noop.js" />
-	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\table_of_contents.js" />
+	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\toc.js" />
 	  <EmbeddedResource Include="Themes\default\resources\mathjax\output\chtml.js" />
 	  <EmbeddedResource Include="Themes\default\resources\mathjax\output\chtml\fonts\tex.js" />
 	  <EmbeddedResource Include="Themes\default\resources\mathjax\output\chtml\fonts\woff-v2\MathJax_AMS-Regular.woff" />
@@ -464,7 +464,6 @@
 	  <EmbeddedResource Include="Themes\default\user.html" />
 	  <EmbeddedResource Include="Themes\demo\.config.json" />
 	  <EmbeddedResource Include="Themes\demo\page.offline.html" />
-	  <EmbeddedResource Include="Themes\demo\resources\local-notion\js\table_of_contents.js" />
 	  <EmbeddedResource Include="Themes\.root\.config.json" />
 	  <EmbeddedResource Include="Themes\embedded\.config.json" />
 	  <EmbeddedResource Include="Themes\embedded\editable\page.offline.html" />
@@ -480,8 +479,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="AngleSharp" Version="0.17.1" />
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.45" />
-		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.8" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.9" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
 	</ItemGroup>

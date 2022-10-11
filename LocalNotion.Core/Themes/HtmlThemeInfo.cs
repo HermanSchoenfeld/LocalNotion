@@ -9,6 +9,8 @@ namespace LocalNotion.Core;
 public class HtmlThemeInfo : ThemeInfo {
 
 	public override ThemeType Type => ThemeType.Html;
+	private string _onlineurl = string.Empty;
+	private bool _suppressFormatting = false;
 
 	[JsonProperty("base")]
 	public string Base { get; set; }
@@ -18,10 +20,16 @@ public class HtmlThemeInfo : ThemeInfo {
 
 
 	[JsonProperty("online_url", NullValueHandling = NullValueHandling.Ignore)]
-	public string OnlineUrl { get; set; } = string.Empty;
+	public string OnlineUrl { 
+		get => !string.IsNullOrEmpty(_onlineurl) ? _onlineurl : (BaseTheme?.OnlineUrl ?? string.Empty);
+		set => _onlineurl = value;
+	}
 
 	[JsonProperty("SuppressFormatting", DefaultValueHandling = DefaultValueHandling.Ignore)]
-	public bool SuppressFormatting { get; set; } = false;
+	public bool SuppressFormatting { 
+		get => _suppressFormatting || (BaseTheme?.SuppressFormatting ?? false);
+		set => _suppressFormatting = value;
+	}
 	
 	// The tokens below get filled with users custom tokens and all template files (key is "/folder/file.txt" value is fully resolved absolute path)
 	[JsonProperty("tokens")]  

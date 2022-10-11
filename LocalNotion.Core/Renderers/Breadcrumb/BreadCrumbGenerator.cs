@@ -82,12 +82,18 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 			trail.Add(breadCrumbItem);
 
-			#region if current item is a CMS item (and we're in online mode), the remainder of trail is extracted from the slug
-			if (LinkGenerator.Mode == LocalNotionMode.Online && isCmsPage) {
-				var cmsPage = (LocalNotionPage)item;
-				var slugParts = cmsPage.CMSProperties.CustomSlug.Split('/');
+			// TODO: when implementing databases, the check is
+			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
+			var parentIsCMSDatabase = !Repository.ContainsResource(item.ParentResourceID);  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
 
-				for(var j = slugParts.Length - 2; j >= 0; j--) {     // note: j skips tip because only intereted in ancestors
+			#region Process CMS-based slug
+			
+			// if current item is a CMS item and we're in online mode, the remainder of trail is extracted from the slug
+			if (LinkGenerator.Mode == LocalNotionMode.Online && isCmsPage && parentIsCMSDatabase) {
+				var cmsPage = (LocalNotionPage)item;
+				var slugParts = Tools.Url.StripAnchorTag(cmsPage.CMSProperties.CustomSlug.TrimStart("/")).Split('/');
+
+				for(var j = slugParts.Length - 2; j >= 0; j--) {     // note: j skips tip because only interested in ancestors
 					var slug = slugParts.Take(j+1).ToDelimittedString("/");
 					traits = BreadCrumbItemTraits.HasUrl;
 					LocalNotionResourceType type = LocalNotionResourceType.Page; // what about DB?
@@ -117,7 +123,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 						}
 					} else {
 						traits.SetFlags(j == 0 ? BreadCrumbItemTraits.IsRoot : BreadCrumbItemTraits.IsCategory);
-						title =  SelectCMSCategory(cmsPage.CMSProperties, j);
+						title = SelectCMSCategory(cmsPage.CMSProperties, j);
 						data = string.Empty;
 						url = $"/{slug.TrimStart("/")}";
 					}

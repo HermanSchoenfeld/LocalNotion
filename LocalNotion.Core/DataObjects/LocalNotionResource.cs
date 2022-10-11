@@ -1,4 +1,5 @@
-﻿using JsonSubTypes;
+﻿using Hydrogen;
+using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -44,6 +45,12 @@ public abstract class LocalNotionResource {
 
 		return true;
 
+	}
+
+	public RenderEntry GetRender(RenderType? renderType) {
+		if (!TryGetRender(renderType, out var render))
+			throw new InvalidOperationException($"No render found with type {renderType}");
+		return render;
 	}
 }
 

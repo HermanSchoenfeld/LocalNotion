@@ -4,7 +4,7 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public class LocalNotionPage : LocalNotionResource {
+public class LocalNotionPage : LocalNotionEditableResource {
 
 	public override LocalNotionResourceType Type => LocalNotionResourceType.Page;
 
@@ -16,8 +16,5 @@ public class LocalNotionPage : LocalNotionResource {
 	
 	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
 	public CMSProperties CMSProperties { get; set; } = null;
-
-	[JsonProperty("last_edited_time")]
-	public DateTime LastEditedTime { get; set; }
 
 }
