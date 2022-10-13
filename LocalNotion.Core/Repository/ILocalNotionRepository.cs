@@ -24,7 +24,7 @@ public interface ILocalNotionRepository  {
 
 	public ILogger Logger { get; }
 
-	string DefaultTheme { get; }
+	string[] DefaultThemes { get; }
 
 	public IPathResolver Paths { get; }
 

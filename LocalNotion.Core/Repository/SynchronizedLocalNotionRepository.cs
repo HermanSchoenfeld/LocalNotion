@@ -32,10 +32,10 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		}
 	}
 
-	public override string DefaultTheme {
+	public override string[] DefaultThemes {
 		get {
 			using (EnterReadScope())
-				return InternalRepository.DefaultTheme;
+				return InternalRepository.DefaultThemes;
 		}
 	}
 	

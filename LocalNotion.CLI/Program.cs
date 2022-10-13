@@ -83,8 +83,8 @@ public static partial class Program {
 		[Option('x', "profile", Default = LocalNotionProfileDescriptor.Backup, HelpText = $"Determines how to organizes files and generate links in your repository (options: backup, offline, publishing, website)")]
 		public LocalNotionProfileDescriptor Profile { get; set; }
 
-		[Option('t', "theme", Default = "default", HelpText = $"Local Notion theme used for rendering")]
-		public string Theme { get; set; }
+		[Option('t', "themes",  HelpText = $"Custom theme(s) used for rendering")]
+		public IEnumerable<string> Themes { get; set; } = new[] { "default" };
 		
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
@@ -168,12 +168,6 @@ public static partial class Program {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
-
-		//[Option("filter-source", HelpText = "Only sync CMS pages whose 'Source' property matches at least one from this list.")]
-		//public IEnumerable<string> FilterSources { get; set; } = Array.Empty<string>();
-
-		//[Option("filter-root", HelpText = "Only sync CMS pages whose 'Root' property matches at least one from this list.")]
-		//public IEnumerable<string> FilterRoots { get; set; } = Array.Empty<string>();
 
 		[Option("render", Default = (bool)true, HelpText = "Renders objects after pull")]
 		public bool Render { get; set; }
@@ -334,7 +328,7 @@ $@"Local Notion Status:
 		await LocalNotionRepository.CreateNew(
 			arguments.Path,
 			arguments.APIKey,
-			arguments.Theme,
+			arguments.Themes.ToArray(),
 			arguments.LogLevel,
 			pathProfile,
 			logger: consoleLogger
@@ -602,6 +596,7 @@ $@"Local Notion Status:
 		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
 		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] RenderBug3Page = new[] { "render", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
+		string[] RenderBug4Page = new[] { "render", "-o", "d1b16637-ba01-48c2-863e-c60ee3b9ae47" };
 		string[] RenderAllPage = new[] { "render", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] Remove = new[] { "remove", "--all" };
@@ -611,7 +606,7 @@ $@"Local Notion Status:
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 
 		if (args.Length == 0)
-			args = RenderBug3Page;
+			args = RenderBug4Page;
 #endif
 
 		try {

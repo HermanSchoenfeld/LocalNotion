@@ -56,7 +56,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public ILogger Logger => _logger;
 
-	public string DefaultTheme => _registry.DefaultTheme;
+	public string[] DefaultThemes => _registry.DefaultThemes;
 
 	public IPathResolver Paths { get; private set; }
 
@@ -77,7 +77,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	public static async Task<LocalNotionRepository> CreateNew(
 		string repoPath,
 		string notionApiKey = null,
-		string theme = null,
+		string[] themes = null,
 		LogLevel logLevel = LogLevel.Info,
 		LocalNotionPathProfile pathProfile = null,
 		ILogger logger = null
@@ -86,7 +86,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		Guard.DirectoryExists(repoPath);
 	
 		// Backup theme
-		theme ??= Constants.DefaultTheme;
+		if (themes == null || themes.Length == 0)
+			themes = new [] { Constants.DefaultTheme};
 
 		// The registry file is computed from the profile
 		pathProfile ??= LocalNotionPathProfile.Default;
@@ -100,7 +101,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		// create registry objects
 		var registry = new LocalNotionRegistry {
 			NotionApiKey = notionApiKey,
-			DefaultTheme = theme,
+			DefaultThemes = themes,
 			Paths = pathProfile,
 			LogLevel = logLevel,
 			Resources = Array.Empty<LocalNotionResource>()

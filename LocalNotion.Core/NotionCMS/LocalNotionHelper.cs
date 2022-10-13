@@ -10,7 +10,7 @@ internal class NotionCMSHelper {
 		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
 		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&
-		   page.Properties.ContainsKey(Constants.ThemePropertyName) &&
+		   page.Properties.ContainsKey(Constants.ThemesPropertyName) &&
 		   page.Properties.ContainsKey(Constants.SlugPropertyName) &&
 		   page.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
 		   page.Properties.ContainsKey(Constants.Category1PropertyName) &&
@@ -22,7 +22,8 @@ internal class NotionCMSHelper {
 		   page.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
-		   page.Properties.ContainsKey(Constants.EditedOnPropertyName);
+		   page.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
+		   page.Properties[Constants.ThemesPropertyName] is MultiSelectPropertyValue;
 
 	public static CMSProperties ParseCMSProperties(Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
@@ -55,7 +56,7 @@ internal class NotionCMSHelper {
 
 		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
 		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSItemStatus.Hidden);
-		result.Theme = page.GetPropertyDisplayValue(Constants.ThemePropertyName).ToNullWhenWhitespace();
+		result.Themes = ((MultiSelectPropertyValue)page.Properties[Constants.ThemesPropertyName]).ToPlainTextValues().ToArray();
 		result.CustomSlug = page.GetPropertyDisplayValue(Constants.SlugPropertyName).ToNullWhenWhitespace();
 		result.Root = page.GetPropertyDisplayValue(Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
 		result.Category1 = page.GetPropertyDisplayValue(Constants.Category1PropertyName).ToNullWhenWhitespace();
@@ -84,7 +85,7 @@ internal class NotionCMSHelper {
 		var pageTitle = childPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.PublishOn = parentCMSProps.PublishOn;
 		result.Status = parentCMSProps.Status;
-		result.Theme = parentCMSProps.Theme;
+		result.Themes = parentCMSProps.Themes;
 		result.CustomSlug = CalculateCMSChildPageSlug(parentCMSProps.CustomSlug, pageTitle);
 		result.Root = parentCMSProps.Root;
 		result.Category1 = parentCMSProps.Category1;
@@ -181,7 +182,7 @@ internal class NotionCMSHelper {
 				["publish_on"] = properties.PublishOn,
 				["status"] = Tools.Enums.GetSerializableOrientedName(properties.Status) ?? string.Empty,
 				["custom_slug"] = properties.CustomSlug ?? string.Empty,
-				["theme"] = properties.Theme ?? string.Empty,
+				["themes"] = (properties.Themes ?? Array.Empty<string>()).ToDelimittedString(", "),
 				["root"] = properties.Root ?? string.Empty,
 				["category1"] = properties.Category1 ?? string.Empty,
 				["category2"] = properties.Category2 ?? string.Empty,

@@ -9,21 +9,24 @@ namespace LocalNotion.Core;
 public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, IThemeManager themeManager, string theme)
+	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, HtmlThemeInfo[] themes)
 		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
-		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
-		Guard.ArgumentNotNullOrWhitespace(theme, nameof(theme));
-		ThemeManager = themeManager;
-		Theme = (HtmlThemeInfo)ThemeManager.LoadTheme(theme);
+		Guard.ArgumentNotNull(themes, nameof(themes));
+		Guard.ArgumentGT(themes.Length, 0, nameof(themes), "At least 1 theme must be provided to the renderer");
 		Mode = mode;
 		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderMode = renderMode;
 
-	
+		SuppressFormatting = themes.Any(t => t.SuppressFormatting);
+
 		// Generate all the theme tokens
-		_tokens =
-			GetModeCorrectedTokens(Theme)
-			.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
+		foreach(var theme in themes)
+			_tokens = _tokens == null ?
+				GetModeCorrectedTokens(theme) 
+				: _tokens.AttachHead( GetModeCorrectedTokens(theme) );
+
+		// Attach rendering-specific tokens
+		_tokens = _tokens.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
 
 		DictionaryChain<string, object> GetModeCorrectedTokens(HtmlThemeInfo theme) {
 			// This method provides a "chain of responsibility" style dictionary of all the theme tokens
@@ -45,15 +48,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		}
 	}
 
-	protected IThemeManager ThemeManager { get; }
-
-	protected HtmlThemeInfo Theme { get; }
-
 	protected LocalNotionMode Mode { get; }
 
 	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
 	protected RenderMode RenderMode { get; }
+
+	protected bool SuppressFormatting { get; }
 
 	protected override string Merge(IEnumerable<string> outputs)
 		=> outputs.ToDelimittedString(string.Empty);
@@ -869,13 +870,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (!_tokens.TryGetValue(rootedWidgetTemplateName, out widgetValue))
 				if (!_tokens.TryGetValue(widgetTemplateName, out widgetValue))
 					if (!_tokens.TryGetValue(widgetWithModeTemplate, out widgetValue))
-						throw new InvalidOperationException($"Widget `{widgetname}` not found in theme `{Theme}`.");
+						throw new InvalidOperationException($"Widget `{widgetname}` not found in theme(s).");
 
 		return Regex.Replace(widgetValue.ToString(), "^<!--.*?-->", string.Empty, RegexOptions.Singleline);
 	}
 
 	protected virtual string CleanUpHtml(string html) {
-		if (Theme.SuppressFormatting)
+		if (SuppressFormatting)
 			return html;
 
 		var options = new HtmlParserOptions {

@@ -16,6 +16,6 @@ public abstract class ThemeInfo {
 
 
 	[JsonIgnore]
-	public string TemplatePath { get; set; }
+	public string FilePath { get; set; }
 
 }

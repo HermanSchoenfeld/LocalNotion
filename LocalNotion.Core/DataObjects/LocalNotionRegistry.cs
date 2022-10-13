@@ -13,8 +13,8 @@ public class LocalNotionRegistry {
 	[JsonProperty("notion_api_key", NullValueHandling = NullValueHandling.Ignore)]
 	public string NotionApiKey { get; set; } = null;
 
-	[JsonProperty("default_theme")]
-	public string DefaultTheme { get; set; } = "default";
+	[JsonProperty("default_themes")]
+	public string[] DefaultThemes { get; set; } = { "default" };
 
 	[JsonProperty("paths")]
 	public LocalNotionPathProfile Paths { get; set; } = LocalNotionPathProfile.Backup;

@@ -30,7 +30,7 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	
 	public virtual ILogger Logger => InternalRepository.Logger;
 
-	public virtual string DefaultTheme => InternalRepository.DefaultTheme;
+	public virtual string[] DefaultThemes => InternalRepository.DefaultThemes;
 	
 	public virtual IPathResolver Paths => InternalRepository.Paths;
 

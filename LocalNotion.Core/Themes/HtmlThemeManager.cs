@@ -39,7 +39,7 @@ public class HtmlThemeManager : IThemeManager {
 				return false;
 			}
 			var htmlTemplateInfo = Tools.Json.ReadFromFile<HtmlThemeInfo>(templateInfoPath);
-			htmlTemplateInfo.TemplatePath = templatePath;
+			htmlTemplateInfo.FilePath = templatePath;
 			themeInfo = htmlTemplateInfo;
 			alreadyFetched.Add(theme);
 

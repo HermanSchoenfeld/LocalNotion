@@ -75,7 +75,7 @@ public static class PlainTextExtensions {
 			FormulaPropertyValue pv => $"{pv.Formula?.ToPlainText()}",
 			LastEditedByPropertyValue pv => $"{pv.LastEditedBy?.ToPlainText()}",
 			LastEditedTimePropertyValue pv => $"{pv.LastEditedTime}",
-			MultiSelectPropertyValue pv => $"{pv.MultiSelect?.Select(o => o.ToPlainText()).ToDelimittedString(", ")}",
+			MultiSelectPropertyValue pv => $"{pv.ToPlainTextValues().ToDelimittedString(", ")}",
 			NumberPropertyValue pv => $"{pv.Number?.ToPlainText()}",
 			PeoplePropertyValue pv => $"{pv.People?.Select(p => p.ToPlainText()).ToDelimittedString(", ")}",
 			PhoneNumberPropertyValue pv => $"{pv.PhoneNumber}",
@@ -116,4 +116,9 @@ public static class PlainTextExtensions {
 		};
 
 	public static string ToPlainText(this StatusPropertyValue.Data data) => $"{data.Name}";
+
+
+	public static IEnumerable<string> ToPlainTextValues(this MultiSelectPropertyValue propertyValue) 
+		=>  propertyValue.MultiSelect?.Select(o => o.ToPlainText());
+	
 }
