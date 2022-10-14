@@ -143,19 +143,19 @@ public class NotionSyncOrchestrator {
 				// Hydrate the fetched page from notion
 				localPage = LocalNotionHelper.ParsePage(notionPage);
 
-				// sequence of page in database is determined by caller (or taken from last save so long as the parent hasn't changed)
-				// TODO: uncomment this when Notion return table records in correct order
-				//localPage.Sequence = sequence ?? (localPage.ParentResourceID == lastKnownParent ? lastKnownSequence : null);   
-
-				// Determine the parent page
-				localPage.ParentResourceID = CalculateResourceParent(localPage.ID);
-
-
 				// Fetch page graph from notion
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({notionPage.Id})");
 				pageObjects = new Dictionary<string, IObject>();
 				pageObjects.Add(notionPage.Id, notionPage);    // optimization: pre-add Page root object to avoid expensive fetch
 				pageGraph = await NotionClient.Blocks.GetObjectGraphAsync(notionPage.Id, pageObjects, cancellationToken);
+
+				// Determine the parent page
+				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects.TryGetValue);
+
+				// sequence of page in database is determined by caller (or taken from last save so long as the parent hasn't changed)
+				// TODO: uncomment this when Notion return table records in correct order
+				//localPage.Sequence = sequence ?? (localPage.ParentResourceID == lastKnownParent ? lastKnownSequence : null);   
+
 
 				// Determine child pages
 				childPages =
@@ -442,9 +442,15 @@ public class NotionSyncOrchestrator {
 	/// <summary>
 	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
 	/// </summary>
-	protected string CalculateResourceParent(string objectID) {
+	protected string CalculateResourceParent(string objectID) 
+		=> CalculateResourceParent(objectID, Repository.TryGetObject);
+
+	/// <summary>
+	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
+	/// </summary>
+	protected string CalculateResourceParent(string objectID, ObjectLookupDelegate objectLookup) {
 		var visited = new HashSet<string>();
-		while(!visited.Contains(objectID) && Repository.TryGetObject(objectID, out var obj)) {
+		while(!visited.Contains(objectID) && objectLookup(objectID, out var obj)) {
 			visited.Add(objectID);
 			if (obj.TryGetParent(out var parent)) {
 				switch(parent.Type) {
