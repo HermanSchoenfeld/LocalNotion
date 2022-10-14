@@ -85,7 +85,7 @@ internal class NotionCMSHelper {
 		var pageTitle = childPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.PublishOn = parentCMSProps.PublishOn;
 		result.Status = parentCMSProps.Status;
-		result.Themes = parentCMSProps.Themes;
+		//result.Themes = parentCMSProps.Themes; // NOTE: child pages from CMS pages should render using default template, since they are stand-alone pages (not sections, etc)
 		result.CustomSlug = CalculateCMSChildPageSlug(parentCMSProps.CustomSlug, pageTitle);
 		result.Root = parentCMSProps.Root;
 		result.Category1 = parentCMSProps.Category1;
