@@ -38,7 +38,6 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
 			}
 
-
 			//IsFile			= 1 << 3,
 			//IsDatabase		= 1 << 4,
 			//IsCategory		= 1 << 5,
@@ -70,11 +69,13 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			}
 
 
-			//HasIcon			= 1 << 9,
-
+			// TODO: when implementing databases, the check is
+			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
+			var parentIsCMSDatabase = !Repository.ContainsResource(item.ParentResourceID);  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
+			var title = isCmsPage && parentIsCMSDatabase ? $"{((LocalNotionPage)item).CMSProperties.Root} ({item.Title})" : item.Title;
 			var breadCrumbItem = new BreadCrumbItem() {
 				Type = item.Type,
-				Text = item.Title,
+				Text = title ,
 				Data = data,
 				Traits = traits,
 				Url = url
@@ -82,9 +83,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 			trail.Add(breadCrumbItem);
 
-			// TODO: when implementing databases, the check is
-			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
-			var parentIsCMSDatabase = !Repository.ContainsResource(item.ParentResourceID);  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
+
 
 			#region Process CMS-based slug
 			
@@ -96,8 +95,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				for(var j = slugParts.Length - 2; j >= 0; j--) {     // note: j skips tip because only interested in ancestors
 					var slug = slugParts.Take(j+1).ToDelimittedString("/");
 					traits = BreadCrumbItemTraits.HasUrl;
-					LocalNotionResourceType type = LocalNotionResourceType.Page; // what about DB?
-					string title = null;
+					var type = LocalNotionResourceType.Page; // what about DB?
 					if (Repository.TryFindRenderBySlug(slug, out var slugResult)) {
 						// TODO: what about if DB?
 						traits.SetFlags(BreadCrumbItemTraits.IsPage);
