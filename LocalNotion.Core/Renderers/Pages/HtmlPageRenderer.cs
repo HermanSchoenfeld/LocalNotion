@@ -486,7 +486,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						_ => throw new ArgumentOutOfRangeException()
 					},
 					["text"] = Render(block.Callout.RichText),
-					["color"] = ToColorString(block.Callout.Color.Value)
+					["color"] = ToColorString(block.Callout.Color.Value),
+					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
 				}
 			);
 

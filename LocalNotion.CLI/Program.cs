@@ -462,7 +462,6 @@ $@"Local Notion Status:
 						consoleLogger.Info($"Unrecognized object: {@obj}");
 						break;
 					case (LocalNotionResourceType.Database, var lastEditedTime):
-
 						await syncOrchestrator.DownloadDatabasePagesAsync(
 							@obj,
 							//arguments.FilterLastUpdatedOn,
@@ -606,7 +605,7 @@ $@"Local Notion Status:
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 
 		if (args.Length == 0)
-			args = RenderBug4Page;
+			args = RenderPage;
 #endif
 
 		try {

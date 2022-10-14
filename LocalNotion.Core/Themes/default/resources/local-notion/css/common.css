@@ -33,6 +33,11 @@
     margin: 8px 18px 18px 8px;
 }
 
+.ln-callout-children {
+    margin-left: 2.5em;
+    margin-top: 1.5em;
+}
+
 .ln-behaviour-hover-highlight:hover {
     background-color: #EFEFEF;
 }
