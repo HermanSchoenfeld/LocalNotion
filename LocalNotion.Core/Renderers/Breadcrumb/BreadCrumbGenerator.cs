@@ -71,7 +71,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 			// TODO: when implementing databases, the check is
 			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
-			var parentIsCMSDatabase = !Repository.ContainsResource(item.ParentResourceID);  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
+			var parentIsCMSDatabase = item.ParentResourceID != null && !Repository.ContainsResource(item.ParentResourceID);  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
 			var title = isCmsPage && parentIsCMSDatabase ? $"{((LocalNotionPage)item).CMSProperties.Root} ({item.Title})" : item.Title;
 			var breadCrumbItem = new BreadCrumbItem() {
 				Type = item.Type,

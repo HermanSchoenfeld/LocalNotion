@@ -150,7 +150,7 @@ public class NotionSyncOrchestrator {
 				pageGraph = await NotionClient.Blocks.GetObjectGraphAsync(notionPage.Id, pageObjects, cancellationToken);
 
 				// Determine the parent page
-				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects.TryGetValue);
+				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects);
 
 				// sequence of page in database is determined by caller (or taken from last save so long as the parent hasn't changed)
 				// TODO: uncomment this when Notion return table records in correct order
@@ -443,14 +443,14 @@ public class NotionSyncOrchestrator {
 	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
 	/// </summary>
 	protected string CalculateResourceParent(string objectID) 
-		=> CalculateResourceParent(objectID, Repository.TryGetObject);
+		=> CalculateResourceParent(objectID, new Dictionary<string, IObject>());
 
 	/// <summary>
 	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
 	/// </summary>
-	protected string CalculateResourceParent(string objectID, ObjectLookupDelegate objectLookup) {
+	protected string CalculateResourceParent(string objectID, IDictionary<string, IObject> nonPersistedObjects) {
 		var visited = new HashSet<string>();
-		while(!visited.Contains(objectID) && objectLookup(objectID, out var obj)) {
+		while(!visited.Contains(objectID) && (nonPersistedObjects.TryGetValue(objectID, out var obj) || Repository.TryGetObject(objectID, out obj))) {
 			visited.Add(objectID);
 			if (obj.TryGetParent(out var parent)) {
 				switch(parent.Type) {
@@ -461,7 +461,7 @@ public class NotionSyncOrchestrator {
 					case ParentType.Unknown:
 					case ParentType.BlockId:
 					default:
-						// object 
+						// Parent is a block, so search for that block's parent until we find DB, WS or Page
 						objectID = parent.GetId();
 						break;
 				}
