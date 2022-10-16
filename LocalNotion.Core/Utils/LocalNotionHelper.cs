@@ -5,7 +5,7 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 internal class LocalNotionHelper {
-
+	
 	public static bool TryCovertObjectIdToGuid(string objectID, out Guid guid)
 		=> Guid.TryParse(objectID, out guid);
 
@@ -40,24 +40,6 @@ internal class LocalNotionHelper {
 		return true;
 	}
 
-	public static bool IsCMSPage(Page page)
-		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
-		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
-		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&
-		   page.Properties.ContainsKey(Constants.ThemesPropertyName) &&
-		   page.Properties.ContainsKey(Constants.SlugPropertyName) &&
-		   page.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
-		   page.Properties.ContainsKey(Constants.Category1PropertyName) &&
-		   page.Properties.ContainsKey(Constants.Category2PropertyName) &&
-		   page.Properties.ContainsKey(Constants.Category3PropertyName) &&
-		   page.Properties.ContainsKey(Constants.Category4PropertyName) &&
-		   page.Properties.ContainsKey(Constants.Category5PropertyName) &&
-		   page.Properties.ContainsKey(Constants.TagsPropertyName) &&
-		   page.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
-		   page.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
-		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
-		   page.Properties.ContainsKey(Constants.EditedOnPropertyName);
-
 	public static LocalNotionPage ParsePage(Page page) {
 		var result = new LocalNotionPage();
 		ParsePage(page, result);
@@ -68,6 +50,7 @@ internal class LocalNotionHelper {
 		dest.ID = page.Id;
 		dest.LastEditedTime = page.LastEditedTime;
 		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		dest.Name = CalculatePageName(page.Id, dest.Title); // note: this is made unique by NotionSyncOrchestrator
 		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;
 		if (page.Icon != null) {
 			dest.Thumbnail = new() {
@@ -152,6 +135,9 @@ internal class LocalNotionHelper {
 		var result = LocalNotionHelper.ObjectGuidToId(new Guid(Hashers.JoinHash(CHF.Blake2b_128, pageIDBytes, propIDBytes)));
 		return result;
 	}
+
+	public static string CalculatePageName(string id, string title) 
+		=> Tools.Url.ToHtmlDOMObjectID($"{Tools.Text.ToCasing(TextCasing.KebabCase, title)}", Constants.PageNameDomObjectPrefix);
 
 }
 

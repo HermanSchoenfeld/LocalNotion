@@ -66,7 +66,7 @@ public class NotionSyncOrchestrator {
 
 			// Remove deleted resources
 			var localDBItems = Repository.GetChildObjects(databaseID).Select(x => x.ID).ToArray();
-			foreach(var oldItem in localDBItems.Except(databasePageIDs)) {
+			foreach (var oldItem in localDBItems.Except(databasePageIDs)) {
 				Repository.RemoveResource(oldItem, true);
 			}
 
@@ -120,16 +120,15 @@ public class NotionSyncOrchestrator {
 
 			var containsPage = Repository.TryGetPage(pageID, out localPage);
 			var oldChildResources = Repository.GetChildObjects(pageID).ToArray();
-			var pageDifferent= containsPage && localPage.LastEditedTime != knownNotionLastEditTime;
+			var pageDifferent = containsPage && localPage.LastEditedTime != knownNotionLastEditTime;
 			var shouldDownload = !containsPage || pageDifferent || forceRefresh;
 			var lastKnownParent = localPage?.ParentResourceID;
-			var lastKnownSequence = localPage?.Sequence;
 
 			#endregion
 
 			// Hydrate into a LocalNotion page
 			if (shouldDownload) {
-				
+
 				#region Download page from Notion
 
 				// Fetch page if not already
@@ -143,6 +142,13 @@ public class NotionSyncOrchestrator {
 				// Hydrate the fetched page from notion
 				localPage = LocalNotionHelper.ParsePage(notionPage);
 
+				// Ensure page name is unique (resolve conflicts)
+				var nameCandidate = localPage.Name;
+				var attempt = 2;
+				while (Repository.ContainsResourceByName(nameCandidate))
+					nameCandidate = $"{localPage.Name}-{attempt++}";
+				localPage.Name = nameCandidate;
+
 				// Fetch page graph from notion
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({notionPage.Id})");
 				pageObjects = new Dictionary<string, IObject>();
@@ -151,11 +157,6 @@ public class NotionSyncOrchestrator {
 
 				// Determine the parent page
 				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects);
-
-				// sequence of page in database is determined by caller (or taken from last save so long as the parent hasn't changed)
-				// TODO: uncomment this when Notion return table records in correct order
-				//localPage.Sequence = sequence ?? (localPage.ParentResourceID == lastKnownParent ? lastKnownSequence : null);   
-
 
 				// Determine child pages
 				childPages =
@@ -169,16 +170,12 @@ public class NotionSyncOrchestrator {
 				// Hydrate a Notion CMS summaries (and future plugins)
 				if (NotionCMSHelper.IsCMSPage(notionPage)) {
 					// Page is a LocalNotionCMS page
-					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(notionPage);
-
-					// HACK: Allow user to specify the LocalNotionPage.Sequence property since NotionAPI doesn't yet
-					// return page records in correct order, or provide a way to determine their order.
-					if (int.TryParse(localPage.CMSProperties.Category1, out var explicitSequence)) 
-						localPage.Sequence = explicitSequence;
+					var htmlThemeManager = new HtmlThemeManager(Repository.Paths, Logger);
+					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(localPage.Name, notionPage, htmlThemeManager);
 
 				} else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
 					// Page has a LocalNotionCMS page ancestor, so propagate CMS properties down
-					localPage.CMSProperties = NotionCMSHelper.ParseCMSPropertiesAsChildPage(notionPage, parentPage);
+					localPage.CMSProperties = NotionCMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
 				}
 
 				if (localPage.CMSProperties != null && localPage.CMSProperties.Summary is null)
@@ -283,17 +280,17 @@ public class NotionSyncOrchestrator {
 				Logger.Info($"No changes detected for `{localPage.Title}`");
 				pageGraph = Repository.GetPageGraph(pageID);
 				pageObjects = Repository.LoadObjects(pageGraph);
-				
+
 				// Note: in this case LocalNotion doesn't store ChildPage objects, it stores them as Page 
 				// objects. Also, we need to ignore the current page to avoid infinite recursive loops.
-				
+
 				childPages =
 					pageObjects
 					.Values
 					.Where(x => x is ChildPageBlock childPage && childPage.Id != pageID)
 					.Cast<ChildPageBlock>()
 					.Select(x => (x.Id, null as DateTime?))
-					.Union( 
+					.Union(
 						pageObjects
 							.Values
 							.Where(x => x is Page page && page.Id != pageID)
@@ -333,7 +330,7 @@ public class NotionSyncOrchestrator {
 			}
 
 			#endregion
-			
+
 			#region Render page and child-pages
 
 			if (render) {
@@ -412,7 +409,7 @@ public class NotionSyncOrchestrator {
 	public IAsyncEnumerable<Page> QueryDatabasePagesAsync(string databaseID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
 		Logger.Info($"Fetching updated pages for database '{databaseID}'{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
 		return NotionClient.Databases.EnumerateAsync(
-			databaseID, 
+			databaseID,
 			new DatabasesQueryParameters { Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null, },
 			cancellationToken
 		);
@@ -442,7 +439,7 @@ public class NotionSyncOrchestrator {
 	/// <summary>
 	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
 	/// </summary>
-	protected string CalculateResourceParent(string objectID) 
+	protected string CalculateResourceParent(string objectID)
 		=> CalculateResourceParent(objectID, new Dictionary<string, IObject>());
 
 	/// <summary>
@@ -450,10 +447,10 @@ public class NotionSyncOrchestrator {
 	/// </summary>
 	protected string CalculateResourceParent(string objectID, IDictionary<string, IObject> nonPersistedObjects) {
 		var visited = new HashSet<string>();
-		while(!visited.Contains(objectID) && (nonPersistedObjects.TryGetValue(objectID, out var obj) || Repository.TryGetObject(objectID, out obj))) {
+		while (!visited.Contains(objectID) && (nonPersistedObjects.TryGetValue(objectID, out var obj) || Repository.TryGetObject(objectID, out obj))) {
 			visited.Add(objectID);
 			if (obj.TryGetParent(out var parent)) {
-				switch(parent.Type) {
+				switch (parent.Type) {
 					case ParentType.DatabaseId:
 					case ParentType.PageId:
 					case ParentType.Workspace:

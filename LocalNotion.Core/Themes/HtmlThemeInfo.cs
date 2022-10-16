@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Runtime.Serialization;
+using System.Text.RegularExpressions;
 using Hydrogen;
 using Hydrogen.Data;
 using JsonSubTypes;
@@ -6,35 +7,44 @@ using Newtonsoft.Json;
 
 namespace LocalNotion.Core;
 
+[Flags]
+[JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
+public enum HtmlThemeTraits {
+
+	[EnumMember(Value = "partial_page")]
+	PartialPage,
+
+	[EnumMember(Value = "suppress_formatting")]
+	SuppressFormatting 
+}
+
 public class HtmlThemeInfo : ThemeInfo {
 
 	public override ThemeType Type => ThemeType.Html;
-	private string _onlineurl = string.Empty;
-	private bool _suppressFormatting = false;
-
+	private string _onlineUrl = string.Empty;
+	private HtmlThemeTraits _traits = 0;
+	
 	[JsonProperty("base")]
 	public string Base { get; set; }
 
 	[JsonIgnore]
 	public HtmlThemeInfo BaseTheme { get; set; } = null;
 
-
 	[JsonProperty("online_url", NullValueHandling = NullValueHandling.Ignore)]
 	public string OnlineUrl { 
-		get => !string.IsNullOrEmpty(_onlineurl) ? _onlineurl : (BaseTheme?.OnlineUrl ?? string.Empty);
-		set => _onlineurl = value;
+		get => !string.IsNullOrEmpty(_onlineUrl) ? _onlineUrl : (BaseTheme?.OnlineUrl ?? string.Empty);
+		set => _onlineUrl = value;
 	}
 
-	[JsonProperty("SuppressFormatting", DefaultValueHandling = DefaultValueHandling.Ignore)]
-	public bool SuppressFormatting { 
-		get => _suppressFormatting || (BaseTheme?.SuppressFormatting ?? false);
-		set => _suppressFormatting = value;
+	[JsonProperty("traits", DefaultValueHandling = DefaultValueHandling.Ignore)]
+	public HtmlThemeTraits Traits { 
+		get => _traits | BaseTheme?.Traits ?? 0;
+		set => _traits = value;
 	}
 	
 	// The tokens below get filled with users custom tokens and all template files (key is "/folder/file.txt" value is fully resolved absolute path)
 	[JsonProperty("tokens")]  
 	public IDictionary<string, Token> Tokens { get; set; } = new Dictionary<string, Token>();
-
 	
 	public class Token {
 

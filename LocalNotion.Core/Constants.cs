@@ -9,6 +9,7 @@ public static class Constants {
 	public const string StatusPropertyName = "Status";
 	public const string ThemesPropertyName = "Themes";
 	public const string SlugPropertyName = "Custom Slug";
+	public const string SequencePropertyName = "Sequence";
 	public const string RootCategoryPropertyName = "Root";
 	public const string Category1PropertyName = "Category1";
 	public const string Category2PropertyName = "Category2";
@@ -42,7 +43,7 @@ public static class Constants {
 	public const bool DefaultDownloadExternalContent = false;
 
 	public const string NotionCMSCategoryWildcard = "all";
-	public const string PageNameDomObjectPrefix = "OBJ_";
+	public const string PageNameDomObjectPrefix = "p_";
 
 	public const int ERRORCODE_OK = 0;
 	public const int ERRORCODE_CANCELLED = -1;

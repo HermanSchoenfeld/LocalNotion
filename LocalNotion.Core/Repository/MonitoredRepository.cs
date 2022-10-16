@@ -92,7 +92,11 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.Value.ContainsResource(resourceID);
 
+	public virtual bool ContainsResourceByName(string name) => InternalRepository.Value.ContainsResourceByName(name);
+
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.Value.TryGetResource(resourceID, out resource);
+
+	public virtual bool TryGetResourceByName(string name, out LocalNotionEditableResource resource) => InternalRepository.Value.TryGetResourceByName(name, out resource);
 
 	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) => InternalRepository.Value.GetChildObjects(resourceID);
 

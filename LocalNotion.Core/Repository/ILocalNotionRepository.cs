@@ -70,7 +70,11 @@ public interface ILocalNotionRepository  {
 
 	bool ContainsResource(string resourceID);
 
+	bool ContainsResourceByName(string name);
+
 	bool TryGetResource(string resourceID, out LocalNotionResource resource);
+
+	bool TryGetResourceByName(string name, out LocalNotionEditableResource resource);
 
 	void AddResource(LocalNotionResource resource);
 
@@ -127,6 +131,9 @@ public static class ILocalNotionRepositoryExtensions {
 		else
 			repository.AddResourceGraph(graph);
 	}
+
+	public static LocalNotionEditableResource GetResourceByName(this ILocalNotionRepository repository, string name)
+		=> repository.TryGetResourceByName(name, out var resource) ? resource : throw new InvalidOperationException($"Resource '{name}' not found");
 
 	public static bool TryGetPage(this ILocalNotionRepository repository, string pageID, out LocalNotionPage page) {
 		page = null;

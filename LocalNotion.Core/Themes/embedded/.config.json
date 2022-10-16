@@ -2,5 +2,5 @@
   "type": "html",
   "base": "default",
   "online_url": "https://cdn.jsdelivr.net/gh/sphere10/cdn/local-notion/themes/embedded",
-  "SuppressFormatting": true
+  "traits" :  "suppress_formatting"
 }

@@ -12,6 +12,7 @@ internal class NotionCMSHelper {
 		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&
 		   page.Properties.ContainsKey(Constants.ThemesPropertyName) &&
 		   page.Properties.ContainsKey(Constants.SlugPropertyName) &&
+		   page.Properties.ContainsKey(Constants.SequencePropertyName) &&
 		   page.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
 		   page.Properties.ContainsKey(Constants.Category1PropertyName) &&
 		   page.Properties.ContainsKey(Constants.Category2PropertyName) &&
@@ -19,31 +20,39 @@ internal class NotionCMSHelper {
 		   page.Properties.ContainsKey(Constants.Category4PropertyName) &&
 		   page.Properties.ContainsKey(Constants.Category5PropertyName) &&
 		   page.Properties.ContainsKey(Constants.TagsPropertyName) &&
+		   page.Properties.ContainsKey(Constants.SummaryPropertyName) &&
 		   page.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedByPropertyName) &&
 		   page.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
-		   page.Properties[Constants.ThemesPropertyName] is MultiSelectPropertyValue;
+		   page.Properties[Constants.ThemesPropertyName] is MultiSelectPropertyValue &&
+		   page.Properties[Constants.SequencePropertyName] is NumberPropertyValue;
 
-	public static CMSProperties ParseCMSProperties(Page page) {
+	public static CMSProperties ParseCMSProperties(string pageName, Page page, HtmlThemeManager htmlThemeManager) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		var result = new CMSProperties();
-		ParseCMSProperties(page, result);
+		ParseCMSProperties(pageName, page, htmlThemeManager, result);
 		return result;
 	}
 
-	public static CMSProperties ParseCMSPropertiesAsChildPage(Page childPage, LocalNotionPage parentPage) { 
+	public static CMSProperties ParseCMSPropertiesAsChildPage(string childPageName, Page childPage, LocalNotionPage parentPage) { 
 		Guard.ArgumentNotNull(childPage, nameof(childPage));
 		Guard.ArgumentNotNull(parentPage, nameof(parentPage));
 		var result = new CMSProperties();
-		ParseCMSPropertiesAsChildPage(childPage, parentPage, result);
+		ParseCMSPropertiesAsChildPage(childPageName, childPage, parentPage, result);
 		return result;
 	}
 
-	public static CMSProperties ParseCMSProperties(Page page, CMSProperties result) {
+	public static CMSProperties ParseCMSProperties(string pageName, Page page, HtmlThemeManager htmlThemeManager, CMSProperties result) {
 		Guard.ArgumentNotNull(page, nameof(page));
 
 		page.ValidatePropertiesExist(
+			Constants.TitlePropertyName,
+			Constants.PublishOnPropertyName,
+			Constants.StatusPropertyName,
+			Constants.ThemesPropertyName,
+			Constants.SlugPropertyName,
+			Constants.SequencePropertyName,
 			Constants.RootCategoryPropertyName,
 			Constants.Category1PropertyName,
 			Constants.Category2PropertyName,
@@ -51,13 +60,18 @@ internal class NotionCMSHelper {
 			Constants.Category4PropertyName,
 			Constants.Category5PropertyName,
 			Constants.TagsPropertyName,
-			Constants.SummaryPropertyName
+			Constants.SummaryPropertyName,
+			Constants.CreatedByPropertyName,
+			Constants.CreatedOnPropertyName,
+			Constants.EditedByPropertyName,
+			Constants.EditedOnPropertyName
 		);
 
 		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
 		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSItemStatus.Hidden);
 		result.Themes = ((MultiSelectPropertyValue)page.Properties[Constants.ThemesPropertyName]).ToPlainTextValues().ToArray();
 		result.CustomSlug = page.GetPropertyDisplayValue(Constants.SlugPropertyName).ToNullWhenWhitespace();
+		result.Sequence = (int?)((NumberPropertyValue)page.Properties[Constants.SequencePropertyName]).Number;
 		result.Root = page.GetPropertyDisplayValue(Constants.RootCategoryPropertyName).ToNullWhenWhitespace();
 		result.Category1 = page.GetPropertyDisplayValue(Constants.Category1PropertyName).ToNullWhenWhitespace();
 		result.Category2 = page.GetPropertyDisplayValue(Constants.Category2PropertyName).ToNullWhenWhitespace();
@@ -67,16 +81,33 @@ internal class NotionCMSHelper {
 		result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName).ToNullWhenWhitespace();
 		NormalizeCategories(result);
 		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+
+		// TODO: in future, determine if a page is a section or not based on some column or something else
+		// HACK: CMSProperty IsPartial is determined based on theme traits. In future, this should be
+		// specified as part of the page definition (but this requires new LocalNotion CMS structure). 
+		// This should be done in subsequent version.
+		if (result.Themes != null) {
+			foreach (var theme in result.Themes) {
+				if (htmlThemeManager.TryLoadTheme(theme, out var themeInfo) &&
+				    themeInfo is HtmlThemeInfo htmlThemeInfo &&
+				    htmlThemeInfo.Traits.HasFlag(HtmlThemeTraits.PartialPage)) {
+					result.IsPartial = true;
+					break;
+				}
+			}
+		}
+
 		if (string.IsNullOrWhiteSpace(result.CustomSlug))
 			result.CustomSlug = CalculateCMSSlug(pageTitle, result);
-
+		
 		// Process slug tokens if any
 		if (result.CustomSlug != null)
-			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, page.Id, Tools.Url.ToHtmlDOMObjectID(page.Id, Constants.PageNameDomObjectPrefix) , result);
+			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, page.Id, pageName, result);
+
 		return result;
 	}
 
-	public static CMSProperties ParseCMSPropertiesAsChildPage(Page childPage, LocalNotionPage parentPage, CMSProperties result) {
+	public static CMSProperties ParseCMSPropertiesAsChildPage(string childPageName,  Page childPage, LocalNotionPage parentPage, CMSProperties result) {
 		Guard.ArgumentNotNull(childPage, nameof(childPage));
 		Guard.ArgumentNotNull(parentPage, nameof(parentPage));
 		Guard.Argument(parentPage.CMSProperties != null, nameof(parentPage), "No CMS properties were defined on parent page");
@@ -96,8 +127,7 @@ internal class NotionCMSHelper {
 		result.Summary = null;
 
 		// Process slug tokens if any
-		if (result.CustomSlug != null)
-			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, Tools.Url.ToHtmlDOMObjectID(childPage.Id, Constants.PageNameDomObjectPrefix) , result);
+		result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, LocalNotionHelper.CalculatePageName(childPage.Id,  childPage.GetTitle()), result);
 		return result;
 	}
 
@@ -149,13 +179,28 @@ internal class NotionCMSHelper {
 	}
 
 
-	public static string CalculateCMSSlug(string pageTitle, CMSProperties cmsProperties) 
-		=> !string.IsNullOrWhiteSpace(cmsProperties.CustomSlug) ?
+	public static string CalculateCMSSlug(string pageTitle, CMSProperties cmsProperties)  {
+		var slug = !string.IsNullOrWhiteSpace(cmsProperties.CustomSlug) ?
 			LocalNotionHelper.SanitizeSlug(cmsProperties.CustomSlug) :
 			CreatePageSlug(pageTitle, cmsProperties.Root, cmsProperties.Category1, cmsProperties.Category2, cmsProperties.Category3, cmsProperties.Category4, cmsProperties.Category5);
 
+		// Partial pages have an anchor to their name
+		if (cmsProperties.IsPartial) {
+			// replace the last part of the url "/{page_title}" with "/{page_name}"
+			var ix = slug.LastIndexOf('/');
+			if (ix != -1) {
+				slug = slug.Substring(0, ix);
+			}
+			slug += "#{page_name}"; // tokens are resolved by caller
+		}
+
+		return slug;
+	}
+
 	public static string CalculateCMSChildPageSlug(string parentPageSlug, string childPageTitle) 
-		=> $"{Tools.Url.StripAnchorTag(parentPageSlug).Trim('/')}/{Tools.Url.ToUrlSlug(childPageTitle)}";
+		// if parent has anchor tag we treat it is an implicit "category" by simply replacing '#' with '/'
+		// example: parent slug = /services#development   child slug = /services/development/mobile
+		=> $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}";
 	
 
 	public static string CreatePageSlug(string title, string root, string category1, string category2, string category3, string category4, string category5)

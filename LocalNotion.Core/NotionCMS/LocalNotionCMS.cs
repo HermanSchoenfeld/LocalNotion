@@ -45,6 +45,7 @@ namespace LocalNotion.Core {
 							article.CMSProperties.Category5
 						);
 						result.Add(categoryKey, article.ID);
+						result.Add(categoryKey + $"/{Constants.NotionCMSCategoryWildcard}", article.ID);
 
 						// Add wildcard entry for all ancestor container categories
 						if (!string.IsNullOrWhiteSpace(article.CMSProperties.Category5)) {
@@ -164,7 +165,7 @@ namespace LocalNotion.Core {
 					_pagesByCategorySlug[categoryKey]
 					.Select(nid => Repository.GetResource(nid))
 					.Cast<LocalNotionPage>()
-					.OrderBy(p => p.Sequence);
+					.OrderBy(p => p.CMSProperties?.Sequence ?? 0);
 
 			return Enumerable.Empty<LocalNotionPage>();
 		}

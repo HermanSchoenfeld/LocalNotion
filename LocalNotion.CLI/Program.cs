@@ -199,7 +199,7 @@ public static partial class Program {
 	[Verb("render", HelpText = "Renders a Local Notion object (using local state only)")]
 	public class RenderCommandArguments : CommandArgumentsBase {
 
-		[Option('r', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
+		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
 
 		[Option('o', "objects", Required = false, HelpText = "List of object ID's to render (i.e. page(s), database(s), workspace)")]
@@ -588,6 +588,7 @@ $@"Local Notion Status:
 		string[] PullBug3Cmd = new[] { "pull", "-o", "68944996-582b-453f-994f-d5562f4a6730", "--force" };
 		string[] PullBug4Cmd = new[] { "pull", "-o", "a2a2a4f0-d13e-4cb0-8f13-dc33402651f5", "--force" };
 		string[] PullBug5Cmd = new[] { "pull", "-o", "20e3c6f6-c91a-4d68-932e-00a463eb1654", "--force" };
+		string[] PullBug6Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
 		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
@@ -596,7 +597,7 @@ $@"Local Notion Status:
 		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] RenderBug3Page = new[] { "render", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
 		string[] RenderBug4Page = new[] { "render", "-o", "d1b16637-ba01-48c2-863e-c60ee3b9ae47" };
-		string[] RenderBug5Page = new[] { "render", "-r", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "b93b303f-18e0-417c-87c0-1eea140600ea" };
+		string[] RenderBug5Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "b93b303f-18e0-417c-87c0-1eea140600ea" };
 		string[] RenderAllPage = new[] { "render", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] Remove = new[] { "remove", "--all" };
@@ -606,7 +607,7 @@ $@"Local Notion Status:
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 		
 		if (args.Length == 0)
-			args = PullCmd;
+			args = PullForceCmd;
 #endif
 
 		try {

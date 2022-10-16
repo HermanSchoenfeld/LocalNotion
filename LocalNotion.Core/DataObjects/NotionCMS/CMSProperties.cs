@@ -12,11 +12,14 @@ public class CMSProperties {
 	[JsonConverter(typeof(StringEnumConverter))]
 	public CMSItemStatus Status { get; set; }
 
+	[JsonProperty("themes", NullValueHandling = NullValueHandling.Ignore)]
+	public string[] Themes { get; set; }
+
 	[JsonProperty("custom_slug")]
 	public string CustomSlug { get; set; }
 
-	[JsonProperty("themes", NullValueHandling = NullValueHandling.Ignore)]
-	public string[] Themes { get; set; }
+	[JsonProperty("sequence", NullValueHandling = NullValueHandling.Ignore)]
+	public int? Sequence { get; set; }
 
 	[JsonProperty("root", NullValueHandling = NullValueHandling.Ignore)]
 	public string Root { get; set; }
@@ -38,5 +41,8 @@ public class CMSProperties {
 	
 	[JsonProperty("summary", NullValueHandling = NullValueHandling.Ignore)]
 	public string Summary { get; set; }
+
+	[JsonProperty("is_partial", NullValueHandling = NullValueHandling.Ignore)]
+	public bool IsPartial { get; set; }
 
 }

@@ -17,7 +17,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderMode = renderMode;
 
-		SuppressFormatting = themes.Any(t => t.SuppressFormatting);
+		SuppressFormatting = themes.Any(t => t.Traits.HasFlag(HtmlThemeTraits.SuppressFormatting));
 
 		// Generate all the theme tokens
 		foreach(var theme in themes)
@@ -329,7 +329,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"page",
 				new NotionObjectTokens(page) {
 					["title"] = this.Page.Title,   // html title
-					["page_name"] = Tools.Url.ToHtmlDOMObjectID(page.Id, Constants.PageNameDomObjectPrefix),
+					["page_name"] = LocalNotionHelper.CalculatePageName(Page.ID, Page.Title),
 					["page_title"] = RenderTemplate("page_title", new() { ["text"] = this.Page.Title }),   // title on the page 
 					["style"] = "wide",
 					["cover"] = this.Page.Cover switch {
