@@ -33,10 +33,12 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			if (item.Type == LocalNotionResourceType.Page)
 				traits.SetFlags(BreadCrumbItemTraits.IsPage, true);
 
-			var isCmsPage = item is LocalNotionPage { CMSProperties: not null };
+			var isCmsPage = item is LocalNotionPage { CMSProperties: not null } itemPage;
 			if (isCmsPage) {
 				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
 			}
+
+			var isPartialPage = isCmsPage && ((LocalNotionPage)item).CMSProperties.IsPartial;
 
 			//IsFile			= 1 << 3,
 			//IsDatabase		= 1 << 4,
@@ -71,8 +73,14 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 			// TODO: when implementing databases, the check is
 			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
-			var parentIsCMSDatabase = item.ParentResourceID != null && !Repository.ContainsResource(item.ParentResourceID);  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
-			var title = isCmsPage && parentIsCMSDatabase ? $"{((LocalNotionPage)item).CMSProperties.Root} ({item.Title})" : item.Title;
+			var repoContainsParentResource = item.ParentResourceID != null && Repository.ContainsResource(item.ParentResourceID);
+			var parentIsCmsDatabase = item.ParentResourceID != null && !repoContainsParentResource;  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
+			var parentIsPartial = 
+				repoContainsParentResource && 
+				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
+				parentResource is LocalNotionEditableResource { CMSProperties.IsPartial: true }; 
+
+			var title = isPartialPage ? $"{((LocalNotionPage)item).CMSProperties.Root} ({item.Title})" : item.Title;
 			var breadCrumbItem = new BreadCrumbItem() {
 				Type = item.Type,
 				Text = title ,
@@ -88,7 +96,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			#region Process CMS-based slug
 			
 			// if current item is a CMS item and we're in online mode, the remainder of trail is extracted from the slug
-			if (LinkGenerator.Mode == LocalNotionMode.Online && isCmsPage && parentIsCMSDatabase) {
+			if (LinkGenerator.Mode == LocalNotionMode.Online && isCmsPage && parentIsCmsDatabase) {
 				var cmsPage = (LocalNotionPage)item;
 				var slugParts = Tools.Url.StripAnchorTag(cmsPage.CMSProperties.CustomSlug.TrimStart("/")).Split('/');
 

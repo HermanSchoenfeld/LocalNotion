@@ -14,7 +14,4 @@ public class LocalNotionPage : LocalNotionEditableResource {
 	[JsonProperty("thumbnail")]
 	public LocalNotionThumbnail Thumbnail { get; set; } = LocalNotionThumbnail.None;
 	
-	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
-	public CMSProperties CMSProperties { get; set; } = null;
-
 }
