@@ -5,6 +5,10 @@ namespace LocalNotion.Core;
 
 public class CMSProperties {
 
+	[JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
+	[JsonConverter(typeof(StringEnumConverter))]
+	public CMSPageType PageType { get; set; }
+
 	[JsonProperty("publish_on", NullValueHandling = NullValueHandling.Ignore)]
 	public DateTime? PublishOn { get; set; }
 

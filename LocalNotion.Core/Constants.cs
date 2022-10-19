@@ -4,6 +4,7 @@ namespace LocalNotion.Core;
 
 public static class Constants {
 	public const string EmptyArticleName = "Unnamed Page";
+	public const string PageTypePropertyName = "Type";
 	public const string TitlePropertyName = "Item";
 	public const string PublishOnPropertyName = "Publish On";
 	public const string StatusPropertyName = "Status";

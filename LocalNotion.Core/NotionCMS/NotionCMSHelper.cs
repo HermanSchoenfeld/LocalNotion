@@ -3,11 +3,12 @@ using Hydrogen;
 using Notion.Client;
 
 namespace LocalNotion.Core;
-internal class NotionCMSHelper {
+public class NotionCMSHelper {
 
 
 	public static bool IsCMSPage(Page page)
-		=> page.Properties.ContainsKey(Constants.TitlePropertyName) &&
+		=> page.Properties.ContainsKey(Constants.PageTypePropertyName) &&
+		   page.Properties.ContainsKey(Constants.TitlePropertyName) &&
 		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&
 		   page.Properties.ContainsKey(Constants.ThemesPropertyName) &&
@@ -47,6 +48,7 @@ internal class NotionCMSHelper {
 		Guard.ArgumentNotNull(page, nameof(page));
 
 		page.ValidatePropertiesExist(
+			Constants.PageTypePropertyName,
 			Constants.TitlePropertyName,
 			Constants.PublishOnPropertyName,
 			Constants.StatusPropertyName,
@@ -67,6 +69,7 @@ internal class NotionCMSHelper {
 			Constants.EditedOnPropertyName
 		);
 
+		result.PageType = Tools.Enums.ParseEnum<CMSPageType>(page.GetPropertyDisplayValue(Constants.PageTypePropertyName).ToValueWhenNullOrWhitespace(Tools.Enums.GetSerializableOrientedName(CMSPageType.Page)), false) ;
 		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
 		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSItemStatus.Hidden);
 		result.Themes = ((MultiSelectPropertyValue)page.Properties[Constants.ThemesPropertyName]).ToPlainTextValues().ToArray();
@@ -169,6 +172,7 @@ internal class NotionCMSHelper {
 				}
 			}
 		}
+
 		// trim whitespace
 		cmsProperties.Root = cmsProperties.Root?.Trim();
 		cmsProperties.Category1 = cmsProperties.Category1?.Trim();
@@ -178,11 +182,10 @@ internal class NotionCMSHelper {
 		cmsProperties.Category5 = cmsProperties.Category5?.Trim();
 	}
 
-
 	public static string CalculateCMSSlug(string pageTitle, CMSProperties cmsProperties)  {
 		var slug = !string.IsNullOrWhiteSpace(cmsProperties.CustomSlug) ?
 			LocalNotionHelper.SanitizeSlug(cmsProperties.CustomSlug) :
-			CreatePageSlug(pageTitle, cmsProperties.Root, cmsProperties.Category1, cmsProperties.Category2, cmsProperties.Category3, cmsProperties.Category4, cmsProperties.Category5);
+			CreatePageSlug(cmsProperties.PageType, pageTitle, cmsProperties.Root, cmsProperties.Category1, cmsProperties.Category2, cmsProperties.Category3, cmsProperties.Category4, cmsProperties.Category5);
 
 		// Partial pages have an anchor to their name
 		if (cmsProperties.IsPartial) {
@@ -203,8 +206,13 @@ internal class NotionCMSHelper {
 		=> $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}";
 	
 
-	public static string CreatePageSlug(string title, string root, string category1, string category2, string category3, string category4, string category5)
-		=> CreateCategorySlug(root, category1, category2, category3, category4, category5) + "/" + LocalNotionHelper.SanitizeSlug($"{Tools.Url.ToUrlSlug(title)}");
+	public static string CreatePageSlug(CMSPageType pageType, string title, string root, string category1, string category2, string category3, string category4, string category5) {
+		if (pageType == CMSPageType.Gallery) {
+			// gallery categories are not slug components, but badges. For purposes of slug generation, they are ignored.
+			category1 = category2 = category3 = category4 = category5 = null;
+		}
+		return CreateCategorySlug(root, category1, category2, category3, category4, category5) + "/" + LocalNotionHelper.SanitizeSlug($"{Tools.Url.ToUrlSlug(title)}");
+	}
 
 	public static string CreateCategorySlug(string root, string category1, string category2, string category3, string category4, string category5)
 		=> CreateCategorySlug(root, new[] { category1, category2, category3, category4, category5 });

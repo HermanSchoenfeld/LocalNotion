@@ -1,4 +1,5 @@
-﻿using Notion.Client;
+﻿using Hydrogen;
+using Notion.Client;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,13 +16,15 @@ public interface ILocalNotionCMS {
 
 	string[] GetSubCategories(string root, params string[] categories);
 
-	bool TryLookupResourceBySlug(string slug, out string resourceID);
+	bool ContainsSlug(string slug);
+
+	bool TryLookupSlug(string slug, out CMSArtifact[] artifacts);
 
 }
 
-public static class INotionCMSExtensions {
+public static class ILocalNotionCMSExtensions {
 
-	public static string LookupResourceBySlug(this ILocalNotionCMS cms, string slug)
-		=> cms.TryLookupResourceBySlug(slug, out var resourceID) ? resourceID : throw new InvalidOperationException($"No resource addressable by the slug '{slug}' was found");
+	public static CMSArtifact[] LookupResourceBySlug(this ILocalNotionCMS cms, string slug)
+		=> cms.TryLookupSlug(slug, out var artifacts) ? artifacts : throw new InvalidOperationException($"No CMS artifact(s) addressable by the slug '{slug}' were found");
 
 }
