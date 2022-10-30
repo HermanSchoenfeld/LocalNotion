@@ -2,7 +2,7 @@
 
 namespace LocalNotion.Core;
 
-public enum CMSItemStatus {
+public enum CMSPageStatus {
 	[EnumMember(Value = "draft")]
 	Draft,
 

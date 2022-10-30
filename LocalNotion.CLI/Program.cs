@@ -584,6 +584,7 @@ $@"Local Notion Status:
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullCmd2= new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
+		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
 		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
 		string[] PullBug3Cmd = new[] { "pull", "-o", "68944996-582b-453f-994f-d5562f4a6730", "--force" };
@@ -612,11 +613,11 @@ $@"Local Notion Status:
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 		
 		if (args.Length == 0)
-			args = RenderAll2;
+			args = PullForceCmd2;
 #endif
 
 		try {
-			if (DateTime.Now > DateTime.Parse("2022-10-23 00:00")) {
+			if (DateTime.Now > DateTime.Parse("2023-07-01 00:00")) {
 				Console.WriteLine("Software has expired");
 				return Constants.ERRORCODE_LICENSE_ERROR;
 			}

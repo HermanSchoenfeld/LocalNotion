@@ -2,13 +2,24 @@
 
 namespace LocalNotion.Core;
 
-public enum CMSPageType {
+public enum CMSContentType {
+	
+	[EnumMember(Value = "none")]
+	None,
+
 	[EnumMember(Value = "page")]
 	Page,
 
+	[EnumMember(Value = "file")]
+	File,
+
 	[EnumMember(Value = "section")]
-	Section,
+	SectionedPage,
 
 	[EnumMember(Value = "gallery")]
-	Gallery
+	Gallery,
+
+	[EnumMember(Value = "book")]
+	Book
+
 }

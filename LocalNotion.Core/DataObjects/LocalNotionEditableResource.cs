@@ -14,4 +14,5 @@ public abstract class LocalNotionEditableResource : LocalNotionResource {
 
 	[JsonProperty("last_edited_time")]
 	public DateTime LastEditedTime { get; set; }
+
 }

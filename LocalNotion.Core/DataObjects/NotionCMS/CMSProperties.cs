@@ -14,7 +14,7 @@ public class CMSProperties {
 
 	[JsonProperty("status", NullValueHandling = NullValueHandling.Ignore)]
 	[JsonConverter(typeof(StringEnumConverter))]
-	public CMSItemStatus Status { get; set; }
+	public CMSPageStatus Status { get; set; }
 
 	[JsonProperty("themes", NullValueHandling = NullValueHandling.Ignore)]
 	public string[] Themes { get; set; }
@@ -46,7 +46,16 @@ public class CMSProperties {
 	[JsonProperty("summary", NullValueHandling = NullValueHandling.Ignore)]
 	public string Summary { get; set; }
 
-	[JsonProperty("is_partial", NullValueHandling = NullValueHandling.Ignore)]
-	public bool IsPartial { get; set; }
+	//[JsonProperty("is_partial", NullValueHandling = NullValueHandling.Ignore)]
+	//public bool IsPartial { get; set; }
+
+	[JsonIgnore]
+	public IEnumerable<string> Categories =>
+		PageType switch {
+			CMSPageType.Gallery => new [] { Root },
+			_ => new [] { Root, Category1, Category2, Category3, Category4, Category5 }.TakeWhile(x => !string.IsNullOrWhiteSpace(x))
+		};
+		 
+		
 
 }

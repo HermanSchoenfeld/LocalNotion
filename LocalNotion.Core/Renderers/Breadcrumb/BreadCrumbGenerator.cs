@@ -38,7 +38,9 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
 			}
 
-			var isPartialPage = isCmsPage && ((LocalNotionPage)item).CMSProperties.IsPartial;
+			var isPartialPage = 
+				isCmsPage &&
+				((LocalNotionPage)item).CMSProperties.PageType == CMSPageType.Section;
 
 			//IsFile			= 1 << 3,
 			//IsDatabase		= 1 << 4,
@@ -78,7 +80,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			var parentIsPartial = 
 				repoContainsParentResource && 
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
-				parentResource is LocalNotionEditableResource { CMSProperties.IsPartial: true }; 
+				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section }; 
 
 			var title = isPartialPage ? $"{((LocalNotionPage)item).CMSProperties.Root} ({item.Title})" : item.Title;
 			var breadCrumbItem = new BreadCrumbItem() {
