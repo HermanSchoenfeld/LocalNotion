@@ -61,6 +61,7 @@
 	  <None Remove="Themes\default\resources\local-notion\css\common.css" />
 	  <None Remove="Themes\default\resources\local-notion\css\editable.css" />
 	  <None Remove="Themes\default\resources\local-notion\css\readonly.css" />
+	  <None Remove="Themes\default\resources\local-notion\js\ln.js" />
 	  <None Remove="Themes\default\resources\local-notion\js\noop.js" />
 	  <None Remove="Themes\default\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\default\resources\mathjax\output\chtml.js" />
@@ -114,7 +115,6 @@
 	  <None Remove="Themes\default\user.html" />
 	  <None Remove="Themes\demo\.config.json" />
 	  <None Remove="Themes\demo\page.offline.html" />
-	  <None Remove="Themes\demo\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\.root\.config.json" />
 	  <None Remove="Themes\.root\editable\audio.html" />
 	  <None Remove="Themes\.root\editable\bulleted_list.html" />
@@ -412,6 +412,7 @@
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\css\readonly.css" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\css\common.css" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\noop.js" />
+	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\ln.js" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\toc.js" />
 	  <EmbeddedResource Include="Themes\default\resources\mathjax\output\chtml.js" />
 	  <EmbeddedResource Include="Themes\default\resources\mathjax\output\chtml\fonts\tex.js" />
