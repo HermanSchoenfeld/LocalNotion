@@ -515,7 +515,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			}
 
 			// Other LNER props
-			lnerInstance.LastEditedTime = lner.LastEditedTime;
+			lnerInstance.CreatedOn = lner.CreatedOn;
+			lnerInstance.LastEditedOn = lner.LastEditedOn;
 		}
 
 		// Std props

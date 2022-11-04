@@ -120,7 +120,7 @@ public class NotionSyncOrchestrator {
 
 			var containsPage = Repository.TryGetPage(pageID, out localPage);
 			var oldChildResources = Repository.GetChildObjects(pageID).ToArray();
-			var pageDifferent = containsPage && localPage.LastEditedTime != knownNotionLastEditTime;
+			var pageDifferent = containsPage && localPage.LastEditedOn != knownNotionLastEditTime;
 			var shouldDownload = !containsPage || pageDifferent || forceRefresh;
 			var lastKnownParent = localPage?.ParentResourceID;
 
@@ -168,14 +168,14 @@ public class NotionSyncOrchestrator {
 					.ToList();
 
 				// Hydrate a Notion CMS summaries (and future plugins)
-				if (NotionCMSHelper.IsCMSPage(notionPage)) {
+				if (LocalNotionCMSHelper.IsCMSPage(notionPage)) {
 					// Page is a LocalNotionCMS page
 					var htmlThemeManager = new HtmlThemeManager(Repository.Paths, Logger);
-					localPage.CMSProperties = NotionCMSHelper.ParseCMSProperties(localPage.Name, notionPage, htmlThemeManager);
+					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSProperties(localPage.Name, notionPage, htmlThemeManager);
 
 				} else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
 					// Page has a LocalNotionCMS page ancestor, so propagate CMS properties down
-					localPage.CMSProperties = NotionCMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
+					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
 				}
 
 				if (localPage.CMSProperties != null && localPage.CMSProperties.Summary is null)

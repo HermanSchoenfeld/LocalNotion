@@ -96,7 +96,7 @@
 //		=> new() {
 //			Id = page.Id,
 //			CreatedTime = page.CreatedTime,
-//			LastEditedTime = page.LastEditedTime,
+//			LastEditedOn = page.LastEditedOn,
 //			HasChildren = true,
 //			ChildPage = new ChildPageBlock.Info {
 //				Title = page.GetTitle(propertyObjects)

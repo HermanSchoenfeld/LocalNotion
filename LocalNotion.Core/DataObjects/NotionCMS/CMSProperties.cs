@@ -46,8 +46,8 @@ public class CMSProperties {
 	[JsonProperty("summary", NullValueHandling = NullValueHandling.Ignore)]
 	public string Summary { get; set; }
 
-	//[JsonProperty("is_partial", NullValueHandling = NullValueHandling.Ignore)]
-	//public bool IsPartial { get; set; }
+	[JsonProperty("Tags", NullValueHandling = NullValueHandling.Ignore)]
+	public string[] Tags { get; set; }
 
 	[JsonIgnore]
 	public IEnumerable<string> Categories =>

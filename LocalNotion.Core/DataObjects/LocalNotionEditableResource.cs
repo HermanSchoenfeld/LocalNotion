@@ -12,7 +12,10 @@ public abstract class LocalNotionEditableResource : LocalNotionResource {
 	public CMSProperties CMSProperties { get; set; } = null;
 
 
-	[JsonProperty("last_edited_time")]
-	public DateTime LastEditedTime { get; set; }
+	[JsonProperty("created_on")]
+	public DateTime CreatedOn { get; set; }
+
+	[JsonProperty("last_edited_on")]
+	public DateTime LastEditedOn { get; set; }
 
 }

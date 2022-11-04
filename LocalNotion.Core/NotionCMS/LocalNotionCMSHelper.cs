@@ -4,7 +4,7 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public class NotionCMSHelper {
+public class LocalNotionCMSHelper {
 
 	public static bool IsCMSPage(Page page)
 		=> page.Properties.ContainsKey(Constants.PageTypePropertyName) &&
@@ -82,6 +82,7 @@ public class NotionCMSHelper {
 		result.Category4 = page.GetPropertyDisplayValue(Constants.Category4PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Category5 = page.GetPropertyDisplayValue(Constants.Category5PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName)?.Trim().ToNullWhenWhitespace();
+		result.Tags = ((MultiSelectPropertyValue)page.Properties[Constants.TagsPropertyName]).MultiSelect.Select(x => x.Name).Select(x => x.Trim()).ToArray();
 		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 
 		if (string.IsNullOrWhiteSpace(result.CustomSlug))
@@ -112,6 +113,7 @@ public class NotionCMSHelper {
 		result.Category4 = parentCMSProps.Category4;
 		result.Category5 = parentCMSProps.Category5;
 		result.Summary = null;
+		result.Tags = null;
 
 		// Process slug tokens if any
 		result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, LocalNotionHelper.CalculatePageName(childPage.Id,  childPage.GetTitle()), result);

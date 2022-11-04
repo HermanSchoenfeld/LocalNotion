@@ -114,7 +114,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 			// Calculate node slug
 			var slugPartsArr = slugParts as string[] ?? slugParts.ToArray();
-			var slug = Tools.Url.StripAnchorTag( slugOverride ?? NotionCMSHelper.CalculateSlug(slugPartsArr.Concat(title)) );
+			var slug = Tools.Url.StripAnchorTag( slugOverride ?? LocalNotionCMSHelper.CalculateSlug(slugPartsArr.Concat(title)) );
 
 			if (string.IsNullOrWhiteSpace(slug))
 				return null;
@@ -166,23 +166,23 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 			if (string.IsNullOrWhiteSpace(page.CMSProperties.Category1))
 				continue;
-			result.Add(NotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, null, null, null, null, null }), page.CMSProperties.Category1);
+			result.Add(LocalNotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, null, null, null, null, null }), page.CMSProperties.Category1);
 
 			if (string.IsNullOrWhiteSpace(page.CMSProperties.Category2))
 				continue;
-			result.Add(NotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, null, null, null, null }), page.CMSProperties.Category2);
+			result.Add(LocalNotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, null, null, null, null }), page.CMSProperties.Category2);
 
 			if (string.IsNullOrWhiteSpace(page.CMSProperties.Category3))
 				continue;
-			result.Add(NotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, page.CMSProperties.Category2, null, null, null }), page.CMSProperties.Category3);
+			result.Add(LocalNotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, page.CMSProperties.Category2, null, null, null }), page.CMSProperties.Category3);
 
 			if (string.IsNullOrWhiteSpace(page.CMSProperties.Category4))
 				continue;
-			result.Add(NotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, page.CMSProperties.Category2, page.CMSProperties.Category3, null, null }), page.CMSProperties.Category4);
+			result.Add(LocalNotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, page.CMSProperties.Category2, page.CMSProperties.Category3, null, null }), page.CMSProperties.Category4);
 
 			if (string.IsNullOrWhiteSpace(page.CMSProperties.Category5))
 				continue;
-			result.Add(NotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, page.CMSProperties.Category2, page.CMSProperties.Category3, page.CMSProperties.Category4, null }), page.CMSProperties.Category5);
+			result.Add(LocalNotionCMSHelper.CalculateSlug(new[] { page.CMSProperties.Root, page.CMSProperties.Category1, page.CMSProperties.Category2, page.CMSProperties.Category3, page.CMSProperties.Category4, null }), page.CMSProperties.Category5);
 
 		}
 		return result.ToDictionary();
@@ -193,7 +193,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		var result = new LookupEx<string, string>(StringComparer.InvariantCultureIgnoreCase);
 		foreach (var page in Repository.Resources.Where(r => r is LocalNotionPage { CMSProperties: not null }).Cast<LocalNotionPage>()) {
 			// Add entry for parent container 
-			var categoryKey = NotionCMSHelper.CalculateSlug(
+			var categoryKey = LocalNotionCMSHelper.CalculateSlug(
 				new[] {
 				page.CMSProperties.Root,
 				page.CMSProperties.Category1,
@@ -208,7 +208,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 			// Add wildcard entry for all ancestor container categories
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category5)) {
-				categoryKey = NotionCMSHelper.CalculateSlug(
+				categoryKey = LocalNotionCMSHelper.CalculateSlug(
 			new[] {
 					page.CMSProperties.Root,
 					page.CMSProperties.Category1,
@@ -222,7 +222,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 			}
 
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category4)) {
-				categoryKey = NotionCMSHelper.CalculateSlug(
+				categoryKey = LocalNotionCMSHelper.CalculateSlug(
 					new[] {
 					page.CMSProperties.Root,
 					page.CMSProperties.Category1,
@@ -236,7 +236,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 			}
 
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category3)) {
-				categoryKey = NotionCMSHelper.CalculateSlug(
+				categoryKey = LocalNotionCMSHelper.CalculateSlug(
 					new[] {
 					page.CMSProperties.Root,
 					page.CMSProperties.Category1,
@@ -249,7 +249,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 				result.Add(categoryKey, page.ID);
 			}
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category2)) {
-				categoryKey = NotionCMSHelper.CalculateSlug(
+				categoryKey = LocalNotionCMSHelper.CalculateSlug(
 					new[] {
 					page.CMSProperties.Root,
 					page.CMSProperties.Category1,
@@ -262,7 +262,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 				result.Add(categoryKey, page.ID);
 			}
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category1)) {
-				categoryKey = NotionCMSHelper.CalculateSlug(
+				categoryKey = LocalNotionCMSHelper.CalculateSlug(
 					new[] {
 					page.CMSProperties.Root,
 					Constants.NotionCMSCategoryWildcard,
@@ -275,7 +275,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 				result.Add(categoryKey, page.ID);
 			}
 
-			categoryKey = NotionCMSHelper.CalculateSlug(
+			categoryKey = LocalNotionCMSHelper.CalculateSlug(
 				new[] {
 				Constants.NotionCMSCategoryWildcard,
 				null,
