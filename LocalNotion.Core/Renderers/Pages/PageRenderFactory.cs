@@ -23,9 +23,10 @@ public static class PageRenderFactory {
 
 
 	private static string[] DeterminePageThemes(LocalNotionPage page,  ILocalNotionRepository repository) {
+		var pageThemes = Enumerable.Empty<string>();
 		if (page is {CMSProperties.Themes.Length: > 0 } && page.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
-			return page.CMSProperties.Themes;
+			pageThemes = page.CMSProperties.Themes;
 		} 
-		return repository.DefaultThemes;
+		return repository.DefaultThemes.Concat(pageThemes).ToArray();
 	}
 }
