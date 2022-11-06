@@ -417,7 +417,7 @@ public class NotionSyncOrchestrator {
 
 	private bool ShouldDownloadFile(string url)
 		// We only download user files uploaded to notion (or everything is force download is on)
-		=> (Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsYouTubeUrl(url)) ||
+		=> (Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsVideoSharingUrl(url)) ||
 		   LocalNotionHelper.TryParseNotionFileUrl(url, out _, out _);
 
 	/// <summary>

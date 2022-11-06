@@ -33,6 +33,7 @@
 	  <None Remove="Themes\default\divider.html" />
 	  <None Remove="Themes\default\embed_twitter.html" />
 	  <None Remove="Themes\default\embed_video.html" />
+	  <None Remove="Themes\default\embed_vimeo.html" />
 	  <None Remove="Themes\default\embed_youtube.html" />
 	  <None Remove="Themes\default\equation_block.html" />
 	  <None Remove="Themes\default\equation_inline.html" />
@@ -235,6 +236,7 @@
 	  <EmbeddedResource Include="Themes\.root\editable\column_list_7.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\column_list_6.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\column_list_5.html" />
+	  <EmbeddedResource Include="Themes\.root\editable\embed_vimeo.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\table_header_cell.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\table_header_row.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\audio.html" />
@@ -259,6 +261,7 @@
 	  <EmbeddedResource Include="Themes\.root\readonly\divider.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\embed_twitter.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\embed_video.html" />
+	  <EmbeddedResource Include="Themes\.root\readonly\embed_vimeo.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\embed_youtube.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\equation_block.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\equation_inline.html" />
@@ -383,6 +386,7 @@
 	  <EmbeddedResource Include="Themes\default\divider.html" />
 	  <EmbeddedResource Include="Themes\default\embed_twitter.html" />
 	  <EmbeddedResource Include="Themes\default\embed_video.html" />
+	  <EmbeddedResource Include="Themes\default\embed_vimeo.html" />
 	  <EmbeddedResource Include="Themes\default\embed_youtube.html" />
 	  <EmbeddedResource Include="Themes\default\equation_block.html" />
 	  <EmbeddedResource Include="Themes\default\equation_inline.html" />

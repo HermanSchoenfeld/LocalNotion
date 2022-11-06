@@ -603,6 +603,7 @@ $@"Local Notion Status:
 		string[] RenderBug6Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] RenderBug7Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
 		string[] RenderBug8Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
+		string[] RenderBug9Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
 		string[] RenderAll = new[] { "render", "--all" };
 		string[] RenderAll2 = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
@@ -612,8 +613,9 @@ $@"Local Notion Status:
 		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 		
+		// 
 		if (args.Length == 0)
-			args = PullForceCmd2;
+			args = RenderBug9Page;
 #endif
 
 		try {

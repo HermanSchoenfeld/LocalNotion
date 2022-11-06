@@ -179,9 +179,14 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected virtual TOutput Render(VideoBlock block) {
 		switch (block.Video) {
 			case ExternalFile externalFile: {
-				return Tools.Url.TryParseYouTubeUrl(externalFile.External.Url, out var videoID) ? 
-					RenderYouTubeEmbed(block, videoID) : 
-					RenderVideoEmbed(block, externalFile.External.Url);
+				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url)) {
+					if (Tools.Url.TryParseYouTubeUrl(externalFile.External.Url, out var videoID)) 
+						return RenderYouTubeEmbed(block, videoID);
+
+					if (Tools.Url.TryParseVimeoUrl(externalFile.External.Url, out videoID)) 
+						return RenderVimeoEmbed(block, videoID);
+				}
+				return RenderVideoEmbed(block, externalFile.External.Url);
 			}
 			case UploadedFile uploadedFile: {
 				var url = Resolver.GenerateUploadedFileLink(Page, uploadedFile, out _);
@@ -370,8 +375,10 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected abstract TOutput Render(ToggleBlock block);
 
-	protected abstract TOutput RenderYouTubeEmbed(VideoBlock videoBlock, string youTubeVideoID);
+	protected abstract TOutput RenderYouTubeEmbed(VideoBlock videoBlock, string videoID);
 
+	protected abstract TOutput RenderVimeoEmbed(VideoBlock videoBlock, string videoID);
+	
 	protected abstract TOutput RenderVideoEmbed(VideoBlock videoBlock, string url);
 
 	protected abstract TOutput RenderTwitterEmbed(EmbedBlock embedBlock, string url);

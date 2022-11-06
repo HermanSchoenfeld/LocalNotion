@@ -806,15 +806,24 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			}
 		);
 
-	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string youTubeVideoID)
+	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID)
 		=> RenderTemplate(
 			"embed_youtube",
 			new NotionObjectTokens(videoBlock) {
 				["caption"] = Render(videoBlock.Video.Caption),
-				["video_id"] = youTubeVideoID,
+				["video_id"] = videoID,
 			}
 		);
 
+	protected override string RenderVimeoEmbed(VideoBlock videoBlock, string videoID)
+		=> RenderTemplate(
+			"embed_vimeo",
+			new NotionObjectTokens(videoBlock) {
+				["caption"] = Render(videoBlock.Video.Caption),
+				["video_id"] = videoID,
+			}
+		);
+	
 	protected override string RenderVideoEmbed(VideoBlock videoBlock, string url)
 		=> RenderTemplate(
 			"embed_video",
