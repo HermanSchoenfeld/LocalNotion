@@ -329,7 +329,6 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"page",
 				new NotionObjectTokens(page) {
 					["title"] = this.Page.Title,   // html title
-					["page_name"] = LocalNotionHelper.CalculatePageName(Page.ID, Page.Title),
 					["page_title"] = RenderTemplate("page_title", new() { ["text"] = this.Page.Title }),   // title on the page 
 					["style"] = "wide",
 					["cover"] = this.Page.Cover switch {
@@ -956,7 +955,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		}
 
 		private void HydrateObject(IObject notionObject) {
-			this["object_id"] = notionObject.Id;
+			this["object_id"] = notionObject.Id.Replace("-", string.Empty);
 			this["object_type"] = notionObject.Object.ToString().ToLowerInvariant().Replace("_", "-");
 			this["type"] = notionObject switch {
 				IBlock block => block.Type.GetAttribute<EnumMemberAttribute>().Value?.Replace("_", "-"),
@@ -969,7 +968,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				yield break;
 
 			if (@object is IObject notionObject) {
-				yield return new KeyValuePair<string, object>("object_id", notionObject.Id);
+				yield return new KeyValuePair<string, object>("object_id", notionObject.Id.Replace("-", string.Empty));
 				yield return new KeyValuePair<string, object>("object_type", notionObject.Object.ToString().ToLowerInvariant().Replace("_", "-"));
 				yield return new KeyValuePair<string, object>(
 					"type",

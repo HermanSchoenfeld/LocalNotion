@@ -51,7 +51,6 @@ internal class LocalNotionHelper {
 		dest.LastEditedOn = page.LastEditedTime;
 		dest.CreatedOn = page.CreatedTime;
 		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
-		dest.Name = CalculatePageName(page.Id, dest.Title); // note: this is made unique by NotionSyncOrchestrator
 		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;
 		if (page.Icon != null) {
 			dest.Thumbnail = new() {
@@ -137,8 +136,7 @@ internal class LocalNotionHelper {
 		return result;
 	}
 
-	public static string CalculatePageName(string id, string title) 
-		=> Tools.Url.ToHtmlDOMObjectID($"{Tools.Text.ToCasing(TextCasing.KebabCase, title)}", Constants.PageNameDomObjectPrefix);
+
 
 }
 

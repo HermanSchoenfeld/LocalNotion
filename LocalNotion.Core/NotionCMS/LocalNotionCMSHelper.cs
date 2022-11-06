@@ -29,22 +29,22 @@ public class LocalNotionCMSHelper {
 		   page.Properties[Constants.ThemesPropertyName] is MultiSelectPropertyValue &&
 		   page.Properties[Constants.SequencePropertyName] is NumberPropertyValue;
 
-	public static CMSProperties ParseCMSProperties(string pageName, Page page, HtmlThemeManager htmlThemeManager) {
+	public static CMSProperties ParseCMSProperties(Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		var result = new CMSProperties();
-		ParseCMSProperties(pageName, page, htmlThemeManager, result);
+		ParseCMSProperties(page, result);
 		return result;
 	}
 
-	public static CMSProperties ParseCMSPropertiesAsChildPage(string childPageName, Page childPage, LocalNotionPage parentPage) { 
+	public static CMSProperties ParseCMSPropertiesAsChildPage(Page childPage, LocalNotionPage parentPage) { 
 		Guard.ArgumentNotNull(childPage, nameof(childPage));
 		Guard.ArgumentNotNull(parentPage, nameof(parentPage));
 		var result = new CMSProperties();
-		ParseCMSPropertiesAsChildPage(childPageName, childPage, parentPage, result);
+		ParseCMSPropertiesAsChildPage(childPage, parentPage, result);
 		return result;
 	}
 
-	public static CMSProperties ParseCMSProperties(string pageName, Page page, HtmlThemeManager htmlThemeManager, CMSProperties result) {
+	public static CMSProperties ParseCMSProperties(Page page, CMSProperties result) {
 		Guard.ArgumentNotNull(page, nameof(page));
 
 		page.ValidatePropertiesExist(
@@ -90,12 +90,12 @@ public class LocalNotionCMSHelper {
 		
 		// Process slug tokens if any
 		if (result.CustomSlug != null)
-			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, page.Id, pageName, result);
+			result.CustomSlug = ProcessSlugTokens(result.CustomSlug, page.Id, result);
 
 		return result;
 	}
 
-	public static CMSProperties ParseCMSPropertiesAsChildPage(string childPageName,  Page childPage, LocalNotionPage parentPage, CMSProperties result) {
+	public static CMSProperties ParseCMSPropertiesAsChildPage(Page childPage, LocalNotionPage parentPage, CMSProperties result) {
 		Guard.ArgumentNotNull(childPage, nameof(childPage));
 		Guard.ArgumentNotNull(parentPage, nameof(parentPage));
 		Guard.Argument(parentPage.CMSProperties != null, nameof(parentPage), "No CMS properties were defined on parent page");
@@ -116,7 +116,7 @@ public class LocalNotionCMSHelper {
 		result.Tags = null;
 
 		// Process slug tokens if any
-		result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, LocalNotionHelper.CalculatePageName(childPage.Id,  childPage.GetTitle()), result);
+		result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, result);
 		return result;
 	}
 
@@ -126,7 +126,7 @@ public class LocalNotionCMSHelper {
 			LocalNotionHelper.SanitizeSlug(cmsProperties.CustomSlug);
 
 		return cmsProperties.PageType switch {
-			CMSPageType.Section => CalculateSlug(cmsProperties.Categories) + "#{page_name}",
+			CMSPageType.Section => CalculateSlug(cmsProperties.Categories) + "#{id}",
 			_ => CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}
@@ -149,12 +149,11 @@ public class LocalNotionCMSHelper {
 			 .ToDelimittedString("/")
 		);
 
-	public static string ProcessSlugTokens(string slug, string pageID, string pageName, CMSProperties properties) 
+	public static string ProcessSlugTokens(string slug, string pageID, CMSProperties properties) 
 		=> Tools.Text.FormatWithDictionary(
 			slug,
 			new Dictionary<string, object>() {
 				["id"] = pageID,
-				["page_name"] = pageName ?? string.Empty,
 				["publish_on"] = properties.PublishOn,
 				["status"] = Tools.Enums.GetSerializableOrientedName(properties.Status) ?? string.Empty,
 				["custom_slug"] = properties.CustomSlug ?? string.Empty,

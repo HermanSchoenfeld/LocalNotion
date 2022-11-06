@@ -44,7 +44,6 @@ public static class Constants {
 	public const bool DefaultDownloadExternalContent = false;
 
 	public const string NotionCMSCategoryWildcard = "all";
-	public const string PageNameDomObjectPrefix = "p_";
 
 	public const int ERRORCODE_OK = 0;
 	public const int ERRORCODE_CANCELLED = -1;

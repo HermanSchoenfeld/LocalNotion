@@ -1,4 +1,5 @@
-﻿using Hydrogen;
+﻿using System.Text.RegularExpressions;
+using Hydrogen;
 using LocalNotion.Core;
 using Notion.Client;
 
@@ -115,8 +116,24 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected abstract TOutput Merge(IEnumerable<TOutput> outputs);
 
 	protected string SanitizeUrl(string url) {
+		// Resource link?
 		if (LocalNotionRenderLink.TryParse(url, out var link))  
 			return Resolver.Generate(Page, link.ResourceID, link.RenderType, out _);
+
+		// Page link?
+		if (url.StartsWith("/")) {
+			url = url.Substring(1);
+			// page link to block in current page
+			if (Guid.TryParse(url, out _)) 
+				return Resolver.Generate(Page, Page.ID, RenderType.HTML, out _) + "#" + url;
+
+			// page link to block in another page
+			var splits = url.Split('#', StringSplitOptions.RemoveEmptyEntries);
+			if (Guid.TryParse(splits[0], out var pageid) && Guid.TryParse(splits[1], out _)) {
+				return Resolver.Generate(Page,  LocalNotionHelper.ObjectGuidToId(pageid), RenderType.HTML, out _) + "#" + splits[1];
+			}
+		}
+
 		return url;
 	}
 
