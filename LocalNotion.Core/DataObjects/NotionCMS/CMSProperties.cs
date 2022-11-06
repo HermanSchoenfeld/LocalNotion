@@ -55,7 +55,4 @@ public class CMSProperties {
 			CMSPageType.Gallery => new [] { Root },
 			_ => new [] { Root, Category1, Category2, Category3, Category4, Category5 }.TakeWhile(x => !string.IsNullOrWhiteSpace(x))
 		};
-		 
-		
-
 }

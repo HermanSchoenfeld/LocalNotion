@@ -69,7 +69,7 @@ public class LocalNotionCMSHelper {
 			Constants.EditedOnPropertyName
 		);
 
-		result.PageType = Tools.Enums.ParseEnum<CMSPageType>(page.GetPropertyDisplayValue(Constants.PageTypePropertyName).ToValueWhenNullOrWhitespace(Tools.Enums.GetSerializableOrientedName(CMSPageType.Page)), false) ;
+		result.PageType = Tools.Enums.ParseEnum<CMSPageType>(page.GetPropertyDisplayValue(Constants.PageTypePropertyName).ToValueWhenNullOrWhitespace(Tools.Enums.GetSerializableOrientedName(CMSPageType.Page)), false);
 		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
 		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSPageStatus.Hidden);
 		result.Themes = ((MultiSelectPropertyValue)page.Properties[Constants.ThemesPropertyName]).ToPlainTextValues().ToArray();
