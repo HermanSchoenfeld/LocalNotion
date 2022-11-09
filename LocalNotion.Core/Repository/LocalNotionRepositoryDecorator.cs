@@ -66,13 +66,13 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual bool ContainsResource(string resourceID) => InternalRepository.ContainsResource(resourceID);
 
-	//public virtual bool ContainsResourceByName(string name) => InternalRepository.ContainsResourceByName(name);
+	public virtual bool ContainsResourceByName(string name) => InternalRepository.ContainsResourceByName(name);
 
 	public virtual bool TryFindRenderBySlug(string slug, out CachedSlug result) => InternalRepository.TryFindRenderBySlug(slug, out result);
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource resource) => InternalRepository.TryGetResource(resourceID, out resource);
 
-	//public virtual bool TryGetResourceByName(string name, out LocalNotionEditableResource resource) => InternalRepository.TryGetResourceByName(name, out resource);
+	public virtual bool TryGetResourceByName(string name, out LocalNotionEditableResource resource) => InternalRepository.TryGetResourceByName(name, out resource);
 
 	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) => InternalRepository.GetChildObjects(resourceID);
 

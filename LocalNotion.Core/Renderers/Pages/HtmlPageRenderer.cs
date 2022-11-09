@@ -329,6 +329,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"page",
 				new NotionObjectTokens(page) {
 					["title"] = this.Page.Title,   // html title
+					["page_name"] = this.Page.Name,
 					["page_title"] = RenderTemplate("page_title", new() { ["text"] = this.Page.Title }),   // title on the page 
 					["style"] = "wide",
 					["cover"] = this.Page.Cover switch {
@@ -368,7 +369,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"table",
 			new NotionObjectTokens(block) {
 				["column_count"] = block.Table.TableWidth,
-				["table_rows"] = RenderChildItems()
+				["table_rows"] = block.HasChildren ? RenderChildItems() : string.Empty,
 			}
 		);
 
@@ -447,23 +448,30 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	   );
 	}
 
-	protected override string Render(IEnumerable<BulletedListItemBlock> bullets)
+	protected override string RenderBulletedList(IEnumerable<NotionObjectGraph> bullets)
 		=> RenderTemplate(
 				"bulleted_list",
 				new NotionObjectTokens {
-					["contents"] = Merge(bullets.Select((bullet, index) => Render(index + 1, bullet)))
+					["contents"] = Merge(bullets.Select((bullet, index) => Render(bullet, index + 1))), // never call RenderBulletedItem directly to avoid infinite loop due to rendering stack
+					
 				}
 			);
 
-	protected override string Render(int number, BulletedListItemBlock block)
-		=> RenderTemplate(
-			"bulleted_list_item",
-			new NotionObjectTokens(block) {
-				["number"] = number,
-				["contents"] = Render(block.BulletedListItem.RichText),
-				["color"] = ToColorString(block.BulletedListItem.Color.Value)
-			}
-		);
+	protected override string RenderBulletedItem(int number, BulletedListItemBlock block) {
+		try {
+			
+			return RenderTemplate(
+				"bulleted_list_item",
+				new NotionObjectTokens(block) {
+					["number"] = number,
+					["contents"] = Render(block.BulletedListItem.RichText),
+					["color"] = ToColorString(block.BulletedListItem.Color.Value),
+					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				}
+			);
+		} finally {
+		}
+	}
 
 	protected override string Render(CalloutBlock block)
 		=> RenderTemplate(
@@ -610,7 +618,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	}
 
 	protected override string Render(ColumnBlock block)
-		=> RenderChildItems();
+		=> block.HasChildren ? RenderChildItems() : string.Empty;
 
 	protected override string Render(ColumnListBlock block)
 		=> this.CurrentRenderingNode.Children.Length switch {
@@ -726,21 +734,22 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			);
 	}
 
-	protected override string Render(int number, NumberedListItemBlock block)
+	protected override string RenderNumberedItem(int number, NumberedListItemBlock block)
 		=> RenderTemplate(
 			"numbered_list_item",
 			new NotionObjectTokens(block) {
 				["number"] = number,
 				["contents"] = Render(block.NumberedListItem.RichText),
-				["color"] = ToColorString(block.NumberedListItem.Color.Value)
+				["color"] = ToColorString(block.NumberedListItem.Color.Value),
+				["children"] =block.HasChildren ? RenderChildItems() : string.Empty,
 			}
 		);
 
-	protected override string Render(IEnumerable<NumberedListItemBlock> numberedListItems)
+	protected override string RenderNumberedList(IEnumerable<NotionObjectGraph> numberedListItems)
 		=> RenderTemplate(
 				"numbered_list",
 				new NotionObjectTokens {
-					["contents"] = Merge(numberedListItems.Select((item, index) => Render(index + 1, item)))
+					["contents"] = Merge(numberedListItems.Select((item, index) => Render(item, index + 1)))   // never call RenderNumberedItem directly to avoid infinite loop due to rendering stack
 				}
 			);
 
@@ -758,7 +767,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				"paragraph",
 				new NotionObjectTokens(block) {
 					["contents"] = Render(block.Paragraph.RichText),
-					["color"] = ToColorString(block.Paragraph.Color.Value)
+					["color"] = ToColorString(block.Paragraph.Color.Value),
+					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
 				}
 			);
 
@@ -767,7 +777,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"quote",
 			new NotionObjectTokens(block) {
 				["text"] = Render(block.Quote.RichText),
-				["color"] = ToColorString(block.Quote.Color.Value)
+				["color"] = ToColorString(block.Quote.Color.Value),
+				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
 			}
 		);
 
@@ -790,7 +801,8 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			new NotionObjectTokens(block) {
 				["text"] = Render(block.ToDo.RichText),
 				["checked"] = block.ToDo.IsChecked ? "checked" : string.Empty,
-				["color"] = ToColorString(block.ToDo.Color.Value)
+				["color"] = ToColorString(block.ToDo.Color.Value),
+				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
 			}
 		);
 
@@ -801,7 +813,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				["toggle_id"] = $"toggle_{++_toggleCount}",
 				["title"] = Render(block.Toggle.RichText),
 				["color"] = ToColorString(block.Toggle.Color.Value),
-				["contents"] = RenderChildItems(),
+				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
 			}
 		);
 

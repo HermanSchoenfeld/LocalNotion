@@ -33,8 +33,32 @@
     margin: 8px 18px 18px 8px;
 }
 
+.ln-page-children {
+}
+
+.ln-toggle-children {
+    margin-top: 0.7em;
+    margin-left: 1.5em;
+}
+
+.ln-paragraph-children {
+}
+
+.ln-bulleted-list-item-children {
+    margin-left: 0.3em;
+}
+
+.ln-numbered-list-item-children {
+    margin-top: 1.0em;
+    margin-left: 1.5em;
+}
+
 .ln-callout-children {
+    margin-top: 1.5em;
     margin-left: 2.5em;
+}
+
+.ln-quote-children {
     margin-top: 1.5em;
 }
 

@@ -30,7 +30,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	
 	private IDictionary<string, LocalNotionResource> _resourcesByNID;
 	private IDictionary<string, CachedSlug> _renderBySlug;
-	//private IDictionary<string, LocalNotionEditableResource> _resourceByName;
+	private IDictionary<string, LocalNotionEditableResource> _resourceByName;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
 
@@ -242,12 +242,12 @@ public class LocalNotionRepository : ILocalNotionRepository {
             .ToDictionary(x => x.Item1, x => new CachedSlug(x.Item2.ID, x.Item3.Key, x.Item1), StringComparer.InvariantCultureIgnoreCase); // possible exception if duplicate slug found in repo
 
 		//// Create name lookup table
-		//_resourceByName =
-		//	_registry
-		//	.Resources
-		//	.Where(r => r is LocalNotionEditableResource)
-		//	.Cast<LocalNotionEditableResource>()
-		//	.ToDictionary(r => r.Name);
+		_resourceByName =
+			_registry
+			.Resources
+			.Where(r => r is LocalNotionEditableResource)
+			.Cast<LocalNotionEditableResource>()
+			.ToDictionary(r => r.Name);
 
 		// Prepare repository logger
 		_logger.Add(
@@ -427,7 +427,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public virtual bool ContainsResource(string resourceID) => _resourcesByNID.ContainsKey(resourceID);
 
-	//public bool ContainsResourceByName(string name) => _resourceByName.ContainsKey(name);
+	public bool ContainsResourceByName(string name) => _resourceByName.ContainsKey(name);
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource localNotionResource) {
 		CheckLoaded();
@@ -442,26 +442,26 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		}
 		localNotionResource = resource;
 
-		//if (localNotionResource is LocalNotionPage lnp) 
-		//	lnp.PropertyObjects = Tools.Values.Future.LazyLoad( 
-		//		() => lnp.Properties.ToDictionary(property => property.Key, property => (IPropertyItemObject) this.GetObject(property.Value))
+		//if (localNotionResource is LocalNotionPage lnp)
+		//	lnp.PropertyObjects = Tools.Values.Future.LazyLoad(
+		//		() => lnp.Properties.ToDictionary(property => property.Key, property => (IPropertyItemObject)this.GetObject(property.Value))
 		//	);
 
 		return true;
 	}
 
-	//public bool TryGetResourceByName(string name, out LocalNotionEditableResource resource) 
-	//	=> _resourceByName.TryGetValue(name, out resource);
+	public bool TryGetResourceByName(string name, out LocalNotionEditableResource resource)
+		=> _resourceByName.TryGetValue(name, out resource);
 
 	public virtual void AddResource(LocalNotionResource resource) {
 		CheckLoaded();
 		Guard.ArgumentNotNull(resource, nameof(resource));
 		Guard.Against(_resourcesByNID.ContainsKey(resource.ID), $"Resource '{resource.ID}' already registered");
-		
-		//if (resource is LocalNotionEditableResource lner) {
-		//	Guard.Ensure(!string.IsNullOrWhiteSpace(lner.Name), $"Resource name was null or whitespace");
-		//	Guard.Ensure(!_resourceByName.ContainsKey(lner.Name), $"Resource with name '{lner.Name}' already exists.");
-		//}
+
+		if (resource is LocalNotionEditableResource lner) {
+			Guard.Ensure(!string.IsNullOrWhiteSpace(lner.Name), $"Resource name was null or whitespace");
+			Guard.Ensure(!_resourceByName.ContainsKey(lner.Name), $"Resource with name '{lner.Name}' already exists.");
+		}
 
 		NotifyResourceAdding(resource.ID);
 
@@ -486,9 +486,9 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		}
 
 		// Update name lookup
-		//if (resource is LocalNotionEditableResource lner2)
-		//	_resourceByName[lner2.Name] = lner2;
-		
+		if (resource is LocalNotionEditableResource lner2)
+			_resourceByName[lner2.Name] = lner2;
+
 		RequiresSave = true;
 		_registry.Add(resource);
 		_resourcesByNID.Add(resource.ID, resource);
@@ -503,16 +503,16 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		Guard.Ensure(resource.Type == resourceInstance.Type, "Cannot update resource type");
 
 		if (resource is LocalNotionEditableResource lner) {
-			//Guard.Ensure(!string.IsNullOrWhiteSpace(lner.Name), $"Resource name was null or whitespace");
+			Guard.Ensure(!string.IsNullOrWhiteSpace(lner.Name), $"Resource name was null or whitespace");
 
 			// Update name
 			var lnerInstance = (LocalNotionEditableResource)resourceInstance;
-			//if (lnerInstance.Name != lner.Name) {
-			//	Guard.Ensure(!_resourceByName.ContainsKey(lner.Name), $"Resource with name '{lner.Name}' already exists.");
-			//	_resourceByName.Remove(lnerInstance.Name);
-			//	lnerInstance.Name = lner.Name;
-			//	_resourceByName.Add(lnerInstance.Name, lnerInstance);
-			//}
+			if (lnerInstance.Name != lner.Name) {
+				Guard.Ensure(!_resourceByName.ContainsKey(lner.Name), $"Resource with name '{lner.Name}' already exists.");
+				_resourceByName.Remove(lnerInstance.Name);
+				lnerInstance.Name = lner.Name;
+				_resourceByName.Add(lnerInstance.Name, lnerInstance);
+			}
 
 			// Other LNER props
 			lnerInstance.CreatedOn = lner.CreatedOn;

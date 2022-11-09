@@ -80,7 +80,7 @@ public class NotionSyncOrchestrator {
 					} catch (TaskCanceledException) {
 						throw;
 					} catch (Exception error) {
-						Logger.Error($"Failed to render page  '{page.Title}' ({page.ID}).");
+						Logger.Error($"Failed to render page '{page.Title}' ({page.ID}).");
 						Logger.Exception(error);
 						if (!faultTolerant)
 							throw;
@@ -143,11 +143,11 @@ public class NotionSyncOrchestrator {
 				localPage = LocalNotionHelper.ParsePage(notionPage);
 
 				// Ensure page name is unique (resolve conflicts)
-				//var nameCandidate = localPage.Name;
-				//var attempt = 2;
-				//while (Repository.ContainsResourceByName(nameCandidate))
-				//	nameCandidate = $"{localPage.Name}-{attempt++}";
-				//localPage.Name = nameCandidate;
+				var nameCandidate = localPage.Name;
+				var attempt = 2;
+				while (Repository.ContainsResourceByName(nameCandidate))
+					nameCandidate = $"{localPage.Name}-{attempt++}";
+				localPage.Name = nameCandidate;
 
 				// Fetch page graph from notion
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({notionPage.Id})");
@@ -171,11 +171,11 @@ public class NotionSyncOrchestrator {
 				if (LocalNotionCMSHelper.IsCMSPage(notionPage)) {
 					// Page is a LocalNotionCMS page
 					var htmlThemeManager = new HtmlThemeManager(Repository.Paths, Logger);
-					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSProperties(notionPage);
+					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSProperties(localPage.Name, notionPage);
 
 				} else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
 					// Page has a LocalNotionCMS page ancestor, so propagate CMS properties down
-					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSPropertiesAsChildPage(notionPage, parentPage);
+					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
 				}
 
 				if (localPage.CMSProperties != null && localPage.CMSProperties.Summary is null)
@@ -193,7 +193,7 @@ public class NotionSyncOrchestrator {
 					if (file != null) {
 						localPage.Cover = linkResolver.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
-						notionPage.Cover.SetUrl($"resource://{file.ID}");
+						notionPage.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
 
 						// track new file
 						downloadedResources.Add(file);

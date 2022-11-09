@@ -52,7 +52,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 		Serializer(destinationFile, output);
 	}
 
-	protected virtual TOutput Render(NotionObjectGraph objectGraph) {
+	protected virtual TOutput Render(NotionObjectGraph objectGraph, int? index = null) {
 		RenderingStack.Push(objectGraph);
 		try {
 			return CurrentRenderingObject switch {
@@ -64,7 +64,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				AudioBlock x => Render(x),
 				BookmarkBlock x => Render(x),
 				BreadcrumbBlock x => Render(x),
-				BulletedListItemBlock x => throw new InvalidOperationException($"{nameof(BulletedListItemBlock)} are rendered collectively"),
+				BulletedListItemBlock x => RenderBulletedItem(index.Value, x),
 				CalloutBlock x => Render(x),
 				ChildDatabaseBlock x => Render(x),
 				ChildPageBlock x => Render(x),
@@ -80,7 +80,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				HeadingTwoBlock x => Render(x),
 				ImageBlock x => Render(x),
 				LinkToPageBlock x => Render(x),
-				NumberedListItemBlock x => throw new InvalidOperationException($"{nameof(NumberedListItemBlock)} are rendered collectively"),
+				NumberedListItemBlock x => RenderNumberedItem(index.Value, x),
 				PDFBlock x => Render(x),
 				ParagraphBlock x => Render(x),
 				QuoteBlock x => Render(x),
@@ -105,9 +105,9 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				.Children
 				.GroupAdjacentBy(x => PageObjects[x.ObjectID].GetType())
 				.SelectMany(adjacentObjects => adjacentObjects.Key switch {
-					Type bulletListType when bulletListType == typeof(BulletedListItemBlock) => new[] { Render(adjacentObjects.Select(x => PageObjects[x.ObjectID]).Cast<BulletedListItemBlock>() ) },
-					Type numberedListType when numberedListType == typeof(NumberedListItemBlock) => new[] { Render(adjacentObjects.Select(x => PageObjects[x.ObjectID]).Cast<NumberedListItemBlock>()) },
-					_ => adjacentObjects.Select(Render)
+					Type bulletListType when bulletListType == typeof(BulletedListItemBlock) => new[] { RenderBulletedList(adjacentObjects ) },
+					Type numberedListType when numberedListType == typeof(NumberedListItemBlock) => new[] { RenderNumberedList(adjacentObjects) },
+					_ => adjacentObjects.Select(x => Render(x))
 				})
 				.ToArray()
 		);
@@ -118,19 +118,19 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected string SanitizeUrl(string url) {
 		// Resource link?
 		if (LocalNotionRenderLink.TryParse(url, out var link))  
-			return Resolver.Generate(Page, link.ResourceID, link.RenderType, out _);
+			return $"/{Resolver.Generate(Page, link.ResourceID, link.RenderType, out _)}";
 
 		// Page link?
 		if (url.StartsWith("/")) {
-			url = url.Substring(1);
+			var urlTail = url.Substring(1);
 			// page link to block in current page
-			if (Guid.TryParse(url, out _)) 
-				return Resolver.Generate(Page, Page.ID, RenderType.HTML, out _) + "#" + url;
+			if (Guid.TryParse(urlTail, out _)) 
+				return Resolver.TryGenerate(Page, Page.ID, RenderType.HTML, out var genUrl, out _) ? genUrl + "#" + urlTail : string.Empty;
 
 			// page link to block in another page
-			var splits = url.Split('#', StringSplitOptions.RemoveEmptyEntries);
+			var splits = urlTail.Split('#', StringSplitOptions.RemoveEmptyEntries);
 			if (Guid.TryParse(splits[0], out var pageid) && Guid.TryParse(splits[1], out _)) {
-				return Resolver.Generate(Page,  LocalNotionHelper.ObjectGuidToId(pageid), RenderType.HTML, out _) + "#" + splits[1];
+				return Resolver.TryGenerate(Page, LocalNotionHelper.ObjectGuidToId(pageid), RenderType.HTML, out var genUrl,  out _) ? genUrl + "#" + splits[1] : string.Empty;
 			}
 		}
 
@@ -338,10 +338,10 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected abstract TOutput Render(BreadcrumbBlock block, BreadCrumb breadcrumb);
 	
-	protected virtual TOutput Render(IEnumerable<BulletedListItemBlock> bullets) 
-		=> Merge(bullets.Select((b, i) => Render(i+1, b)));
+	protected virtual TOutput RenderBulletedList(IEnumerable<NotionObjectGraph> bullets) 
+		=> Merge(bullets.Select((b, i) => Render(b, i+1)));
 
-	protected abstract TOutput Render(int number, BulletedListItemBlock block);
+	protected abstract TOutput RenderBulletedItem(int number, BulletedListItemBlock block);
 
 	protected abstract TOutput Render(CalloutBlock block);
 
@@ -371,10 +371,10 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected abstract TOutput Render(LinkToPageBlock block);
 
-	protected virtual TOutput Render(IEnumerable<NumberedListItemBlock> numberedItems) 
-		=> Merge(numberedItems.Select((b, i) => Render(i+1, b)));
+	protected virtual TOutput RenderNumberedList(IEnumerable<NotionObjectGraph> numberedItems) 
+		=> Merge(numberedItems.Select((b, i) => Render(b, i+1)));
 
-	protected abstract TOutput Render(int number, NumberedListItemBlock block);
+	protected abstract TOutput RenderNumberedItem(int number, NumberedListItemBlock block);
 
 	protected abstract TOutput Render(PDFBlock block);
 

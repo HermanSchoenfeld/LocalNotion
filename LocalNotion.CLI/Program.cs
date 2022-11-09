@@ -619,7 +619,7 @@ $@"Local Notion Status:
 		
 		// 
 		if (args.Length == 0)
-			args = PullBug7Page;
+			args = PullCmd2;
 #endif
 
 		try {
