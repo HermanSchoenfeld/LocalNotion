@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Mime;
 using System.Security.AccessControl;
 using System.Text;
 using System.Threading.Tasks;
+using FluentNHibernate.Conventions;
 using Hydrogen;
 using Microsoft.Win32;
 using Notion.Client;
@@ -38,6 +40,16 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		return true;
 	}
 
+	public bool TryGetFooter(string slug, out LocalNotionPage page) {
+		var contentNode = _contentHierarchy[slug];
+		if (contentNode == null || !contentNode.Content.Any(x => x.CMSProperties.PageType == CMSPageType.Footer)) {
+			page = null;
+			return false;
+		}
+		page = contentNode.Content.First(x => x.CMSProperties.PageType == CMSPageType.Footer);
+		return true;
+	}
+
 	protected virtual CMSContentType DetermineContentType(CMSContentNode node) {
 		// Possibilities for a slug are:
 
@@ -48,17 +60,17 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		// 4             +                 *              GALLERY (child type)        GALLERY   
 		// 5             *                 +              PAGE                        BOOK
 
-
-		if (node.Content.Count == 0 && node.Children.Count == 0)
+		var consumableNodeContent = node.Content.Where(LocalNotionCMSHelper.IsContent).ToArray(); // filter out menus/footers
+		if (consumableNodeContent.Length == 0 && node.Children.Count == 0)
 			return CMSContentType.None;
 
-		if (node.Content.Count == 1 && node.Children.Count == 0 && node.Content[0].Type == LocalNotionResourceType.Page)
+		if (consumableNodeContent.Length == 1 && node.Children.Count == 0 && consumableNodeContent[0].Type == LocalNotionResourceType.Page)
 			return CMSContentType.Page;
 
-		if (node.Content.Any() && node.Content.All(x => x.CMSProperties.PageType == CMSPageType.Section))
+		if (consumableNodeContent.Any() && consumableNodeContent.All(x => x.CMSProperties.PageType == CMSPageType.Section))
 			return CMSContentType.SectionedPage;
 
-		if (node.Visit(n => n.Children).SelectMany(n => n.Content).All(x => x.CMSProperties.PageType == CMSPageType.Gallery))
+		if (node.Visit(n => n.Children).SelectMany(n => n.Content).Where(LocalNotionCMSHelper.IsContent).All(x => x.CMSProperties.PageType == CMSPageType.Gallery))
 			return CMSContentType.Gallery;
 
 		if (node.Children.Any())
@@ -66,8 +78,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 		// content has a mix of page types and no children, so use most used page type
 		var majorityPageType =
-			node
-				.Content
+			consumableNodeContent
 				.ToLookup(x => x.CMSProperties.PageType, _ => 1)
 				.AggregateValue(0, (acc, t) => acc + t)
 				.MaxBy(x => x.Value)
@@ -116,8 +127,8 @@ public class LocalNotionCMS : ILocalNotionCMS {
 			var slugPartsArr = slugParts as string[] ?? slugParts.ToArray();
 			var slug = Tools.Url.StripAnchorTag( slugOverride ?? LocalNotionCMSHelper.CalculateSlug(slugPartsArr.Concat(title)) );
 
-			if (string.IsNullOrWhiteSpace(slug))
-				return null;
+			//if (string.IsNullOrWhiteSpace(slug))
+			//	return null;
 
 			// Fetch node by slug, if exists return it
 			if (tree.TryGetValue(slug, out var node))
@@ -148,7 +159,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 	private IEnumerable<LocalNotionPage> GetCMSPages(string cmsDatabaseID)
 		=> Repository
 		   .Resources
-		   .Where(r => r is LocalNotionPage { CMSProperties.Root: not null })
+		   .Where(r => r is LocalNotionPage { CMSProperties: not null })
 		   .Where(r => r.ParentResourceID == cmsDatabaseID)
 		   .Cast<LocalNotionPage>();
 

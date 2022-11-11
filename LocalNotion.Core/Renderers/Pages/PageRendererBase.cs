@@ -129,7 +129,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 			// page link to block in another page
 			var splits = urlTail.Split('#', StringSplitOptions.RemoveEmptyEntries);
-			if (Guid.TryParse(splits[0], out var pageid) && Guid.TryParse(splits[1], out _)) {
+			if (splits.Length >= 2 && Guid.TryParse(splits[0], out var pageid) && Guid.TryParse(splits[1], out _)) {
 				return Resolver.TryGenerate(Page, LocalNotionHelper.ObjectGuidToId(pageid), RenderType.HTML, out var genUrl,  out _) ? genUrl + "#" + splits[1] : string.Empty;
 			}
 		}

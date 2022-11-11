@@ -29,6 +29,12 @@ public class LocalNotionCMSHelper {
 		   page.Properties[Constants.ThemesPropertyName] is MultiSelectPropertyValue &&
 		   page.Properties[Constants.SequencePropertyName] is NumberPropertyValue;
 
+	public static bool IsPublicContent(LocalNotionPage page) 
+		=> page.CMSProperties == null || IsContent(page) &&  page.CMSProperties.Status == CMSPageStatus.Published && (page.CMSProperties.PublishOn == null || page.CMSProperties.PublishOn <= DateTime.UtcNow);
+
+	public static bool IsContent(LocalNotionPage page) 
+		=> page.CMSProperties == null || page.CMSProperties.PageType.IsIn(CMSPageType.Page, CMSPageType.Section, CMSPageType.Gallery);
+
 	public static CMSProperties ParseCMSProperties(string pageName, Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		var result = new CMSProperties();
@@ -83,7 +89,8 @@ public class LocalNotionCMSHelper {
 		result.Category5 = page.GetPropertyDisplayValue(Constants.Category5PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Tags = ((MultiSelectPropertyValue)page.Properties[Constants.TagsPropertyName]).MultiSelect.Select(x => x.Name).Select(x => x.Trim()).ToArray();
-		var pageTitle = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		var pageTitle =page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+			
 
 		if (string.IsNullOrWhiteSpace(result.CustomSlug))
 			result.CustomSlug = CalculatePageSlug(pageTitle, result);
@@ -120,13 +127,13 @@ public class LocalNotionCMSHelper {
 		return result;
 	}
 
-
 	public static string CalculatePageSlug(string pageTitle, CMSProperties cmsProperties)  {
 		if (!string.IsNullOrWhiteSpace(cmsProperties.CustomSlug))
 			LocalNotionHelper.SanitizeSlug(cmsProperties.CustomSlug);
 
 		return cmsProperties.PageType switch {
 			CMSPageType.Section => CalculateSlug(cmsProperties.Categories) + "#{page_name}",
+			CMSPageType.Footer => CalculateSlug(cmsProperties.Categories),
 			_ => CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}
@@ -134,7 +141,7 @@ public class LocalNotionCMSHelper {
 	public static string CalculateNestedPageSlug(string parentPageSlug, string childPageTitle) 
 		// if parent has anchor tag we treat it is an implicit "category" by simply replacing '#' with '/'
 		// example: parent slug = /services#development   child slug = /services/development/mobile
-		=> $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}";
+		=> $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}".TrimStart("/");
 
 	/// <summary>
 	/// Calculates a slug composed of the given component parts (will skip null or empty parts).

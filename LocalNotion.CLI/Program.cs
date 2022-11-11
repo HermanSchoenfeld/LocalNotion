@@ -592,6 +592,7 @@ $@"Local Notion Status:
 		string[] PullBug5Cmd = new[] { "pull", "-o", "20e3c6f6-c91a-4d68-932e-00a463eb1654", "--force" };
 		string[] PullBug6Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
 		string[] PullBug7Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
+		string[] PullBug8Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
 
 		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
@@ -607,6 +608,8 @@ $@"Local Notion Status:
 		string[] RenderBug8Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
 		string[] RenderBug9Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
 		string[] RenderBug10Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
+		string[] RenderBug11Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb"};
+		string[] RenderBug12Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127"};
 
 		string[] RenderAll = new[] { "render", "--all" };
 		string[] RenderAll2 = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "--all" };
@@ -617,9 +620,9 @@ $@"Local Notion Status:
 		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 		
-		// 
+
 		if (args.Length == 0)
-			args = PullCmd2;
+			args = PullBug8Page;
 #endif
 
 		try {

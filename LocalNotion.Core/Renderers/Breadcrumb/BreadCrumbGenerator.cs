@@ -40,7 +40,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 			var isPartialPage = 
 				isCmsPage &&
-				((LocalNotionPage)item).CMSProperties.PageType == CMSPageType.Section;
+				((LocalNotionPage)item).CMSProperties.PageType.IsIn(CMSPageType.Section, CMSPageType.Footer);
 
 			//IsFile			= 1 << 3,
 			//IsDatabase		= 1 << 4,
@@ -80,9 +80,9 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			var parentIsPartial = 
 				repoContainsParentResource && 
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
-				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section }; 
+				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section or CMSPageType.Footer }; 
 
-			var title = isPartialPage ? $"{((LocalNotionPage)item).CMSProperties.Root} ({item.Title})" : item.Title;
+			var title = isPartialPage ? BuildCompositeSlugPartTitle(((LocalNotionPage)item).CMSProperties.Root,item.Title ) : item.Title;
 			var breadCrumbItem = new BreadCrumbItem() {
 				Type = item.Type,
 				Text = title ,
@@ -168,6 +168,16 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				4 => cmsProperties.Category4,
 				5 => cmsProperties.Category5,
 			};
+
+		string BuildCompositeSlugPartTitle(string slugPartName, string pageTitle) {
+			if (string.IsNullOrEmpty(slugPartName))
+				return pageTitle ?? "Untitled";
+
+			if (string.IsNullOrEmpty(pageTitle))
+				return slugPartName ?? "Untitled";;
+
+			return $"{slugPartName } ({pageTitle})";
+		}
 	}
 
 }

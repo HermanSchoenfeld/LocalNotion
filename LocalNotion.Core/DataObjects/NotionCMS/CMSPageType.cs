@@ -10,5 +10,11 @@ public enum CMSPageType {
 	Section,
 
 	[EnumMember(Value = "gallery")]
-	Gallery
+	Gallery, 
+
+	[EnumMember(Value = "footer")]
+	Footer,
+
+	[EnumMember(Value = "menu")]
+	MenuItem
 }

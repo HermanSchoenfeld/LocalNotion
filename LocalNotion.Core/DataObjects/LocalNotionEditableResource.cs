@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Notion.Client;
 
 namespace LocalNotion.Core;
 
