@@ -577,10 +577,12 @@ $@"Local Notion Status:
 	public static async Task<int> Main(string[] args) {
 #if DEBUG
 		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		string[] InitCmd2 = new[] { "init", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-k", "YOUR_NOTION_API_KEY_HERE" };
 		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
 		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
 		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
 		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullCmd2= new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
@@ -622,7 +624,7 @@ $@"Local Notion Status:
 		
 
 		if (args.Length == 0)
-			args = PullBug8Page;
+			args = SyncCmd2;
 #endif
 
 		try {

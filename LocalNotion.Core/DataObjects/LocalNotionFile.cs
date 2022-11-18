@@ -12,6 +12,7 @@ public class LocalNotionFile : LocalNotionResource {
 	public static bool TryParse(string resourceID, string filename, string parentResourceID, string mimeType, out LocalNotionFile localNotionFile) {
 		localNotionFile = new() {
 			ID = resourceID,
+			LastSyncedOn = DateTime.UtcNow,
 			MimeType = mimeType ?? (Tools.Network.TryGetMimeType(filename, out var mt) ? mt : "application/octet-stream"),
 			Title = filename,
 			ParentResourceID = parentResourceID

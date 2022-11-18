@@ -121,13 +121,14 @@ public class NotionSyncOrchestrator {
 			var containsPage = Repository.TryGetPage(pageID, out localPage);
 			var oldChildResources = Repository.GetChildObjects(pageID).ToArray();
 			var pageDifferent = containsPage && localPage.LastEditedOn != knownNotionLastEditTime;
-			var shouldDownload = !containsPage || pageDifferent || forceRefresh;
+			var wasPrematurelySynced = containsPage && !pageDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localPage.LastSyncedOn - localPage.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
+			var shouldDownload = !containsPage || pageDifferent || forceRefresh || wasPrematurelySynced;
 			var lastKnownParent = localPage?.ParentResourceID;
 
 			#endregion
 
 			// Hydrate into a LocalNotion page
-			if (shouldDownload) {
+			if (shouldDownload) { 
 
 				#region Download page from Notion
 

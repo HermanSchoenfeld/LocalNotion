@@ -26,6 +26,10 @@ public abstract class LocalNotionResource {
 	[JsonProperty("renders", NullValueHandling = NullValueHandling.Ignore)]
 	public IDictionary<RenderType, RenderEntry> Renders { get; set; } = new Dictionary<RenderType, RenderEntry>();
 
+	
+	[JsonProperty("last_synced_on")]
+	public DateTime LastSyncedOn { get; set; }
+
 	public bool TryGetRender(RenderType? renderType, out RenderEntry render) {
 		render = default;
 

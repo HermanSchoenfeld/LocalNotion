@@ -48,6 +48,7 @@ internal class LocalNotionHelper {
 
 	public static void ParsePage(Page page, LocalNotionPage dest) {
 		dest.ID = page.Id;
+		dest.LastSyncedOn = DateTime.UtcNow;
 		dest.LastEditedOn = page.LastEditedTime;
 		dest.CreatedOn = page.CreatedTime;
 		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);

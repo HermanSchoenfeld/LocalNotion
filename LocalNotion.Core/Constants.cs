@@ -45,6 +45,10 @@ public static class Constants {
 
 	public const string NotionCMSCategoryWildcard = "all";
 
+	// if a file is synchronized too soon after it is edited, it is premature and resynced again later
+	// Notion API only keeps minute-level accuracy
+	public const int PrematureSyncThreshholdSec = 60;   
+
 	public const int ERRORCODE_OK = 0;
 	public const int ERRORCODE_CANCELLED = -1;
 	public const int ERRORCODE_COMMANDLINE_ERROR = -2;
