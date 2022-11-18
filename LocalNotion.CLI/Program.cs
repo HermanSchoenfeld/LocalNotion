@@ -121,7 +121,7 @@ public static partial class Program {
 	[Verb("remove", HelpText = "Remove resources from a Local Notion repository")]
 	public class RemoveRepositoryCommandArguments : CommandArgumentsBase {
 
-		[Option('r', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
+		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
 
 		[Option("all", HelpText = "Removes entire repository")]
