@@ -16,5 +16,5 @@ public enum CMSPageType {
 	Footer,
 
 	[EnumMember(Value = "menu")]
-	MenuItem
+	Menu
 }
