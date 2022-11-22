@@ -28,9 +28,9 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	private GuidStringFileStore _objectStore;
 	private GuidStringFileStore _graphStore;
 	
-	private IDictionary<string, LocalNotionResource> _resourcesByNID;
-	private IDictionary<string, CachedSlug> _renderBySlug;
-	private IDictionary<string, LocalNotionEditableResource> _resourceByName;
+	private ICache<string, LocalNotionResource> _resourcesByNID;
+	private ICache<string, CachedSlug> _renderBySlug;
+	private ICache<string, LocalNotionEditableResource> _resourceByName;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
 
@@ -50,6 +50,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		_graphStore = null;
 		_resourcesByNID = null;
 		_renderBySlug = null;
+		_resourceByName = null;
 		Paths = null;
 	}
 
@@ -223,31 +224,33 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		Paths = new PathResolver(Path.GetFullPath(_registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), _registry.Paths);
 
 		// create the resource lookup table
-		_resourcesByNID = _registry.Resources.ToDictionary(x => x.ID);
+		_resourcesByNID = new BulkFetchActionCache<string, LocalNotionResource>( () => _registry.Resources.ToDictionary(x => x.ID));
 
 		// Create the slug lookup table
-		_renderBySlug = 
-			_registry
-			.Resources
-			.SelectMany(resource => resource.Renders.Select(render => (render.Value.Slug, resource, render)))
-			.Concat(
-				_registry
-					.Resources
-					.Where(r => r is LocalNotionPage { CMSProperties.CustomSlug: not null })
-					.Cast<LocalNotionPage>()
-					.Where(x => x.Renders.ContainsKey(RenderType.HTML))
-					.Select(x => (x.CMSProperties.CustomSlug, (LocalNotionResource)x, x.Renders.Single(z => z.Key == RenderType.HTML)))
-			)
-			.Distinct(x => x.Item1, StringComparer.InvariantCultureIgnoreCase) 
-            .ToDictionary(x => x.Item1, x => new CachedSlug(x.Item2.ID, x.Item3.Key, x.Item1), StringComparer.InvariantCultureIgnoreCase); // possible exception if duplicate slug found in repo
+		_renderBySlug = new BulkFetchActionCache<string, CachedSlug>( 
+			() => _registry
+			      .Resources
+			      .SelectMany(resource => resource.Renders.Select(render => (render.Value.Slug, resource, render)))
+			      .Concat(
+				      _registry
+					      .Resources
+					      .Where(r => r is LocalNotionPage { CMSProperties.CustomSlug: not null })
+					      .Cast<LocalNotionPage>()
+					      .Where(x => x.Renders.ContainsKey(RenderType.HTML))
+					      .Select(x => (x.CMSProperties.CustomSlug, (LocalNotionResource)x, x.Renders.Single(z => z.Key == RenderType.HTML)))
+			      )
+			      .Distinct(x => x.Item1, StringComparer.InvariantCultureIgnoreCase) 
+			      .ToDictionary(x => x.Item1, x => new CachedSlug(x.Item2.ID, x.Item3.Key, x.Item1), StringComparer.InvariantCultureIgnoreCase) // possible exception if duplicate slug found in repo
+		);
 
 		//// Create name lookup table
-		_resourceByName =
-			_registry
-			.Resources
-			.Where(r => r is LocalNotionEditableResource)
-			.Cast<LocalNotionEditableResource>()
-			.ToDictionary(r => r.Name);
+		_resourceByName = new BulkFetchActionCache<string, LocalNotionEditableResource>(
+			() => _registry
+			      .Resources
+			      .Where(r => r is LocalNotionEditableResource)
+			      .Cast<LocalNotionEditableResource>()
+			      .ToDictionary(r => r.Name)
+		);
 
 		// Prepare repository logger
 		_logger.Add(
@@ -334,7 +337,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		foreach (var resourceFolder in resourceFolders) {
 			var resourceID = Path.GetFileName(resourceFolder);
 			// resource folder exists but is not registered
-			if (!_resourcesByNID.ContainsKey(resourceID))
+			if (!_resourcesByNID.ContainsCachedItem(resourceID))
 				foldersToRemove.Add(resourceFolder);
 		}
 
@@ -425,9 +428,9 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		_graphStore.Delete(resourceID);
 	}
 
-	public virtual bool ContainsResource(string resourceID) => _resourcesByNID.ContainsKey(resourceID);
+	public virtual bool ContainsResource(string resourceID) => _resourcesByNID.ContainsCachedItem(resourceID);
 
-	public bool ContainsResourceByName(string name) => _resourceByName.ContainsKey(name);
+	public bool ContainsResourceByName(string name) => _resourceByName.ContainsCachedItem(name);
 
 	public virtual bool TryGetResource(string resourceID, out LocalNotionResource localNotionResource) {
 		CheckLoaded();
@@ -436,31 +439,31 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			return false;
 		}
 
-		if (!_resourcesByNID.TryGetValue(resourceID, out var resource)) {
+		if (!_resourcesByNID.ContainsCachedItem(resourceID)) {
 			localNotionResource = null;
 			return false;
 		}
-		localNotionResource = resource;
-
-		//if (localNotionResource is LocalNotionPage lnp)
-		//	lnp.PropertyObjects = Tools.Values.Future.LazyLoad(
-		//		() => lnp.Properties.ToDictionary(property => property.Key, property => (IPropertyItemObject)this.GetObject(property.Value))
-		//	);
-
+		localNotionResource = _resourcesByNID[resourceID];
 		return true;
 	}
 
-	public bool TryGetResourceByName(string name, out LocalNotionEditableResource resource)
-		=> _resourceByName.TryGetValue(name, out resource);
+	public bool TryGetResourceByName(string name, out LocalNotionEditableResource resource) {
+		if (!_resourceByName.ContainsCachedItem(name)) {
+			resource = null;
+			return false;
+		}
+		resource = _resourceByName[name];
+		return true;
+	}
 
 	public virtual void AddResource(LocalNotionResource resource) {
 		CheckLoaded();
 		Guard.ArgumentNotNull(resource, nameof(resource));
-		Guard.Against(_resourcesByNID.ContainsKey(resource.ID), $"Resource '{resource.ID}' already registered");
+		Guard.Against(_resourcesByNID.ContainsCachedItem(resource.ID), $"Resource '{resource.ID}' already registered");
 
 		if (resource is LocalNotionEditableResource lner) {
 			Guard.Ensure(!string.IsNullOrWhiteSpace(lner.Name), $"Resource name was null or whitespace");
-			Guard.Ensure(!_resourceByName.ContainsKey(lner.Name), $"Resource with name '{lner.Name}' already exists.");
+			Guard.Ensure(!_resourceByName.ContainsCachedItem(lner.Name), $"Resource with name '{lner.Name}' already exists.");
 		}
 
 		NotifyResourceAdding(resource.ID);
@@ -480,6 +483,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 				Directory.CreateDirectory(resourceFolder);
 		}
 
+
 		// Update slug cache with CMS properties (if applicable)
 		if (resource is LocalNotionPage { CMSProperties.CustomSlug: not null } lnp && lnp.TryGetRender(RenderType.HTML, out var render)) {
 			_renderBySlug[lnp.CMSProperties.CustomSlug] = new(resource.ID, RenderType.HTML, lnp.CMSProperties.CustomSlug);
@@ -489,9 +493,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		if (resource is LocalNotionEditableResource lner2)
 			_resourceByName[lner2.Name] = lner2;
 
-		RequiresSave = true;
+
 		_registry.Add(resource);
-		_resourcesByNID.Add(resource.ID, resource);
+		FlushCaches();
+		RequiresSave = true;
 		NotifyResourceAdded(resource);
 	}
 
@@ -508,10 +513,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			// Update name
 			var lnerInstance = (LocalNotionEditableResource)resourceInstance;
 			if (lnerInstance.Name != lner.Name) {
-				Guard.Ensure(!_resourceByName.ContainsKey(lner.Name), $"Resource with name '{lner.Name}' already exists.");
-				_resourceByName.Remove(lnerInstance.Name);
+				Guard.Ensure(!_resourceByName.ContainsCachedItem(lner.Name), $"Resource with name '{lner.Name}' already exists.");
 				lnerInstance.Name = lner.Name;
-				_resourceByName.Add(lnerInstance.Name, lnerInstance);
 			}
 
 			// Other LNER props
@@ -532,14 +535,16 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		}
 
 		// Don't need to do anything
+		FlushCaches();
 		RequiresSave = true;
 	}
 
 	public virtual void RemoveResource(string resourceID, bool removeChildren) {
 		CheckLoaded();
 		Guard.ArgumentNotNullOrWhitespace(resourceID, nameof(resourceID));
-		if (!_resourcesByNID.TryGetValue(resourceID, out var resource))
+		if (!_resourcesByNID.ContainsCachedItem(resourceID))
 			throw new InvalidOperationException($"Resource {resourceID} not found");
+		var resource = _resourcesByNID[resourceID];
 
 		NotifyResourceRemoving(resourceID);
 		
@@ -574,15 +579,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 				RemoveResource(child.ID, removeChildren);
 		}
 
-		// Update slug cache with CMS properties (if applicable)
-		if (resource is LocalNotionPage { CMSProperties.CustomSlug: not null } lnp && lnp.TryGetRender(RenderType.HTML, out _)) {
-			_renderBySlug.Remove(lnp.CMSProperties.CustomSlug);
-		}
-
-
-		RequiresSave = true;
+		// Remove from caches
 		_registry.Remove(resource);
-		_resourcesByNID.Remove(resourceID);
+		FlushCaches();
+		RequiresSave = true;
+	
 		NotifyResourceRemoved(resource);
 	}
 
@@ -601,8 +602,14 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		return File.Exists(file);
 	}
 
-	public virtual bool TryFindRenderBySlug(string slug, out CachedSlug result) 
-		 => _renderBySlug.TryGetValue(slug, out result);
+	public virtual bool TryFindRenderBySlug(string slug, out CachedSlug result) {
+		 if (!_renderBySlug.ContainsCachedItem(slug)) {
+			result = null;
+			return false;
+		}
+		result = _renderBySlug[slug];
+		return false;
+	}
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
@@ -634,9 +641,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			Slug = CalculateRenderSlug(resource, renderType, resourceRenderPath)
 		};
 		resource.Renders[renderType] =renderEntry;
-		if (!_renderBySlug.ContainsKey(renderEntry.Slug))
-			_renderBySlug.Add(renderEntry.Slug, new (resourceID, renderType, renderEntry.Slug));
-
+		FlushCaches();
 		RequiresSave = true;
 		NotifyResourceUpdated(resource);
 		return resourceRenderPath;
@@ -746,8 +751,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		if (File.Exists(fileToDelete))
 			File.Delete(fileToDelete);
 		resource.Renders.Remove(renderType);
-		if (_renderBySlug.ContainsKey(render.Slug))
-			_renderBySlug.Remove(render.Slug);
+		FlushCaches();
 		RequiresSave = true;
 	}
 
@@ -907,6 +911,12 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		NotifyChanged();
 		OnResourceRemoved(resource);
 		ResourceRemoved?.Invoke(this, resource);
+	}
+
+	protected void FlushCaches() {
+		_resourcesByNID.Flush();
+		_renderBySlug.Flush();
+		_resourceByName.Flush();
 	}
 
 	private void CheckNotLoaded() {
