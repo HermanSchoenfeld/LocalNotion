@@ -32,3 +32,4 @@ del Z:\Builds\LocalNotion\win-arm64\*.pdb
 del Z:\Builds\LocalNotion\win-arm64\*.dll
 
 :Exit
+pause

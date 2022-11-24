@@ -8,3 +8,4 @@ del Z:\Builds\LocalNotion\win-x64\*.pdb
 del Z:\Builds\LocalNotion\win-x64\*.dll
 
 :Exit
+pause
