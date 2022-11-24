@@ -577,24 +577,27 @@ $@"Local Notion Status:
 	public static async Task<int> Main(string[] args) {
 #if DEBUG
 		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
-		string[] InitCmd2 = new[] { "init", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		string[] InitCmd2 = new[] { "init", "-p", "d:\\databases\\LN-SPHERE10.COM", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		
 		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
 		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
 		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
 		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
+		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullCmd2= new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd2= new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd3= new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
+		
 		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
-		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
+		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
 		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
 		string[] PullBug3Cmd = new[] { "pull", "-o", "68944996-582b-453f-994f-d5562f4a6730", "--force" };
 		string[] PullBug4Cmd = new[] { "pull", "-o", "a2a2a4f0-d13e-4cb0-8f13-dc33402651f5", "--force" };
 		string[] PullBug5Cmd = new[] { "pull", "-o", "20e3c6f6-c91a-4d68-932e-00a463eb1654", "--force" };
-		string[] PullBug6Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
-		string[] PullBug7Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
-		string[] PullBug8Page = new[] { "pull", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
+		string[] PullBug6Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
+		string[] PullBug7Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
+		string[] PullBug8Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
 
 		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
@@ -604,17 +607,17 @@ $@"Local Notion Status:
 		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] RenderBug3Page = new[] { "render", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
 		string[] RenderBug4Page = new[] { "render", "-o", "d1b16637-ba01-48c2-863e-c60ee3b9ae47" };
-		string[] RenderBug5Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "b93b303f-18e0-417c-87c0-1eea140600ea" };
-		string[] RenderBug6Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-		string[] RenderBug7Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
-		string[] RenderBug8Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
-		string[] RenderBug9Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
-		string[] RenderBug10Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
-		string[] RenderBug11Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb"};
-		string[] RenderBug12Page = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127"};
+		string[] RenderBug5Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "b93b303f-18e0-417c-87c0-1eea140600ea" };
+		string[] RenderBug6Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] RenderBug7Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
+		string[] RenderBug8Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
+		string[] RenderBug9Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
+		string[] RenderBug10Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
+		string[] RenderBug11Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb"};
+		string[] RenderBug12Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127"};
 
 		string[] RenderAll = new[] { "render", "--all" };
-		string[] RenderAll2 = new[] { "render", "-p", "d:\\temp\\SP10-LocalNotion-Integration", "--all" };
+		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] Remove = new[] { "remove", "--all" };
 		string[] HelpInit = new[] { "help", "init" };
@@ -624,7 +627,7 @@ $@"Local Notion Status:
 		
 
 		if (args.Length == 0)
-			args = SyncCmd2;
+			args = PullCmd3;
 #endif
 
 		try {
