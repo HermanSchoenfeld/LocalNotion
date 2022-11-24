@@ -271,8 +271,9 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		RequiresLoad = false;
 
-		await CleanAsync();
-		
+		// Remove clean due to race-condition caused by Website loading repo during a download but not registry update
+		// await CleanAsync();
+	
 	}
 
 	public async Task SaveAsync() {
@@ -344,7 +345,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		foreach (var resource in resourceToRemove) {
 			RequiresSave = true;
 			_registry.Remove(resource);
-			_resourcesByNID.Remove(resource.ID);
 		}
 
 		foreach (var file in filesToRemove) {
@@ -358,6 +358,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		// This can happen when resources are fixed
 		if (RequiresSave) 
 			await SaveAsync();
+		FlushCaches();
 	}
 
 	public bool ContainsObject(string objectID) {
@@ -489,11 +490,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			_renderBySlug[lnp.CMSProperties.CustomSlug] = new(resource.ID, RenderType.HTML, lnp.CMSProperties.CustomSlug);
 		}
 
-		// Update name lookup
-		if (resource is LocalNotionEditableResource lner2)
-			_resourceByName[lner2.Name] = lner2;
-
-
 		_registry.Add(resource);
 		FlushCaches();
 		RequiresSave = true;
@@ -608,7 +604,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			return false;
 		}
 		result = _renderBySlug[slug];
-		return false;
+		return true;
 	}
 
 	public virtual string ImportResourceRender(string resourceID, RenderType renderType, string renderedFile) {
@@ -627,7 +623,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			if (File.Exists(resourceRenderPath))
 				File.Delete(resourceRenderPath);
 			resource.Renders.Remove(renderType);
-			_renderBySlug.Remove(render.Slug);
 		}
 
 		// Try to re-use prior render path (in ebook path profiles, we may have conflicting filenames so this ensures same filename is used)
@@ -754,7 +749,6 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		FlushCaches();
 		RequiresSave = true;
 	}
-
 
 	protected virtual void OnLoading() {
 	}

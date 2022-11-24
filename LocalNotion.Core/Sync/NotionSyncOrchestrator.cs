@@ -387,13 +387,14 @@ public class NotionSyncOrchestrator {
 				Repository.AddResource(file);
 				Repository.ImportResourceRender(resourceID, RenderType.File, tmpFile);
 			} catch (TaskCanceledException) {
+				Logger.Info($"Downloading Cancelled: {filename} (resource: {resourceID})");
 				throw;
 			} catch (Exception error) {
 				Logger.Exception(error);
 			} finally {
 				File.Delete(tmpFile);
 			}
-
+			
 			return file;
 		}
 	}
