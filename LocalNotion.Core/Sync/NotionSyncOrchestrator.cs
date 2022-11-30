@@ -363,7 +363,7 @@ public class NotionSyncOrchestrator {
 			if (!LocalNotionHelper.TryParseNotionFileUrl(url, out var resourceID, out var filename)) {
 				if (Repository.Paths.ForceDownloadExternalContent) {
 					resourceID = CalculateExternalResourceFileID(url);
-					filename = Tools.Web.ParseFilenameFromUrl(url);
+					filename = Tools.Web.Downloader.ParseFilenameFromUrl(url);
 					if (!Tools.FileSystem.IsWellFormedFileName(filename))
 						filename = "LN_" + Guid.Parse(resourceID).ToStrictAlphaString();
 				} else throw new InvalidOperationException($"Url is not a recognized notion file url and downloading external content is not enabled. Url: '{url}'");
@@ -381,7 +381,7 @@ public class NotionSyncOrchestrator {
 			Logger.Info($"Downloading: {filename} (resource: {resourceID})");
 			var tmpFile = Tools.FileSystem.GetTempFileName();
 			try {
-				var mimeType = await Tools.Web.DownloadFileAsync(url, tmpFile, verifySSLCert: false, cancellationToken);
+				var mimeType = await Tools.Web.Downloader.DownloadFileAsync(url, tmpFile, verifySSLCert: false, cancellationToken);
 				file = LocalNotionFile.Parse(resourceID, filename, parentResourceID, mimeType);
 				file.ParentResourceID = CalculateResourceParent(file.ID);
 				Repository.AddResource(file);
