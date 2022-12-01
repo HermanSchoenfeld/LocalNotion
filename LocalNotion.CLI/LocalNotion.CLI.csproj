@@ -1,19 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
-	  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-	  <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AssemblyName>localnotion</AssemblyName>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net7.0</TargetFramework>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>localnotion</AssemblyName>
+		<!--<TrimmerDefaultAction>link</TrimmerDefaultAction>
+		<IsTrimmable>false</IsTrimmable>-->
+		<TrimMode>partial</TrimMode>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Application\Hydrogen.Application.csproj" />
-    <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
-    <ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
-    <ProjectReference Include="..\LocalNotion.Core\LocalNotion.Core.csproj" />
-  </ItemGroup>
+	<!--<ItemGroup>
+		<TrimmerRootAssembly Include="System.Configuration.ConfigurationManager" />
+		<TrimmerRootAssembly Include="localnotion" />
+		<TrimmerRootAssembly Include="LocalNotion.Core" />
+		<TrimmerRootAssembly Include="Hydrogen" />
+		<TrimmerRootAssembly Include="Hydrogen.Data" />
+		<TrimmerRootAssembly Include="Hydrogen.Application" />
+		<TrimmerRootAssembly Include="Hydrogen.NETCore" />
+		<TrimmerRootAssembly Include="Notion.Client" />
+	</ItemGroup>-->
+	
+	<ItemGroup>
+		<ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Application\Hydrogen.Application.csproj" />
+		<ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
+		<ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
+		<ProjectReference Include="..\LocalNotion.Core\LocalNotion.Core.csproj" />
+	</ItemGroup>
 
 </Project>
