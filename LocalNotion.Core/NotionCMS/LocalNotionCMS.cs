@@ -116,19 +116,20 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 		void CreatePageNode(LocalNotionPage page) {
 			var slug = page.CMSProperties.CustomSlug;
-			var node = GetOrCreateNode(page.Title, page.CMSProperties.Categories, slug);
+			var slugPieces = slug.Split("/", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+			var pageCategories = page.CMSProperties.Categories.Concat(page.Title).ToArray();
+			var slugParts = (slugPieces.Length == pageCategories.Length ? slugPieces.Zip(pageCategories, (x,y) => (slugPart: x, partTitle: y)) :  slugPieces.Zip(slugPieces, (x,y) => (slugPart: x, partTitle:y))).ToArray();
+			var node = GetOrCreateNode(slugParts, slug);
 			node.Content.Add(page);
 		}
 
 
-		CMSContentNode GetOrCreateNode(string title, IEnumerable<string> slugParts, string slugOverride = null) {
+		CMSContentNode GetOrCreateNode( IEnumerable<(string slugPart, string partTitle)> slugParts, string slugOverride = null) {
 
 			// Calculate node slug
-			var slugPartsArr = slugParts as string[] ?? slugParts.ToArray();
-			var slug = Tools.Url.StripAnchorTag( slugOverride ?? LocalNotionCMSHelper.CalculateSlug(slugPartsArr.Concat(title)) );
-
-			//if (string.IsNullOrWhiteSpace(slug))
-			//	return null;
+			var slugPartsArr = slugParts as (string slugPart, string partTitle)[] ?? slugParts.ToArray();
+			var slug = Tools.Url.StripAnchorTag( slugOverride ?? LocalNotionCMSHelper.CalculateSlug(slugPartsArr.Select(x => x.slugPart)) );
 
 			// Fetch node by slug, if exists return it
 			if (tree.TryGetValue(slug, out var node))
@@ -136,7 +137,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 			
 			// Node doesn't exist, so we need to create it. First we fetch/create the parent.
 
-			var parentNode = slugPartsArr.Any() ? GetOrCreateNode(slugPartsArr[^1], slugPartsArr[..^1]) : null;
+			var parentNode = slugPartsArr.Count() > 1 ? GetOrCreateNode(slugPartsArr[..^1], slugPartsArr[..^1].Select(x => x.slugPart).ToDelimittedString("/")) : null;
 
 			if (parentNode != null && StringComparer.InvariantCultureIgnoreCase.Equals(slug, parentNode.Slug)) {
 				// if the current item is a section of a parent, then we don't create it as a content node.
@@ -145,7 +146,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 			} 
 			
 			node = new CMSContentNode {
-				Title = title,
+				Title = slugParts.Any() ? slugParts.Last().partTitle : string.Empty,
 				Parent = parentNode,
 				Slug = slug
 			};
