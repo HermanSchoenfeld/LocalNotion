@@ -20,7 +20,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		Repository.Changed += _ => FlushCache();
 		CMSDatabaseID = cmsDatabaseID;
 
-		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => FetchContentHierarchy(cmsDatabaseID), keyComparer: StringComparer.InvariantCultureIgnoreCase);
+		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => FetchContentHierarchy(cmsDatabaseID, true), keyComparer: StringComparer.InvariantCultureIgnoreCase);
 	}
 
 	public ILocalNotionRepository Repository { get; }
@@ -97,12 +97,12 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		_contentHierarchy?.Flush();
 	}
 
-	private Dictionary<string, CMSContentNode> FetchContentHierarchy(string cmsDatabaseID) {
+	private Dictionary<string, CMSContentNode> FetchContentHierarchy(string cmsDatabaseID, bool publishedOnly) {
 		// first create the content hierarchy tree
 		var tree = new Dictionary<string, CMSContentNode>(StringComparer.InvariantCultureIgnoreCase);
 
 		// Note: the tree is encountered in an unordered manner
-		foreach (var page in GetCMSPages(cmsDatabaseID)) {
+		foreach (var page in GetCMSPages(cmsDatabaseID, publishedOnly)) {
 			CreatePageNode(page);
 		}
 
@@ -157,12 +157,14 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		}
 	}
 
-	private IEnumerable<LocalNotionPage> GetCMSPages(string cmsDatabaseID)
+	private IEnumerable<LocalNotionPage> GetCMSPages(string cmsDatabaseID, bool publishedOnly)
 		=> Repository
 		   .Resources
 		   .Where(r => r is LocalNotionPage { CMSProperties: not null })
+		   .Cast<LocalNotionPage>()
 		   .Where(r => r.ParentResourceID == cmsDatabaseID)
-		   .Cast<LocalNotionPage>();
+		   .Where(r => !publishedOnly || publishedOnly && r.CMSProperties.Status == CMSPageStatus.Published);
+		   
 
 
 	#region Currently unused
