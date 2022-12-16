@@ -264,7 +264,6 @@ public static partial class Program {
 
 	}
 
-
 	public static async Task<int> ExecuteStatusCommandAsync(StatusRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
@@ -500,6 +499,8 @@ $@"Local Notion Status:
 				return result;
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
 			//arguments.FilterLastUpdatedOn = DateTime.UtcNow;
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
 		}
 		return Constants.ERRORCODE_OK;
 	}
@@ -568,7 +569,6 @@ $@"Local Notion Status:
 			return Constants.ERRORCODE_FAIL;
 		}
 	}
-
 
 	/// <summary>
 	/// The main entry point for the application.
