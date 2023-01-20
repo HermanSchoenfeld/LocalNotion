@@ -19,13 +19,14 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		Repository = repository;
 		Repository.Changed += _ => FlushCache();
 		CMSDatabaseID = cmsDatabaseID;
-
 		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => FetchContentHierarchy(cmsDatabaseID, true), keyComparer: StringComparer.InvariantCultureIgnoreCase);
 	}
 
 	public ILocalNotionRepository Repository { get; }
 
 	public string CMSDatabaseID { get; init; }
+
+	public IEnumerable<CMSContentNode> Content => _contentHierarchy.GetAllCachedValues();
 
 	public bool ContainsSlug(string slug)
 		=> _contentHierarchy.ContainsCachedItem(slug);
@@ -102,9 +103,8 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		var tree = new Dictionary<string, CMSContentNode>(StringComparer.InvariantCultureIgnoreCase);
 
 		// Note: the tree is encountered in an unordered manner
-		foreach (var page in GetCMSPages(cmsDatabaseID, publishedOnly)) {
+		foreach (var page in GetCMSPages(cmsDatabaseID, publishedOnly))
 			CreatePageNode(page);
-		}
 
 		// Sort all item children by their sequence
 		tree.Values.ForEach(v => v.Content.Sort(new ProjectionComparer<LocalNotionPage, int?>(x => x.CMSProperties.Sequence)));
@@ -123,7 +123,6 @@ public class LocalNotionCMS : ILocalNotionCMS {
 			var node = GetOrCreateNode(slugParts, slug);
 			node.Content.Add(page);
 		}
-
 
 		CMSContentNode GetOrCreateNode( IEnumerable<(string slugPart, string partTitle)> slugParts, string slugOverride = null) {
 
@@ -163,9 +162,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 		   .Where(r => r is LocalNotionPage { CMSProperties: not null })
 		   .Cast<LocalNotionPage>()
 		   .Where(r => r.ParentResourceID == cmsDatabaseID)
-		   .Where(r => !publishedOnly || publishedOnly && r.CMSProperties.Status == CMSPageStatus.Published);
-		   
-
+		   .Where(r => !publishedOnly || publishedOnly && r.CMSProperties.Status == CMSPageStatus.Published && (r.CMSProperties.PublishOn is null || r.CMSProperties.PublishOn < DateTime.UtcNow));
 
 	#region Currently unused
 
