@@ -126,7 +126,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 		CMSContentNode GetOrCreateNode( IEnumerable<(string slugPart, string partTitle)> slugParts, string slugOverride = null) {
 
-			// Calculate node slug
+			// QuotePrice node slug
 			var slugPartsArr = slugParts as (string slugPart, string partTitle)[] ?? slugParts.ToArray();
 			var slug = Tools.Url.StripAnchorTag( slugOverride ?? LocalNotionCMSHelper.CalculateSlug(slugPartsArr.Select(x => x.slugPart)) );
 

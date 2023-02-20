@@ -632,12 +632,12 @@ $@"Local Notion Status:
 #endif
 
 		try {
-			if (DateTime.Now > DateTime.Parse("2023-07-01 00:00")) {
-				Console.WriteLine("Software has expired");
-				return Constants.ERRORCODE_LICENSE_ERROR;
-			}
-
 			HydrogenFramework.Instance.StartFramework();
+
+			// TODO:
+			// if (havent checked license status in last 24 hours)
+			//    start background license verification
+
 			
 			Console.CancelKeyPress += (sender, args) => {
 				Console.WriteLine("Cancelling");
@@ -671,6 +671,8 @@ $@"Local Notion Status:
 		} finally {
 			if (HydrogenFramework.Instance.IsStarted)
 				HydrogenFramework.Instance.EndFramework();
+
+			// TODO: wait for background license verifier to complete
 		}
 	}
 
