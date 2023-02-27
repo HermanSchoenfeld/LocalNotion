@@ -24,11 +24,46 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("Sphere 10 Software Pty Ltd")]
 [assembly: AssemblyAuthor("Herman Schoenfeld <herman@sphere10.com>")]
 [assembly: AssemblyProduct("Local Notion")]
-[assembly: AssemblyProductDistribution(ProductDistribution.Alpha)]
+[assembly: AssemblyProductDistribution(ProductDistribution.ReleaseCandidate)]
 [assembly: AssemblyProductLink("www.sphere10.com/products/localnotion")]
 [assembly: AssemblyProductCode("A49ECEC9-1E83-436c-B432-BBF7B26055E7")]
 [assembly: AssemblyProductSecret("5d53d16efdf24ae18d5b8bac48974642ce60bbea978330a8c4154df13f9349dd")]
-[assembly: AssemblyDefaultProductKey("1910706C-5739-4B30-896A-E326C5E250FF")]    // full version product key
+#if DEBUG
+[assembly: AssemblyProductDrmApi("http://localhost:5000/api/drm")]
+#else
+[assembly: AssemblyProductDrmApi("https://sphere10.com/api/drm")]
+#endif
+[assembly: AssemblyProductLicense(
+	"""
+	{
+	  "authority": {
+	    "name": "Sphere 10 Software General Software Products",
+	    "dss": "ecdsa-secp256k1",
+	    "publicKey": "A0xL8HSZ7Cl9IYUx92/e34NPhYZHkQEaWcyU2BuJx/2T"
+	  },
+	  "license": {
+	    "Item": {
+	      "name": "Local Notion v1 Free",
+	      "productKey": "0000-0000-0000-0002",
+	      "productCode": "a49ecec9-1e83-436c-b432-bbf7b26055e7",
+	      "featureLevel": "free",
+	      "expirationPolicy": "disable",
+	      "majorVersionApplicable": 1,
+	      "limitFeatureA": 1,
+	      "limitFeatureB": 25
+	    },
+	    "Signature": "MEQCIHeD39eBKwQBUZe+fz+mJi7FhCuGHvyBEf5bSGvc1MYxAiAcgwX7QHSFVCCMzq3cSyT8J4tVeDeDC9MzkkfotsEs3A=="
+	  },
+	  "command": {
+	    "Item": {
+	      "productKey": "0000-0000-0000-0002",
+	      "action": "enable"
+	    },
+	    "Signature": "MEQCIHcZcf+8MvivmZF/TTKDQt1v6dz/pscQNfrJ/OOqyop+AiBkLBj5ugambukYjCFa3EbdZPUuMqXtD2Bwe+My/x4wjQ=="
+	  }
+	}
+	"""
+)]    // full version product key
 [assembly: AssemblyCopyright("Copyright © Sphere 10 Software 2015 - {CurrentYear}")]
 [assembly: AssemblyCompanyLink("www.sphere10.com")]
 [assembly: AssemblyCompanyNumber("ABN 39 600 596 316")]
@@ -38,5 +73,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("0.8.0.0")]
+[assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]

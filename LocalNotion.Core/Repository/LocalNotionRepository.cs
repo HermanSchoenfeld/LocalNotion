@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using AngleSharp.Html.Dom;
 using Hydrogen;
+using Hydrogen.Application;
 using Hydrogen.Data;
 using Microsoft.Win32;
 using Notion.Client;
@@ -479,9 +480,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		};
 
 		if (useObjectIDFolder) {
-			Guard.Against(Directory.Exists(resourceFolder), $"Resource '{resource.ID}' path was already existing (dangling resource)");
-			if (!Directory.Exists(resourceFolder))
-				Directory.CreateDirectory(resourceFolder);
+			//Guard.Against(Directory.Exists(resourceFolder), $"Resource '{resource.ID}' path was already existing (dangling resource)");
+			// 2012-02-27 No longer enforce dangling resources, since they aren't cleaned at load time
+			if (Directory.Exists(resourceFolder)) 
+				Tools.FileSystem.DeleteDirectory(resourceFolder);
+			Directory.CreateDirectory(resourceFolder);
 		}
 
 

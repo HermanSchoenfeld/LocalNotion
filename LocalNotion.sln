@@ -29,6 +29,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.Drawing", "..\Hydr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.Web.AspNetCore", "..\Hydrogen\src\Hydrogen.Web.AspNetCore\Hydrogen.Web.AspNetCore.csproj", "{55BD1517-97D6-48CF-BF25-F514F1F0D3D9}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.CryptoEx", "..\Hydrogen\src\Hydrogen.CryptoEx\Hydrogen.CryptoEx.csproj", "{F172573D-8A7B-4A67-8636-DE2D08E4012C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,10 @@ Global
 		{55BD1517-97D6-48CF-BF25-F514F1F0D3D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{55BD1517-97D6-48CF-BF25-F514F1F0D3D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{55BD1517-97D6-48CF-BF25-F514F1F0D3D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F172573D-8A7B-4A67-8636-DE2D08E4012C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F172573D-8A7B-4A67-8636-DE2D08E4012C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F172573D-8A7B-4A67-8636-DE2D08E4012C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F172573D-8A7B-4A67-8636-DE2D08E4012C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -98,6 +104,7 @@ Global
 		{093E0E90-B4E6-47D1-9C47-20B93D9934BA} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 		{9212F6D2-5DBA-4FA0-BA89-26B5D988E837} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 		{55BD1517-97D6-48CF-BF25-F514F1F0D3D9} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
+		{F172573D-8A7B-4A67-8636-DE2D08E4012C} = {BE4DAC02-10ED-4535-9FC1-C8BD04291D97}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B9202D58-E7A4-4F4A-ADD7-CBB52A9A9BC8}

@@ -71,7 +71,7 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 	public virtual bool RequiresLoad => InternalRepository.Value.RequiresLoad;
 
 	public virtual bool RequiresSave => InternalRepository.Value.RequiresSave;
-
+	
 	public virtual Task LoadAsync() => InternalRepository.Value.LoadAsync();
 
 	public virtual Task SaveAsync() => throw new NotSupportedException();

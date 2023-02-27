@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Security.AccessControl;
 using System.Text;
 using Hydrogen;
+using Hydrogen.Application;
+using Microsoft.Extensions.DependencyInjection;
 using Notion.Client;
 
 namespace LocalNotion.Core;
@@ -19,7 +21,7 @@ public class NotionSyncOrchestrator {
 		Guard.ArgumentNotNull(repository, nameof(repository));
 		NotionClient = notionClient;
 		Repository = repository;
-		Logger = Repository.Logger ?? new NoOpLogger(); ;
+		Logger = Repository.Logger ?? new NoOpLogger();
 	}
 
 	protected ILogger Logger { get; }
@@ -54,6 +56,9 @@ public class NotionSyncOrchestrator {
 					var downloads = await DownloadPageAsync(page.Id, page.LastEditedTime, sequence: sequence++, render: false, forceRefresh: forceRefresh, cancellationToken: cancellationToken); // rendering deferred to below
 					downloadedResources.AddRange(downloads);
 					processedPages.Add(page);
+				} catch (ProductLicenseLimitException) {
+					Logger.Error("You have reached the limit of pages available under your license. Please purchase a license to pull more pages/databases from Notion.");
+					break;
 				} catch (TaskCanceledException) {
 					throw;
 				} catch (Exception error) {
@@ -340,6 +345,8 @@ public class NotionSyncOrchestrator {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(page.ID, renderType, renderMode);
+					} catch (ProductLicenseLimitException) {
+						throw;
 					} catch (TaskCanceledException) {
 						throw;
 					} catch (Exception error) {
@@ -388,6 +395,8 @@ public class NotionSyncOrchestrator {
 				Repository.ImportResourceRender(resourceID, RenderType.File, tmpFile);
 			} catch (TaskCanceledException) {
 				Logger.Info($"Downloading Cancelled: {filename} (resource: {resourceID})");
+				throw;
+			} catch (ProductLicenseLimitException) {
 				throw;
 			} catch (Exception error) {
 				Logger.Exception(error);

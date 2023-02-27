@@ -4,12 +4,25 @@ using Notion.Client;
 using CommandLine;
 using System.Runtime.Serialization;
 using LocalNotion.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace LocalNotion.CLI;
 
 public static partial class Program {
 
+	private static IProductLicenseProvider _licenseProvider = null;
+	private static IProductUsageServices _usageServices = null;
+	private static IUserInterfaceServices _userInterfaceServices = null;
+	private static ProductRights _licenseRights = ProductRights.None;
+
 	private static CancellationTokenSource CancelProgram { get; } = new CancellationTokenSource();
+
+	
 
 	private static string GetDefaultRepoFolder() 
 		=> System.IO.Path.Combine(Environment.CurrentDirectory);
@@ -26,14 +39,14 @@ public static partial class Program {
 		return Path.GetRelativePath(repoPath, Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory));
 	}
 
-	private static async Task<ILocalNotionRepository> OpenRepo(string userPath, ILogger logger) {
-		userPath = ToFullPath(userPath);
-		var repo = 
-			Directory.Exists(userPath) ? 
-			await LocalNotionRepository.Open(userPath, logger) : 
-			await LocalNotionRepository.OpenRegistry(userPath, logger);
-		return repo;
-	}
+	//private static async Task<ILocalNotionRepository> OpenRepo(string userPath, ILogger logger) {
+	//	userPath = ToFullPath(userPath);
+	//	var repo = 
+	//		Directory.Exists(userPath) ? 
+	//		await LocalNotionRepository.Open(userPath, logger) : 
+	//		await LocalNotionRepository.OpenRegistry(userPath, logger);
+	//	return repo;
+	//}
 
 	public enum LocalNotionProfileDescriptor {
 		[EnumMember(Value = "backup")]
@@ -239,10 +252,13 @@ public static partial class Program {
 	[Verb("license", HelpText = "Manages Local Notion license")]
 	public class LicenseCommandArguments : CommandArgumentsBase {
 
-		[Option('a', "activate", HelpText = "Local Notion key.")]
+		[Option('a', "activate", Group = "Option", HelpText = "Activate Local Notion with your product key")]
 		public string ProductKey { get; set; } = string.Empty;
 
-		[Option('v', "verify", Hidden= true)]
+		[Option("status", Group = "Option", HelpText = "Display the status of your Local Notion license")]
+		public bool Status { get; set; } = false;
+
+		[Option("verify", Group = "Option", HelpText = "Verify your Local Notion license with Sphere 10 Software")]
 		public bool Verify { get; set; } = false;
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
@@ -272,7 +288,7 @@ public static partial class Program {
 			return Constants.ERRORCODE_REPO_NOT_FOUND;
 		}
 
-		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		System.Console.WriteLine(
 $@"Local Notion Status:
 	Total Resources: {repo.Resources.Count()}
@@ -340,7 +356,7 @@ $@"Local Notion Status:
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		if (!arguments.All) {
 			foreach (var objectID in arguments.Objects) {
-				var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+				var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 				if (!ILocalNotionRepository.IsValidObjectID(objectID)) {
 					consoleLogger.Warning($"ObjectID '{objectID}' was malformed");
 					continue;
@@ -374,7 +390,7 @@ $@"Local Notion Status:
 			apiKey = arguments.APIKey;
 		} else {
 			if (LocalNotionRepository.Exists(arguments.Path)) {
-				var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+				var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 				apiKey = repo.DefaultNotionApiKey;
 			}
 		}
@@ -384,7 +400,7 @@ $@"Local Notion Status:
 			return Constants.ERRORCODE_COMMANDLINE_ERROR;
 		}
 
-		var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
+		var client = CreateNotionClientWithLicenseCheck(apiKey);
 
 		if (!arguments.Objects.Any()) {
 			// List workspace level
@@ -441,16 +457,18 @@ $@"Local Notion Status:
 
 	public static async Task<int> ExecutePullCommandAsync(PullRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 
 		await using (repo.EnterUpdateScope()) {
 
 			var apiKey = arguments.APIKey ?? repo.DefaultNotionApiKey;
+
+
 			if (string.IsNullOrWhiteSpace(apiKey)) {
 				consoleLogger.Info("No API key was specified in argument or registered in repository");
 				return -1;
 			}
-			var client = NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
+			var client = CreateNotionClientWithLicenseCheck(apiKey);
 
 			var syncOrchestrator = new NotionSyncOrchestrator(client, repo);
 
@@ -507,7 +525,7 @@ $@"Local Notion Status:
 
 	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-		var repo = await LocalNotionRepository.Open(arguments.Path, consoleLogger);
+		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		var renderer = new ResourceRenderer(repo, repo.Logger);
 		var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects;
 		if (!toRender.Any()) {
@@ -535,8 +553,34 @@ $@"Local Notion Status:
 	}
 
 	public static async Task<int> ExecuteLicenseCommandAsync(LicenseCommandArguments arguments, CancellationToken cancellationToken) {
-		SystemLog.Warning("Local Notion DRM is not currently implemented");
+		//SystemLog.Warning("Local Notion DRM is not currently implemented");
+		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
+		
+		if (arguments.Status) {
+			PrintStatus();
+		} else if (arguments.Verify) {
+			var backgroundVerifier = HydrogenFramework.Instance.ServiceProvider.GetService<IBackgroundLicenseVerifier>();
+			await backgroundVerifier.VerifyLicense(CancellationToken.None);
+			PrintStatus();
+		} else if (!string.IsNullOrWhiteSpace(arguments.ProductKey)) {
+			var activator = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseActivator>();
+			consoleLogger.Info("Activating License...");
+			await activator.ActivateLicense(arguments.ProductKey);
+			consoleLogger.Info("License Activated");
+			PrintStatus();
+		}
+
 		return Constants.ERRORCODE_NOT_IMPLEMENTED;
+
+		void PrintStatus() {
+			var provider = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseProvider>();
+			var enforcer = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseEnforcer>();
+			if (!provider.TryGetLicense(out var license))
+				throw new InvalidOperationException("No license found");
+			var last4 = new string( license.Command.Item.ProductKey.TakeLast(4).ToArray() );
+			var rights = enforcer.CalculateRights(out var message);
+			consoleLogger.Info($"Product Key: ****-****-****-{last4}. {message}");
+		}
 	}
 
 	public static async Task<int> ProcessCommandLineErrorsAsync(IEnumerable<Error> errors) {
@@ -559,15 +603,87 @@ $@"Local Notion Status:
 				disposables.Add(monitor);
 			}
 
+			if (typeof(T) != typeof(LicenseCommandArguments)) 
+				EnforceLicense();
+
 			return await command(args, CancelProgram.Token);
 		} catch (TaskCanceledException tce) {
 			Console.WriteLine("Cancelled successfully");
 			return Constants.ERRORCODE_CANCELLED;
 		} catch (Exception error) {
 			SystemLog.Exception(error);
-			Console.WriteLine($"ERROR: {error.ToDisplayString()}");
 			return Constants.ERRORCODE_FAIL;
 		}
+	}
+
+	private static void EnforceLicense() {
+		// Initiate background verify (and disable command will apply next run)
+		var executingProgram = Process.GetCurrentProcess().MainModule.FileName;
+		ProcessStartInfo psi = new ProcessStartInfo();            
+		psi.FileName = executingProgram;
+		psi.UseShellExecute = false;
+		psi.RedirectStandardError = true;
+		psi.RedirectStandardOutput = true;
+		psi.Arguments = "license --verify";
+		Process.Start(psi);
+
+
+		// Enforce license (this shouldn't quit and will just downgrade license to free on expiration)
+		var licenseEnforcer = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseEnforcer>();
+		licenseEnforcer.EnforceLicense(false);
+	}
+
+	private static INotionClient CreateNotionClientWithLicenseCheck(string apiKey) {
+		
+		// Check repo count isn't exceeded
+		if (_licenseRights.LimitFeatureA.HasValue) {
+			// This ensures that the user has not pulled/synced from more than allowed remote repositories. A remote repository
+			// is identified by it's AUTH token.
+
+			var maxReposAllowed = _licenseRights.LimitFeatureA.Value;
+		
+			if (!_usageServices.SystemEncryptedProperties.TryGetValue("UsedAuthTokens", out var prop)) {
+				prop = "{}";
+			} 
+			var usedAuthTokens = Tools.Json.ReadFromString<IDictionary<string, int>>(prop.ToString());
+
+			if (usedAuthTokens.Count > maxReposAllowed) {
+				// The license detected more repos than allowed, this is either license tampering or a downgrade. Solution here
+				// is to just clear out the list and let it rebuild.
+				usedAuthTokens.Clear();
+			}
+
+			if (!usedAuthTokens.ContainsKey(apiKey)) {
+				if (usedAuthTokens.Count + 1 > maxReposAllowed)
+					_userInterfaceServices.ReportFatalError("License Exhausted", "You have reached the maximum number of repositories permitted by your license. Please upgrade your license");
+				usedAuthTokens.Add(apiKey, 0);
+			}
+			usedAuthTokens[apiKey] += 1;
+			_usageServices.SystemEncryptedProperties["UsedAuthTokens"] = usedAuthTokens;
+		}
+
+		return NotionClientFactory.Create(new ClientOptions { AuthToken = apiKey });
+
+	}
+
+
+	private static async Task<ILocalNotionRepository> OpenWithLicenseCheck(string path, ILogger logger = null) {
+		var repo = await LocalNotionRepository.Open(path, logger);
+
+		if (_licenseRights.LimitFeatureB.HasValue) {
+			var maxPagesAllowed = _licenseRights.LimitFeatureB.Value;
+			var errMsg = $"Your license does not permit processing local notion repositories with more than {maxPagesAllowed} pages/databases. Please purchase a license in order to save unlimited pages and databases. You can purchase a license at https://sphere10.com/products/localnotion";
+			if (CountPagesAndDatabases() > maxPagesAllowed) 
+				throw new ProductLicenseLimitException(errMsg);
+
+			repo.ResourceAdding += (_ , _) => {
+				if (CountPagesAndDatabases() >= maxPagesAllowed) 
+					throw new ProductLicenseLimitException(errMsg);
+			};
+			int CountPagesAndDatabases() => repo.Resources.Count(x => x.Type.IsIn(LocalNotionResourceType.Page, LocalNotionResourceType.Database));
+		}
+
+		return repo;
 	}
 
 	/// <summary>
@@ -578,16 +694,16 @@ $@"Local Notion Status:
 #if DEBUG
 		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
 		string[] InitCmd2 = new[] { "init", "-p", "d:\\databases\\LN-SPHERE10.COM", "-k", "YOUR_NOTION_API_KEY_HERE" };
-		
+
 		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
 		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
 		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
 		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
 		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullCmd2= new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-		string[] PullCmd3= new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
-		
+		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd3 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
+
 		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
@@ -600,6 +716,7 @@ $@"Local Notion Status:
 		string[] PullBug8Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
 
 		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+		string[] PullPageBug1 = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
 		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
@@ -613,10 +730,10 @@ $@"Local Notion Status:
 		string[] RenderBug8Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
 		string[] RenderBug9Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
 		string[] RenderBug10Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
-		string[] RenderBug11Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb"};
-		string[] RenderBug12Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127"};
-		string[] RenderBug13Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "53c25f04-3e67-4f9a-9978-14c7c669c080"};
-		
+		string[] RenderBug11Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb" };
+		string[] RenderBug12Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127" };
+		string[] RenderBug13Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "53c25f04-3e67-4f9a-9978-14c7c669c080" };
+
 		string[] RenderAll = new[] { "render", "--all" };
 		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
@@ -625,20 +742,25 @@ $@"Local Notion Status:
 		string[] Version = new[] { "version" };
 		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
-		
+		string[] List2 = new[] { "list", "-p", "d:\\temp\\t1" };
 
+
+		string[] LicenseStatus = new[] { "license", "--status" };
+		string[] LicenseVerify = new[] { "license", "--verify" };
 		if (args.Length == 0)
-			args = RenderBug13Page;
+			args = PullPageBug1;
 #endif
 
 		try {
-			HydrogenFramework.Instance.StartFramework();
+			HydrogenFramework.Instance.StartFramework(HydrogenFrameworkOptions.EnableDrm); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work
 
-			// TODO:
-			// if (havent checked license status in last 24 hours)
-			//    start background license verification
-
+			// Get the license info
+			_usageServices = HydrogenFramework.Instance.ServiceProvider.GetService<IProductUsageServices>();
+			_userInterfaceServices = HydrogenFramework.Instance.ServiceProvider.GetService<IUserInterfaceServices>();
+			_licenseProvider = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseProvider>();
+			_licenseRights = _licenseProvider.CalculateRights();
 			
+
 			Console.CancelKeyPress += (sender, args) => {
 				Console.WriteLine("Cancelling");
 				args.Cancel = true;
@@ -671,8 +793,6 @@ $@"Local Notion Status:
 		} finally {
 			if (HydrogenFramework.Instance.IsStarted)
 				HydrogenFramework.Instance.EndFramework();
-
-			// TODO: wait for background license verifier to complete
 		}
 	}
 
