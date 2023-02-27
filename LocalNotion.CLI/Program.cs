@@ -131,6 +131,17 @@ public static partial class Program {
 	
 	}
 	
+	[Verb("clean", HelpText = "Cleans your local Notion repository by removing dangling pages, files and databases")]
+	public class CleanRepositoryCommandArguments : CommandArgumentsBase {
+
+		[Option('p', "path", HelpText = "Path to Local Notion repository")]
+		public string Path { get; set; } = GetDefaultRepoFolder();
+	
+		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
+		public bool Verbose { get; set; } = false;
+	
+	}
+
 	[Verb("remove", HelpText = "Remove resources from a Local Notion repository")]
 	public class RemoveRepositoryCommandArguments : CommandArgumentsBase {
 
@@ -349,6 +360,21 @@ $@"Local Notion Status:
 			logger: consoleLogger
 		);
 		consoleLogger.Info("Location Notion repository has been created");
+		return Constants.ERRORCODE_OK;
+	}
+
+	public static async Task<int> ExecuteCleanCommandAsync(CleanRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
+		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
+
+		arguments.Path = ToFullPath(arguments.Path);
+		if (!Directory.Exists(arguments.Path)) 
+			throw new DirectoryNotFoundException(arguments.Path);
+
+	
+		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+		await repo.CleanAsync();
+
+		consoleLogger.Info("Location Notion repository has been cleaned");
 		return Constants.ERRORCODE_OK;
 	}
 
@@ -616,6 +642,14 @@ $@"Local Notion Status:
 		}
 	}
 
+	private static void LoadLicense() {
+		// Get the license info
+		_usageServices = HydrogenFramework.Instance.ServiceProvider.GetService<IProductUsageServices>();
+		_userInterfaceServices = HydrogenFramework.Instance.ServiceProvider.GetService<IUserInterfaceServices>();
+		_licenseProvider = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseProvider>();
+		_licenseRights = _licenseProvider.CalculateRights();
+	}
+
 	private static void EnforceLicense() {
 		// Initiate background verify (and disable command will apply next run)
 		var executingProgram = Process.GetCurrentProcess().MainModule.FileName;
@@ -666,7 +700,6 @@ $@"Local Notion Status:
 
 	}
 
-
 	private static async Task<ILocalNotionRepository> OpenWithLicenseCheck(string path, ILogger logger = null) {
 		var repo = await LocalNotionRepository.Open(path, logger);
 
@@ -714,9 +747,10 @@ $@"Local Notion Status:
 		string[] PullBug6Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
 		string[] PullBug7Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
 		string[] PullBug8Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
+		string[] PullBug9Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
 
 		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
-		string[] PullPageBug1 = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
+		
 		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
 		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
@@ -747,18 +781,15 @@ $@"Local Notion Status:
 
 		string[] LicenseStatus = new[] { "license", "--status" };
 		string[] LicenseVerify = new[] { "license", "--verify" };
+		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 		if (args.Length == 0)
-			args = PullPageBug1;
+			args = PullBug9Page;
 #endif
 
 		try {
 			HydrogenFramework.Instance.StartFramework(HydrogenFrameworkOptions.EnableDrm); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work
 
-			// Get the license info
-			_usageServices = HydrogenFramework.Instance.ServiceProvider.GetService<IProductUsageServices>();
-			_userInterfaceServices = HydrogenFramework.Instance.ServiceProvider.GetService<IUserInterfaceServices>();
-			_licenseProvider = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseProvider>();
-			_licenseRights = _licenseProvider.CalculateRights();
+			LoadLicense();
 			
 
 			Console.CancelKeyPress += (sender, args) => {
@@ -770,6 +801,7 @@ $@"Local Notion Status:
 			return await Parser.Default.ParseArguments< 
 				StatusRepositoryCommandArguments,
 				InitRepositoryCommandArguments,
+				CleanRepositoryCommandArguments,
 				RemoveRepositoryCommandArguments,
 				ListContentsCommandArguments,
 				SyncRepositoryCommandArguments,
@@ -781,6 +813,7 @@ $@"Local Notion Status:
 			>(args).MapResult(
 				(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync),
 				(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync),
+				(CleanRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteCleanCommandAsync),
 				(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync),
 				(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListCommand),
 				(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync),

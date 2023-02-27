@@ -7,7 +7,7 @@ public static class Constants {
 	public const string PageTypePropertyName = "Type";
 	public const string TitlePropertyName = "Item";
 	public const string PublishOnPropertyName = "Publish On";
-	public const string StatusPropertyName = "InvoiceStatus";
+	public const string StatusPropertyName = "Status";
 	public const string ThemesPropertyName = "Themes";
 	public const string SlugPropertyName = "Custom Slug";
 	public const string SequencePropertyName = "Sequence";
