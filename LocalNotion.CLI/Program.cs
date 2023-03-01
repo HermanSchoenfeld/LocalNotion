@@ -768,9 +768,11 @@ $@"Local Notion Status:
 		string[] RenderBug12Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127" };
 		string[] RenderBug13Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "53c25f04-3e67-4f9a-9978-14c7c669c080" };
 		string[] RenderBug14Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "d2eaadcb-349a-47ab-af12-8382dc5f4973" };
+		string[] RenderBug15Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b9579eb8-ee9e-4beb-8a76-c0c4e436bf6f" };
 		
 		string[] RenderAll = new[] { "render", "--all" };
 		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
+		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 		string[] Remove = new[] { "remove", "--all" };
 		string[] HelpInit = new[] { "help", "init" };
@@ -784,21 +786,17 @@ $@"Local Notion Status:
 		string[] LicenseVerify = new[] { "license", "--verify" };
 		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 		if (args.Length == 0)
-			args = RenderBug14Page;
+			args = RenderAll3;
 #endif
 
 		try {
 			HydrogenFramework.Instance.StartFramework(HydrogenFrameworkOptions.EnableDrm); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work
-
 			LoadLicense();
-			
-
 			Console.CancelKeyPress += (sender, args) => {
 				Console.WriteLine("Cancelling");
 				args.Cancel = true;
 				CancelProgram.Cancel();
 			};
-
 			return await Parser.Default.ParseArguments< 
 				StatusRepositoryCommandArguments,
 				InitRepositoryCommandArguments,

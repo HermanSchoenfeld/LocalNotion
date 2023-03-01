@@ -72,7 +72,6 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				}
 			}
 
-
 			// TODO: when implementing databases, the check is
 			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
 			var repoContainsParentResource = item.ParentResourceID != null && Repository.ContainsResource(item.ParentResourceID);
@@ -82,7 +81,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
 				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section or CMSPageType.Footer }; 
 
-			var title = isPartialPage ? BuildCompositeSlugPartTitle(((LocalNotionPage)item).CMSProperties.Root,item.Title ) : item.Title;
+			var title = isPartialPage ? BuildCompositeSlugPartTitle(((LocalNotionPage)item).CMSProperties.GetTipCategory(),item.Title ) : item.Title;
 			var breadCrumbItem = new BreadCrumbItem() {
 				Type = item.Type,
 				Text = title ,

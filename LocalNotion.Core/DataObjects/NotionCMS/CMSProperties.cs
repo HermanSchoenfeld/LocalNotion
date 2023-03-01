@@ -55,4 +55,19 @@ public class CMSProperties {
 			CMSPageType.Gallery => new [] { Root },
 			_ => new [] { Root, Category1, Category2, Category3, Category4, Category5 }.TakeWhile(x => !string.IsNullOrWhiteSpace(x))
 		};
+
+
+	public string GetTipCategory() {
+		if (!string.IsNullOrWhiteSpace(Category5))
+			return Category5;
+		if (!string.IsNullOrWhiteSpace(Category4))
+			return Category4;
+		if (!string.IsNullOrWhiteSpace(Category3))
+			return Category3;
+		if (!string.IsNullOrWhiteSpace(Category2))
+			return Category2;
+		if (!string.IsNullOrWhiteSpace(Category1))
+			return Category1;
+		return Root;
+	}
 }
