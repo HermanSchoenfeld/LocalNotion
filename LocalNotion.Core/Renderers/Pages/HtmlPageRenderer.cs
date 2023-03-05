@@ -238,7 +238,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			return RenderTemplate(
 				"text",
 				new NotionObjectTokens {
-					["text"] = System.Net.WebUtility.HtmlEncode(content),
+					["text"] = System.Net.WebUtility.HtmlEncode(content).Replace("\n", "<br />"),
 				}
 			);
 
@@ -946,7 +946,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 	protected string ToColorString(Color color)
 		=> color.GetAttribute<EnumMemberAttribute>()?.Value.Replace("_", "-") ?? throw new InvalidOperationException($"Color '{color}' did not have {nameof(EnumMemberAttribute)} defined");
-
+	
 	#endregion
 
 	#region Inner Classes
