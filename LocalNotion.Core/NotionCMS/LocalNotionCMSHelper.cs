@@ -92,8 +92,7 @@ public class LocalNotionCMSHelper {
 		var pageTitle =page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 			
 
-		if (string.IsNullOrWhiteSpace(result.CustomSlug))
-			result.CustomSlug = CalculatePageSlug(pageTitle, result);
+		result.CustomSlug = CalculatePageSlug(pageTitle, result);
 		
 		// Process slug tokens if any
 		if (result.CustomSlug != null)
@@ -128,13 +127,10 @@ public class LocalNotionCMSHelper {
 	}
 
 	public static string CalculatePageSlug(string pageTitle, CMSProperties cmsProperties)  {
-		if (!string.IsNullOrWhiteSpace(cmsProperties.CustomSlug))
-			LocalNotionHelper.SanitizeSlug(cmsProperties.CustomSlug);
-
 		return cmsProperties.PageType switch {
-			CMSPageType.Section => CalculateSlug(cmsProperties.Categories) + "#{page_name}",
-			CMSPageType.Footer => CalculateSlug(cmsProperties.Categories),
-			_ => CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
+			CMSPageType.Section => (cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories)) + (!cmsProperties.CustomSlug.Contains("#") ? "#{page_name}": string.Empty),
+			CMSPageType.Footer => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories),
+			_ => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}
 	
