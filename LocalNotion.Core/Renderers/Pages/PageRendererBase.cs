@@ -122,15 +122,15 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 		// Page link?
 		if (url.StartsWith("/")) {
-			var urlTail = url.Substring(1);
-			// page link to block in current page
-			if (Guid.TryParse(urlTail, out _)) 
-				return Resolver.TryGenerate(Page, Page.ID, RenderType.HTML, out var genUrl, out _) ? genUrl + "#" + urlTail : string.Empty;
+			var destObject = new string(url.Substring(1).TakeUntil(c => c == '#').ToArray());
+			var anchor = new string (url.Substring(1).Skip(destObject.Length).ToArray()).TrimStart('#');
+			if (Guid.TryParse(destObject, out var destGuid)) 
+				destObject = LocalNotionHelper.ObjectGuidToId(destGuid);
 
-			// page link to block in another page
-			var splits = urlTail.Split('#', StringSplitOptions.RemoveEmptyEntries);
-			if (splits.Length >= 2 && Guid.TryParse(splits[0], out var pageid) && Guid.TryParse(splits[1], out _)) {
-				return Resolver.TryGenerate(Page, LocalNotionHelper.ObjectGuidToId(pageid), RenderType.HTML, out var genUrl,  out _) ? genUrl + "#" + splits[1] : string.Empty;
+			if (LocalNotionHelper.IsValidObjectID(destObject) && Resolver.TryGenerate(Page, destObject, RenderType.HTML, out var parentUrl, out _)) {
+				url = parentUrl;
+				if (!string.IsNullOrEmpty(anchor))
+					url += $"#{anchor}";
 			}
 		}
 

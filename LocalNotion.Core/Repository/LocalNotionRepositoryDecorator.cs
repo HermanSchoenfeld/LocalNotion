@@ -74,6 +74,8 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual bool TryGetResourceByName(string name, out LocalNotionEditableResource resource) => InternalRepository.TryGetResourceByName(name, out resource);
 
+	public virtual bool TryGetParentResource(string objectID, out LocalNotionResource parent) => InternalRepository.TryGetParentResource(objectID, out parent);
+
 	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) => InternalRepository.GetChildObjects(resourceID);
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.ContainsResourceRender(resourceID, renderType);

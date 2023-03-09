@@ -82,6 +82,8 @@ public interface ILocalNotionRepository  {
 
 	void RemoveResource(string resourceID, bool removeChildren);
 
+	bool TryGetParentResource(string objectID, out LocalNotionResource parent);
+
 	IEnumerable<LocalNotionResource> GetChildObjects(string resourceID);
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);

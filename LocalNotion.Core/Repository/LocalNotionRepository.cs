@@ -586,6 +586,19 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		NotifyResourceRemoved(resource);
 	}
 
+	public virtual bool TryGetParentResource(string objectID, out LocalNotionResource parent) {
+		parent = null;
+		if (!TryGetObject(objectID, out var obj)) 
+			return false; 
+
+		var parentID = obj.GetParent()?.GetId();
+		if (string.IsNullOrWhiteSpace(parentID)) 
+			return false;
+
+		return TryGetResource(parentID, out parent) || TryGetParentResource(parentID, out parent);
+
+	}
+
 	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) 
 		=> Resources.Where(x => x.ParentResourceID == resourceID).ToArray();  // ToArray ensures enumeration completes as 
 

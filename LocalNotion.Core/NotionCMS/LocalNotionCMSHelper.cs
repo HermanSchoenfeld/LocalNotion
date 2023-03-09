@@ -111,7 +111,7 @@ public class LocalNotionCMSHelper {
 		result.PublishOn = parentCMSProps.PublishOn;
 		result.Status = parentCMSProps.Status;
 		//result.Themes = parentCMSProps.Themes; // NOTE: child pages from CMS pages should render using default template, since they are stand-alone pages (not sections, etc)
-		result.CustomSlug = CalculateNestedPageSlug(parentCMSProps.CustomSlug, pageTitle);
+		result.CustomSlug = CalculateNestedPageSlug(parentCMSProps.PageType, parentCMSProps.CustomSlug, pageTitle);
 		result.Root = parentCMSProps.Root;
 		result.Category1 = parentCMSProps.Category1;
 		result.Category2 = parentCMSProps.Category2;
@@ -128,16 +128,20 @@ public class LocalNotionCMSHelper {
 
 	public static string CalculatePageSlug(string pageTitle, CMSProperties cmsProperties)  {
 		return cmsProperties.PageType switch {
-			CMSPageType.Section => (cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories)) + (!cmsProperties.CustomSlug.Contains("#") ? "#{page_name}": string.Empty),
+			CMSPageType.Section => (cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories)) + (cmsProperties.CustomSlug?.Contains("#") == false ? "#{page_name}": string.Empty),
 			CMSPageType.Footer => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories),
 			_ => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}
 	
-	public static string CalculateNestedPageSlug(string parentPageSlug, string childPageTitle) 
-		// if parent has anchor tag we treat it is an implicit "category" by simply replacing '#' with '/'
+	public static string CalculateNestedPageSlug(CMSPageType pageType, string parentPageSlug, string childPageTitle) 
+		// if parent is NOT a section and has anchor tag we treat it is an implicit "category" by simply replacing '#' with '/' 
+		// if parent is a section and has anchor tag we ignore anchor tag
 		// example: parent slug = /services#development   child slug = /services/development/mobile
-		=> $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}".TrimStart("/");
+		=> pageType switch  {
+			CMSPageType.Section => $"{new string(parentPageSlug.TakeUntil(c => c == '#').ToArray())}/{Tools.Url.ToUrlSlug(childPageTitle)}".TrimStart("/"),
+			_ => $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}".TrimStart("/")
+		};
 
 	/// <summary>
 	/// Calculates a slug composed of the given component parts (will skip null or empty parts).

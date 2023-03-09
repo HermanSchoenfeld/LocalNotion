@@ -21,8 +21,23 @@ public class OnlineLinkGenerator : LinkGeneratorBase {
 			return true;
 		}
 
-		if (!Repository.TryGetResource(toResourceID, out toResource))
-			return false;
+		if (!Repository.TryGetResource(toResourceID, out toResource)) {
+			if (!Repository.ContainsObject(toResourceID)) {
+				return false;
+			} 
+			// Try to link to an object, so link to it's parent resource and try to attach anchor
+			if (!Repository.TryGetParentResource(toResourceID, out var parentResource))
+				return false;
+			
+			if (!TryGenerate(from, parentResource.ID, renderType, out url, out toResource)) 
+				return false;
+
+			if (!url.Contains('#'))
+				url += $"#{toResourceID}";
+			return true;
+
+		}
+			
 
 		if (toResource is LocalNotionPage { CMSProperties: not null } lnp) {
 			url = lnp.CMSProperties.CustomSlug;

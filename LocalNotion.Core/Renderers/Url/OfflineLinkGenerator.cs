@@ -24,8 +24,21 @@ public class OfflineLinkGenerator : LinkGeneratorBase {
 
 		var fromPath = Repository.Paths.GetResourceFolderPath(from.Type, from.ID, FileSystemPathType.Absolute);
 
-		if (!Repository.TryGetResource(toResourceID, out toResource))
-			return false;
+		if (!Repository.TryGetResource(toResourceID, out toResource)) {
+			if (!Repository.ContainsObject(toResourceID)) {
+				return false;
+			} 
+			// Try to link to an object, so link to it's parent resource and try to attach anchor
+			if (!Repository.TryGetParentResource(toResourceID, out var parentResource))
+				return false;
+			
+			if (!TryGenerate(from, parentResource.ID, renderType, out url, out toResource)) 
+				return false;
+
+			if (!url.Contains('#'))
+				url += $"#{toResourceID}";
+			return true;
+		}
 
 		if (!toResource.TryGetRender(renderType, out var render))
 			if (renderType != null && Repository.Paths.UsesObjectIDSubFolders(toResource.Type)) {
