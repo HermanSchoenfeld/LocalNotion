@@ -31,6 +31,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.Web.AspNetCore", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hydrogen.CryptoEx", "..\Hydrogen\src\Hydrogen.CryptoEx\Hydrogen.CryptoEx.csproj", "{F172573D-8A7B-4A67-8636-DE2D08E4012C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CI-CD", "CI-CD", "{089C5118-2BC6-4C4D-8B05-3ED561CAB4FC}"
+	ProjectSection(SolutionItems) = preProject
+		make_version.ps1 = make_version.ps1
+		publish-all.bat = publish-all.bat
+		publish-win-x64.bat = publish-win-x64.bat
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
