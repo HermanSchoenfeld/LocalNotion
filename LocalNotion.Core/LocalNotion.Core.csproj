@@ -96,7 +96,12 @@
 	  <None Remove="Themes\default\resources\prism\prism.css" />
 	  <None Remove="Themes\default\resources\prism\prism.js" />
 	  <None Remove="Themes\default\resources\twitter\widgets.js" />
+	  <None Remove="Themes\default\table.html" />
+	  <None Remove="Themes\default\table_cell.html" />
+	  <None Remove="Themes\default\table_header_cell.html" />
+	  <None Remove="Themes\default\table_header_row.html" />
 	  <None Remove="Themes\default\table_of_contents.html" />
+	  <None Remove="Themes\default\table_row.html" />
 	  <None Remove="Themes\default\text.html" />
 	  <None Remove="Themes\default\text_bold.html" />
 	  <None Remove="Themes\default\text_code.html" />
@@ -217,6 +222,7 @@
 	  <None Remove="Themes\.root\readonly\toggle_open.html" />
 	  <None Remove="Themes\.root\readonly\to_do.html" />
 	  <None Remove="Themes\.root\readonly\user.html" />
+	  <None Remove="Themes\demo\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\embedded\.config.json" />
 	  <None Remove="Themes\embedded\editable\page.offline.html" />
 	  <None Remove="Themes\embedded\editable\page.online.html" />
@@ -449,7 +455,12 @@
 	  <EmbeddedResource Include="Themes\default\resources\prism\prism.css" />
 	  <EmbeddedResource Include="Themes\default\resources\prism\prism.js" />
 	  <EmbeddedResource Include="Themes\default\resources\twitter\widgets.js" />
+	  <EmbeddedResource Include="Themes\default\table.html" />
+	  <EmbeddedResource Include="Themes\default\table_cell.html" />
+	  <EmbeddedResource Include="Themes\default\table_header_cell.html" />
+	  <EmbeddedResource Include="Themes\default\table_header_row.html" />
 	  <EmbeddedResource Include="Themes\default\table_of_contents.html" />
+	  <EmbeddedResource Include="Themes\default\table_row.html" />
 	  <EmbeddedResource Include="Themes\default\text.html" />
 	  <EmbeddedResource Include="Themes\default\text_bold.html" />
 	  <EmbeddedResource Include="Themes\default\text_code.html" />
@@ -470,6 +481,7 @@
 	  <EmbeddedResource Include="Themes\demo\.config.json" />
 	  <EmbeddedResource Include="Themes\demo\page.offline.html" />
 	  <EmbeddedResource Include="Themes\.root\.config.json" />
+	  <EmbeddedResource Include="Themes\demo\resources\local-notion\js\toc.js" />
 	  <EmbeddedResource Include="Themes\embedded\.config.json" />
 	  <EmbeddedResource Include="Themes\embedded\editable\page.offline.html" />
 	  <EmbeddedResource Include="Themes\embedded\editable\page.online.html" />
