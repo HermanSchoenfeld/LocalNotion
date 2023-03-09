@@ -49,6 +49,25 @@ function Copy-Attachments {
     }
 }
 
+function Set-ExecutePermissionOnShFiles {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$true)]
+        [string]$FolderPath
+    )
+
+    # Get all files that end in ".sh" in the ReleaseFolder directory tree
+    $shFiles = Get-ChildItem -Path $FolderPath -Recurse -Filter *.sh
+
+    # Set execution file attribute on each file
+    foreach ($shFile in $shFiles) {
+        if ($shFile.Attributes -notcontains 'ReadOnly') {
+            Set-ItemProperty -Path $shFile.FullName -Name 'IsExecutable' -Value $true
+        }
+    }
+}
+
+
 function Compress-Subfolders {
     [CmdletBinding()]
     param (
@@ -116,6 +135,13 @@ function Make-Version {
     # Copy release attachments into the platform-build folders (readme, installation instructions, etc)
     if (Test-Path $AttachmentsPath -PathType Container) {
         Copy-Attachments -ReleasePath $ReleasePath -AttachmentsPath $AttachmentsPath
+    }
+
+    # Give any .sh file in any release folder directory executable permission
+    if ($IsLinux -or $IsMacOS) {
+        Set-ExecutePermissionOnShFiles -FolderPath $ReleasePath
+    } else {
+        Write-Host "WARNING: Output release distributions will NOT have executable scripts. Users will get stuck unless they manually add execution attribute to script. You should run this script from Linux or macOS."
     }
     
     # Compress all the platform-build folders into a distributable zip file
