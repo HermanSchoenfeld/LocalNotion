@@ -50,9 +50,9 @@ using System.Runtime.InteropServices;
 	      "expirationPolicy": "disable",
 	      "majorVersionApplicable": 1,
 	      "limitFeatureA": 1,
-	      "limitFeatureB": 25
+	      "limitFeatureB": 100
 	    },
-	    "Signature": "MEQCIHeD39eBKwQBUZe+fz+mJi7FhCuGHvyBEf5bSGvc1MYxAiAcgwX7QHSFVCCMzq3cSyT8J4tVeDeDC9MzkkfotsEs3A=="
+	    "Signature": "MEQCIAMJtW2j5vzj6YjDegeyfh5jdrYI/ws84JDehfG+uVF2AiAFNc3U+03vrwPqpIPF9GAZMAzS23/TsONHC+POm4ZDBw=="
 	  },
 	  "command": {
 	    "Item": {
@@ -62,6 +62,7 @@ using System.Runtime.InteropServices;
 	    "Signature": "MEQCIHcZcf+8MvivmZF/TTKDQt1v6dz/pscQNfrJ/OOqyop+AiBkLBj5ugambukYjCFa3EbdZPUuMqXtD2Bwe+My/x4wjQ=="
 	  }
 	}
+	
 	"""
 )]    // full version product key
 [assembly: AssemblyCopyright("Copyright © Sphere 10 Software 2015 - {CurrentYear}")]
