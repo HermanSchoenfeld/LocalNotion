@@ -119,7 +119,7 @@ public class LocalNotionCMSHelper {
 		result.Category4 = parentCMSProps.Category4;
 		result.Category5 = parentCMSProps.Category5;
 		result.Summary = null;
-		result.Tags = null;
+		result.Tags = parentCMSProps.Tags; // child pages inherit parent page tags
 
 		// Process slug tokens if any
 		result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, childPageName, result);

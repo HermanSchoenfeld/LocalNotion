@@ -40,7 +40,7 @@ public static class IObjectExtensions {
 			EquationBlock equationBlock => new [] { equationBlock.Equation.Expression },
 			FileBlock fileBlock => fileBlock.File.Caption.Select(x => x.PlainText ?? string.Empty),
 			HeadingOneBlock headingOneBlock => headingOneBlock.Heading_1.RichText.Select(x => x.PlainText ?? string.Empty),
-			HeadingThreeeBlock headingThreeeBlock => headingThreeeBlock.Heading_3.RichText.Select(x => x.PlainText ?? string.Empty),
+			HeadingThreeBlock headingThreeeBlock => headingThreeeBlock.Heading_3.RichText.Select(x => x.PlainText ?? string.Empty),
 			HeadingTwoBlock headingTwoBlock => headingTwoBlock.Heading_2.RichText.Select(x => x.PlainText ?? string.Empty),
 			ImageBlock imageBlock => imageBlock.Image.Caption.Select(x => x.PlainText ?? string.Empty),
 			LinkPreviewBlock linkPreviewBlock => Enumerable.Empty<string>(),
@@ -50,7 +50,7 @@ public static class IObjectExtensions {
 			PDFBlock pdfBlock => pdfBlock.PDF.Caption.Select(x => x.PlainText ?? string.Empty),
 			QuoteBlock quoteBlock => quoteBlock.Quote.RichText.Select(x => x.PlainText ?? string.Empty).Concat(quoteBlock.Quote.Children.ToEmptyIfNull().SelectMany(x => x.GetTextContents())),
 			SyncedBlockBlock syncedBlockBlock => Enumerable.Empty<string>(),
-			TableBlock tableBlock => tableBlock.Table.Children.GetTextContents(),
+			TableBlock tableBlock => tableBlock.Table.Children.SelectMany(GetTextContents),
 			TableOfContentsBlock tableOfContentsBlock => Enumerable.Empty<string>(),
 			TableRowBlock tableRowBlock => tableRowBlock.TableRow.Cells.SelectMany(x => x).Select(x => x.PlainText),
 			TemplateBlock templateBlock => templateBlock.Template.RichText.Select(x => x.PlainText ?? string.Empty),
@@ -88,7 +88,7 @@ public static class IObjectExtensions {
 	public static bool TryGetParent(this IObject obj, out IParent parent) {
 		switch (obj) {
 			case Comment comment:
-				parent = comment.Parent;
+				parent = comment.Parent as IParent;
 				return true;
 
 			case Database database:

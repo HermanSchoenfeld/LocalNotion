@@ -13,6 +13,8 @@ public static class IBlocksClientExtensions {
 		do {
 			parameters.StartCursor = cursor;
 			searchResult = await blocksClient.RetrieveChildrenAsync(blockId, parameters).WithCancellationToken(cancellationToken);
+			if (searchResult == null)
+				break;
 			foreach(var result in searchResult.Results)
 				yield return result;
 			cursor = searchResult.NextCursor;

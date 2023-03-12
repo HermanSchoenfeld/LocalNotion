@@ -75,9 +75,12 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 				EmbedBlock x => Render(x),
 				EquationBlock x => Render(x),
 				FileBlock x => Render(x),
+				HeadingOneBlock { Heading_1.IsToggleable: true } x => RenderToggleHeader(x),
 				HeadingOneBlock x => Render(x),
-				HeadingThreeeBlock x => Render(x),
+				HeadingTwoBlock { Heading_2.IsToggleable: true } x => RenderToggleHeader(x),
 				HeadingTwoBlock x => Render(x),
+				HeadingThreeBlock { Heading_3.IsToggleable: true } x => RenderToggleHeader(x),
+				HeadingThreeBlock x => Render(x),
 				ImageBlock x => Render(x),
 				LinkToPageBlock x => Render(x),
 				NumberedListItemBlock x => RenderNumberedItem(index.Value, x),
@@ -362,10 +365,16 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 	protected abstract TOutput Render(FileBlock block);
 
 	protected abstract TOutput Render(HeadingOneBlock block);
-
-	protected abstract TOutput Render(HeadingThreeeBlock block);
+	
+	protected abstract TOutput RenderToggleHeader(HeadingOneBlock block);
 
 	protected abstract TOutput Render(HeadingTwoBlock block);
+
+	protected abstract TOutput RenderToggleHeader(HeadingTwoBlock block);
+
+	protected abstract TOutput Render(HeadingThreeBlock block);
+
+	protected abstract TOutput RenderToggleHeader(HeadingThreeBlock block);
 
 	protected abstract TOutput Render(ImageBlock block);
 

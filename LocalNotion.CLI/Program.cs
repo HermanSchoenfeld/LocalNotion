@@ -23,8 +23,6 @@ public static partial class Program {
 
 	private static CancellationTokenSource CancelProgram { get; } = new CancellationTokenSource();
 
-	
-
 	private static string GetDefaultRepoFolder() 
 		=> System.IO.Path.Combine(Environment.CurrentDirectory);
 
@@ -59,7 +57,7 @@ public static partial class Program {
 		[EnumMember(Value = "publishing")]
 		Publishing,
 
-		[EnumMember(Value = "webhosting")]
+		[EnumMember(Value = "website")]
 		WebHosting,
 
 	}
@@ -187,6 +185,9 @@ public static partial class Program {
 
 		[Option('o', "objects", Group = "target", HelpText = "List of Notion objects to pull (i.e. pages, databases)")]
 		public IEnumerable<string> Objects { get; set; } = null;
+
+		[Option('a', "all", Group = "target", HelpText = "Pull all objects from Notion workspace into repository")]
+		public bool PullAll { get; set; }
 		
 		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
 		public string APIKey { get; set; } = null;
@@ -487,9 +488,7 @@ $@"Local Notion Status:
 		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 
 		await using (repo.EnterUpdateScope()) {
-
 			var apiKey = arguments.APIKey ?? repo.DefaultNotionApiKey;
-
 
 			if (string.IsNullOrWhiteSpace(apiKey)) {
 				consoleLogger.Info("No API key was specified in argument or registered in repository");
@@ -499,6 +498,17 @@ $@"Local Notion Status:
 
 			var syncOrchestrator = new NotionSyncOrchestrator(client, repo);
 
+			if (arguments.PullAll) {
+				consoleLogger.Info("Querying Notion for objects to pull");
+				var rootItems = await client
+					.Search
+					.EnumerateAsync(new SearchParameters(), cancellationToken: cancellationToken)
+					.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent))
+					.Select(x => x.Id)
+					.ToArrayAsync();
+				arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
+
+			}
 			foreach (var @obj in arguments.Objects) {
 				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				switch (objType) {
@@ -525,6 +535,7 @@ $@"Local Notion Status:
 						break; ;
 				}
 			}
+			
 		}
 		return 0;
 	}
@@ -739,6 +750,9 @@ $@"Local Notion Status:
 //		string[] PullCmd3 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
 //		string[] PullCmd4 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
 
+//		string[] PullCmd5 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "a86be05b-ac35-4279-9307-26628c4a0e7f", "--force" };
+		
+
 //		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 //		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 //		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
@@ -752,7 +766,8 @@ $@"Local Notion Status:
 //		string[] PullBug9Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
 //		string[] PullBug10Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
 //		string[] PullBug11Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "72ba1a82-7366-468d-a044-1a09dbe89245", "--force" };
-		
+//		string[] PullBug12Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
+//		string[] PullBug13Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56", "--force" };
 		
 //		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 
@@ -776,7 +791,8 @@ $@"Local Notion Status:
 //		string[] RenderBug15Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b9579eb8-ee9e-4beb-8a76-c0c4e436bf6f" };
 //		string[] RenderBug16Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "72ba1a82-7366-468d-a044-1a09dbe89245" };
 //		string[] RenderBug17Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "6314c05c-8581-4cee-b94a-08666fb8f9c1" };
-
+//		string[] RenderBug18Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56" };
+		
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
 //		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
@@ -793,7 +809,7 @@ $@"Local Notion Status:
 //		string[] LicenseVerify = new[] { "license", "--verify" };
 //		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 //		if (args.Length == 0)
-//			args = PullCmd4;
+//			args = PullBug13Page;
 //#endif
 
 		try {

@@ -678,6 +678,23 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				}
 			);
 
+	protected override string RenderToggleHeader(HeadingOneBlock block)
+		=> RenderTemplate(
+			"toggle_closed",
+			new NotionObjectTokens(block) {
+				["toggle_id"] = $"toggle_{++_toggleCount}",
+				["title"] = RenderTemplate(
+					"heading_1",
+					new NotionObjectTokens(block) {
+						["text"] = Render(block.Heading_1.RichText),
+						["color"] = ToColorString(block.Heading_1.Color.Value)
+					}
+				),
+				["color"] = ToColorString(block.Heading_1.Color.Value),
+				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+			}
+		);
+
 	protected override string Render(HeadingTwoBlock block)
 		=> RenderTemplate(
 				"heading_2",
@@ -687,7 +704,25 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				}
 			);
 
-	protected override string Render(HeadingThreeeBlock block)
+	protected override string RenderToggleHeader(HeadingTwoBlock block)
+		=> RenderTemplate(
+			"toggle_closed",
+			new NotionObjectTokens(block) {
+				["toggle_id"] = $"toggle_{++_toggleCount}",
+				["title"] = RenderTemplate(
+					"heading_2",
+					new NotionObjectTokens(block) {
+						["text"] = Render(block.Heading_2.RichText),
+						["color"] = ToColorString(block.Heading_2.Color.Value)
+					}
+				),
+				["color"] = ToColorString(block.Heading_2.Color.Value),
+				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+			}
+		);
+
+
+	protected override string Render(HeadingThreeBlock block)
 		=> RenderTemplate(
 				"heading_3",
 				new NotionObjectTokens(block) {
@@ -695,6 +730,25 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 					["color"] = ToColorString(block.Heading_3.Color.Value)
 				}
 			);
+
+
+	protected override string RenderToggleHeader(HeadingThreeBlock block)
+		=> RenderTemplate(
+			"toggle_closed",
+			new NotionObjectTokens(block) {
+				["toggle_id"] = $"toggle_{++_toggleCount}",
+				["title"] = RenderTemplate(
+					"heading_3",
+					new NotionObjectTokens(block) {
+						["text"] = Render(block.Heading_3.RichText),
+						["color"] = ToColorString(block.Heading_3.Color.Value)
+					}
+				),
+				["color"] = ToColorString(block.Heading_3.Color.Value),
+				["children"] = block.HasChildren || block.Heading_3.IsToggleable ? RenderChildItems() : string.Empty,
+			}
+		);
+
 
 	protected override string Render(ImageBlock block)
 		=> RenderTemplate(

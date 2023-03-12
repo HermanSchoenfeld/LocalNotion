@@ -14,6 +14,9 @@ public static class INotionClientExtensions {
 			return (default, default);
 
 		var block = await client.Blocks.RetrieveAsync(objectID).WithCancellationToken(cancellationToken);
+		if (block == null) {
+			return (default, default(DateTime?));
+		}
 		return block.Type switch {
 			BlockType.ChildDatabase => (LocalNotionResourceType.Database, block.LastEditedTime),
 			BlockType.ChildPage => (LocalNotionResourceType.Page, block.LastEditedTime),

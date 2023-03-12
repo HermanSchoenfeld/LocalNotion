@@ -31,7 +31,7 @@ public static class IPagesClientExtensions  {
 		var parameters = new RetrievePropertyItemParameters();
 		parameters.PageId = pageID;
 		parameters.PropertyId = propertyId;
-		var searchResult = await pagesClient.RetrievePagePropertyItem(parameters).WithCancellationToken(cancellationToken);
+		var searchResult = await pagesClient.RetrievePagePropertyItemAsync(parameters).WithCancellationToken(cancellationToken);
 
 		if (searchResult is ListPropertyItem lpi) {
 			var itemsList = new List<SimplePropertyItem>();
@@ -39,7 +39,7 @@ public static class IPagesClientExtensions  {
 			
 			while (lpi.HasMore) {
 				parameters.StartCursor = lpi.NextCursor;
-				var nextPage = (ListPropertyItem) await pagesClient.RetrievePagePropertyItem(parameters).WithCancellationToken(cancellationToken) ;
+				var nextPage = (ListPropertyItem) await pagesClient.RetrievePagePropertyItemAsync(parameters).WithCancellationToken(cancellationToken) ;
 				itemsList.AddRange(nextPage.Results);
 			}
 			lpi.Results = itemsList; // this aggregates all items into the list of first itemlist
