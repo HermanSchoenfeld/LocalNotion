@@ -220,7 +220,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 				return RenderTemplate(
 					"text_code",
 					new NotionObjectTokens {
-						["text"] = RenderInternal(null, false, false, false, false, false, color, content)
+						["text"] = System.Net.WebUtility.HtmlEncode(content),
 					}
 				);
 			}
@@ -535,7 +535,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"code",
 			new NotionObjectTokens(block) {
 				["language"] = ToPrismLanguage(block.Code.Language),
-				["code"] = Render(block.Code.RichText)
+				["code"] = System.Net.WebUtility.HtmlEncode(block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty))
 			}
 		);
 
