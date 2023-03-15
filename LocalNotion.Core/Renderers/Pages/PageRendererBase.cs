@@ -5,21 +5,19 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public abstract class PageRendererBase<TOutput> : IPageRenderer {
+public abstract class PageRendererBase<TOutput> : IPageRenderer<TOutput> {
 
-	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILinkGenerator resolver,  IBreadCrumbGenerator breadCrumbGenerator, Action<string, TOutput> fileSerializer) {
+	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILinkGenerator resolver,  IBreadCrumbGenerator breadCrumbGenerator) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
 		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
 		Guard.ArgumentNotNull(resolver, nameof(resolver));
 		Guard.ArgumentNotNull(breadCrumbGenerator, nameof(breadCrumbGenerator));
-		Guard.ArgumentNotNull(fileSerializer, nameof(fileSerializer));
 		Page = page;
 		PageGraph = pageGraph;
 		PageObjects = pageObjects;
 		Resolver = resolver;
 		BreadCrumbGenerator = breadCrumbGenerator;
-		Serializer = fileSerializer;
 		RenderingStack = new StackList<NotionObjectGraph>();
 	}
 
@@ -33,8 +31,6 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
-	protected Action<string, TOutput> Serializer { get; }
-	
 	protected StackList<NotionObjectGraph> RenderingStack { get; }
 
 	protected NotionObjectGraph CurrentRenderingNode => GetParentRenderingNode(1);
@@ -45,12 +41,7 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer {
 
 	protected IObject GetParentRenderingObject(int level) => RenderingStack.TryPeek(out var value, level) ? PageObjects.TryGetValue(value.ObjectID, out var obj) ? obj : null : null;
 
-	public void Render(string destinationFile) {
-		Guard.ArgumentNotNull(destinationFile, nameof(destinationFile));
-		Guard.Against(File.Exists(destinationFile), $"File '{destinationFile}' already exists");
-		var output = Render(PageGraph);
-		Serializer(destinationFile, output);
-	}
+	public virtual TOutput Render() => Render(PageGraph);
 
 	protected virtual TOutput Render(NotionObjectGraph objectGraph, int? index = null) {
 		RenderingStack.Push(objectGraph);

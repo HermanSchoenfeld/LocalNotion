@@ -2,7 +2,6 @@
 
 namespace LocalNotion.Core;
 
-public interface IPageRenderer {
-	void Render(string destinationFile);
-
+public interface IPageRenderer<TOutput> {
+	TOutput Render();
 }

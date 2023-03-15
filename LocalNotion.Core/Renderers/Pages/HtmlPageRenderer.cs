@@ -10,7 +10,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
 	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, HtmlThemeInfo[] themes)
-		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator, File.WriteAllText) {
+		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator) {
 		Guard.ArgumentNotNull(themes, nameof(themes));
 		Guard.ArgumentGT(themes.Length, 0, nameof(themes), "At least 1 theme must be provided to the renderer");
 		Mode = mode;

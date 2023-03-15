@@ -44,11 +44,12 @@ public class ResourceRenderer : IResourceRenderer {
 
 		// HTML render the page graph
 		Logger.Info($"Rendering page '{page.Title}'");
-		var renderer = PageRenderFactory.Create(page, renderType, renderMode, pageGraph, pageObjects, _repository, Logger);
+		var renderer = RendererFactory.CreatePageRenderer(page, renderType, renderMode, pageGraph, pageObjects, _repository, Logger);
 		var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
 		var output = string.Empty;
 		try {
-			renderer.Render(tmpFile);
+			var html = renderer.Render();
+			File.WriteAllText(html, tmpFile);
 			output = _repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
 		} catch (TaskCanceledException) {
 			throw;

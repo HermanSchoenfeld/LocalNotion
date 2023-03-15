@@ -1,14 +1,15 @@
 ﻿using System.Diagnostics;
 using Hydrogen;
+using LocalNotion.Core;
 using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public static class PageRenderFactory {
+public static class RendererFactory {
 
-	public static IPageRenderer Create(LocalNotionPage page, RenderType renderType, RenderMode renderMode, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
-		switch(renderType){
-			case RenderType.HTML: 
+	public static IPageRenderer<string> CreatePageRenderer(LocalNotionPage page, RenderType renderType, RenderMode renderMode, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
+		switch (renderType) {
+			case RenderType.HTML:
 				var themeManager = new HtmlThemeManager(repository.Paths, logger);
 				var themes = DeterminePageThemes(page, repository);
 				var urlGenerator = LinkGeneratorFactory.Create(repository);
@@ -22,11 +23,11 @@ public static class PageRenderFactory {
 	}
 
 
-	private static string[] DeterminePageThemes(LocalNotionPage page,  ILocalNotionRepository repository) {
+	private static string[] DeterminePageThemes(LocalNotionPage page, ILocalNotionRepository repository) {
 		var pageThemes = Enumerable.Empty<string>();
-		if (page is {CMSProperties.Themes.Length: > 0 } && page.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
+		if (page is { CMSProperties.Themes.Length: > 0 } && page.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
 			pageThemes = page.CMSProperties.Themes;
-		} 
+		}
 		return repository.DefaultThemes.Concat(pageThemes).ToArray();
 	}
 }
