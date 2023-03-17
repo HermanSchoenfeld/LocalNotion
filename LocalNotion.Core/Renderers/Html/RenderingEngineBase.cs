@@ -5,27 +5,25 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public abstract class PageRendererBase<TOutput> : IPageRenderer<TOutput> {
+public abstract class RenderingEngineBase<TOutput> : IRenderingEngine<TOutput> {
 
-	protected PageRendererBase(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILinkGenerator resolver,  IBreadCrumbGenerator breadCrumbGenerator) {
-		Guard.ArgumentNotNull(page, nameof(page));
-		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
-		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
+	protected RenderingEngineBase(ILinkGenerator resolver,  IBreadCrumbGenerator breadCrumbGenerator) {
 		Guard.ArgumentNotNull(resolver, nameof(resolver));
 		Guard.ArgumentNotNull(breadCrumbGenerator, nameof(breadCrumbGenerator));
-		Page = page;
-		PageGraph = pageGraph;
-		PageObjects = pageObjects;
 		Resolver = resolver;
 		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderingStack = new StackList<NotionObjectGraph>();
 	}
 
-	protected LocalNotionPage Page { get; }
+	protected LocalNotionDatabase Database { get; set; }
 
-	protected NotionObjectGraph PageGraph { get; }
+	protected LocalNotionPage Page { get; set; }
+
+	protected NotionObjectGraph PageGraph { get; set; }
 
 	protected IDictionary<string, IObject> PageObjects { get; set; }
+
+	protected ThemeInfo[] Themes { get; set; }
 
 	protected ILinkGenerator Resolver { get; }
 
@@ -41,7 +39,13 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer<TOutput> {
 
 	protected IObject GetParentRenderingObject(int level) => RenderingStack.TryPeek(out var value, level) ? PageObjects.TryGetValue(value.ObjectID, out var obj) ? obj : null : null;
 
-	public virtual TOutput Render() => Render(PageGraph);
+	public virtual TOutput RenderPage(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ThemeInfo[] themes) {
+		Page = page;
+		PageGraph = pageGraph;
+		PageObjects = pageObjects;
+		Themes = themes;
+		return Render(PageGraph);
+	}
 
 	protected virtual TOutput Render(NotionObjectGraph objectGraph, int? index = null) {
 		RenderingStack.Push(objectGraph);
@@ -66,11 +70,8 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer<TOutput> {
 				EmbedBlock x => Render(x),
 				EquationBlock x => Render(x),
 				FileBlock x => Render(x),
-				HeadingOneBlock { Heading_1.IsToggleable: true } x => RenderToggleHeader(x),
 				HeadingOneBlock x => Render(x),
-				HeadingTwoBlock { Heading_2.IsToggleable: true } x => RenderToggleHeader(x),
 				HeadingTwoBlock x => Render(x),
-				HeadingThreeBlock { Heading_3.IsToggleable: true } x => RenderToggleHeader(x),
 				HeadingThreeBlock x => Render(x),
 				ImageBlock x => Render(x),
 				LinkToPageBlock x => Render(x),
@@ -357,15 +358,9 @@ public abstract class PageRendererBase<TOutput> : IPageRenderer<TOutput> {
 
 	protected abstract TOutput Render(HeadingOneBlock block);
 	
-	protected abstract TOutput RenderToggleHeader(HeadingOneBlock block);
-
 	protected abstract TOutput Render(HeadingTwoBlock block);
 
-	protected abstract TOutput RenderToggleHeader(HeadingTwoBlock block);
-
 	protected abstract TOutput Render(HeadingThreeBlock block);
-
-	protected abstract TOutput RenderToggleHeader(HeadingThreeBlock block);
 
 	protected abstract TOutput Render(ImageBlock block);
 

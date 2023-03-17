@@ -16,5 +16,8 @@ public class LocalNotionDatabase : LocalNotionEditableResource {
 
 	[JsonProperty("description")]
 	public string Description { get; set; }
+
+	[JsonProperty("properties")]
+	public Dictionary<string, Property> Properties { get; set; }
 	
 }

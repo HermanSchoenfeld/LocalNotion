@@ -516,9 +516,9 @@ $@"Local Notion Status:
 						consoleLogger.Info($"Unrecognized object: {@obj}");
 						break;
 					case (LocalNotionResourceType.Database, var lastEditedTime):
-						await syncOrchestrator.DownloadDatabasePagesAsync(
+						await syncOrchestrator.DownloadDatabaseAsync(
 							@obj,
-							//arguments.FilterLastUpdatedOn,
+							lastEditedTime,
 							arguments.Render,
 							arguments.RenderOutput,
 							arguments.RenderMode,
@@ -736,84 +736,87 @@ $@"Local Notion Status:
 	/// </summary>
 	[STAThread]
 	public static async Task<int> Main(string[] args) {
-//#if DEBUG
-//		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
-//		string[] InitCmd2 = new[] { "init", "-p", "d:\\databases\\LN-SPHERE10.COM", "-k", "YOUR_NOTION_API_KEY_HERE" };
+#if DEBUG
+		string[] InitCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE" };
+		string[] InitCmd2 = new[] { "init", "-p", "d:\\databases\\LN-SPHERE10.COM", "-k", "YOUR_NOTION_API_KEY_HERE" };
 
-//		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-//		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
-//		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
-//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
-//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
-//		string[] PullCmd3 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
-//		string[] PullCmd4 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
+		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
+		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
+		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
+		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
+		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
+		string[] PullCmd3 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
+		string[] PullCmd4 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
 
-//		string[] PullCmd5 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "a86be05b-ac35-4279-9307-26628c4a0e7f", "--force" };
+		string[] PullCmd5 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "a86be05b-ac35-4279-9307-26628c4a0e7f", "--force" };
 
 
-//		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
-//		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
-//		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
-//		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-//		string[] PullBug3Cmd = new[] { "pull", "-o", "68944996-582b-453f-994f-d5562f4a6730", "--force" };
-//		string[] PullBug4Cmd = new[] { "pull", "-o", "a2a2a4f0-d13e-4cb0-8f13-dc33402651f5", "--force" };
-//		string[] PullBug5Cmd = new[] { "pull", "-o", "20e3c6f6-c91a-4d68-932e-00a463eb1654", "--force" };
-//		string[] PullBug6Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
-//		string[] PullBug7Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
-//		string[] PullBug8Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
-//		string[] PullBug9Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
-//		string[] PullBug10Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
-//		string[] PullBug11Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "72ba1a82-7366-468d-a044-1a09dbe89245", "--force" };
-//		string[] PullBug12Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
-//		string[] PullBug13Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56", "--force" };
-//		string[] PullBug14Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b8a76f00-befd-42ca-a5f4-864e1981fc39", "--force" };
-
+		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
+		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
+		string[] PullBug1Cmd = new[] { "pull", "-o", "b31d9c97-524e-4646-8160-e6ef7f2a1ac1" };
+		string[] PullBug2Cmd = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] PullBug3Cmd = new[] { "pull", "-o", "68944996-582b-453f-994f-d5562f4a6730", "--force" };
+		string[] PullBug4Cmd = new[] { "pull", "-o", "a2a2a4f0-d13e-4cb0-8f13-dc33402651f5", "--force" };
+		string[] PullBug5Cmd = new[] { "pull", "-o", "20e3c6f6-c91a-4d68-932e-00a463eb1654", "--force" };
+		string[] PullBug6Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "59e18bac-7da0-4892-bfcc-ea2d99344535" };
+		string[] PullBug7Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
+		string[] PullBug8Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb", "--force" };
+		string[] PullBug9Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
+		string[] PullBug10Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
+		string[] PullBug11Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "72ba1a82-7366-468d-a044-1a09dbe89245", "--force" };
+		string[] PullBug12Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
+		string[] PullBug13Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56", "--force" };
+		string[] PullBug14Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b8a76f00-befd-42ca-a5f4-864e1981fc39", "--force" };
 		
-//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
+		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force"};
+		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391"};
+		
 
-//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
-//		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
-//		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
-//		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] RenderBug3Page = new[] { "render", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
-//		string[] RenderBug4Page = new[] { "render", "-o", "d1b16637-ba01-48c2-863e-c60ee3b9ae47" };
-//		string[] RenderBug5Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "b93b303f-18e0-417c-87c0-1eea140600ea" };
-//		string[] RenderBug6Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] RenderBug7Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
-//		string[] RenderBug8Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
-//		string[] RenderBug9Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
-//		string[] RenderBug10Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
-//		string[] RenderBug11Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb" };
-//		string[] RenderBug12Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127" };
-//		string[] RenderBug13Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "53c25f04-3e67-4f9a-9978-14c7c669c080" };
-//		string[] RenderBug14Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "d2eaadcb-349a-47ab-af12-8382dc5f4973" };
-//		string[] RenderBug15Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b9579eb8-ee9e-4beb-8a76-c0c4e436bf6f" };
-//		string[] RenderBug16Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "72ba1a82-7366-468d-a044-1a09dbe89245" };
-//		string[] RenderBug17Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "6314c05c-8581-4cee-b94a-08666fb8f9c1" };
-//		string[] RenderBug18Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56" };
-//		string[] RenderBug19Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "18bca27f-7300-4c23-9135-bb497fae36e9" };
+		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 
-//		string[] RenderAll = new[] { "render", "--all" };
-//		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
-//		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
-//		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
-//		string[] Remove = new[] { "remove", "--all" };
-//		string[] HelpInit = new[] { "help", "init" };
-//		string[] Version = new[] { "version" };
-//		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
-//		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
-//		string[] List2 = new[] { "list", "-p", "d:\\temp\\t1" };
+		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
+		string[] RenderPage = new[] { "render", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
+		string[] RenderBug1Page = new[] { "render", "-o", "21d2c360-daaa-4787-896c-fb06354cd74a" };
+		string[] RenderBug2Page = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] RenderBug3Page = new[] { "render", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
+		string[] RenderBug4Page = new[] { "render", "-o", "d1b16637-ba01-48c2-863e-c60ee3b9ae47" };
+		string[] RenderBug5Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "b93b303f-18e0-417c-87c0-1eea140600ea" };
+		string[] RenderBug6Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] RenderBug7Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "913c5853-d37a-433a-bd2b-7b5bfc5f5754" };
+		string[] RenderBug8Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e67b7b86-7816-43a7-8fd3-c32bac31eb3d" };
+		string[] RenderBug9Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "0d067e36-82bb-4160-8a8e-2cc4648e63b3" };
+		string[] RenderBug10Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "38051e4d-5fa1-49e6-94c3-00db431f03e6" };
+		string[] RenderBug11Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "4de23df6-d43e-4372-941e-49b60d16fafb" };
+		string[] RenderBug12Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "f071cc07-c6d4-4036-b484-5c3af1790127" };
+		string[] RenderBug13Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "53c25f04-3e67-4f9a-9978-14c7c669c080" };
+		string[] RenderBug14Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "d2eaadcb-349a-47ab-af12-8382dc5f4973" };
+		string[] RenderBug15Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b9579eb8-ee9e-4beb-8a76-c0c4e436bf6f" };
+		string[] RenderBug16Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "72ba1a82-7366-468d-a044-1a09dbe89245" };
+		string[] RenderBug17Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "6314c05c-8581-4cee-b94a-08666fb8f9c1" };
+		string[] RenderBug18Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56" };
+		string[] RenderBug19Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "18bca27f-7300-4c23-9135-bb497fae36e9" };
+
+		string[] RenderAll = new[] { "render", "--all" };
+		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
+		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
+		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
+		string[] Remove = new[] { "remove", "--all" };
+		string[] HelpInit = new[] { "help", "init" };
+		string[] Version = new[] { "version" };
+		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
+		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
+		string[] List2 = new[] { "list", "-p", "d:\\temp\\t1" };
 
 
-//		string[] LicenseStatus = new[] { "license", "--status" };
-//		string[] LicenseVerify = new[] { "license", "--verify" };
-//		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
-//		if (args.Length == 0)
-//			args = PullBug14Page;
-//#endif
+		string[] LicenseStatus = new[] { "license", "--status" };
+		string[] LicenseVerify = new[] { "license", "--verify" };
+		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
+		if (args.Length == 0)
+			args = RenderAll3;
+#endif
 
 		try {
 			HydrogenFramework.Instance.StartFramework(HydrogenFrameworkOptions.EnableDrm); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work

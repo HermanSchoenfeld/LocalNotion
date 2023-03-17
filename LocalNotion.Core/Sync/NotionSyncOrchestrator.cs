@@ -1,14 +1,10 @@
 ﻿#pragma warning disable CS8618
 
-using System.Collections.Generic;
-using System.Net;
-using System.Runtime.CompilerServices;
-using System.Security.AccessControl;
 using System.Text;
 using Hydrogen;
 using Hydrogen.Application;
-using Microsoft.Extensions.DependencyInjection;
 using Notion.Client;
+using WorkflowCore.Models.Search;
 
 namespace LocalNotion.Core;
 
@@ -33,26 +29,82 @@ public class NotionSyncOrchestrator {
 	/// <summary>
 	/// Downloads and renders pages from a LocalNotionCMS Database.
 	/// </summary>
-	/// <param name="databaseID">Notion ID of the CMS Database</param>
-	/// <param name="sourceFilter">Filter for Source property on CMS Database</param>
-	/// <param name="rootFilter">Filter for Root property on CMS Database</param>
-	/// <param name="updatedOnFilter">Filter out pages updated before date</param>
-	/// <param name="faultTolerant">Continues processing other items when failing on any individual item</param>
-	/// <param name="forceRefresh"></param>
-	/// <returns></returns>
-	public async Task<Page[]> DownloadDatabasePagesAsync(string databaseID, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
+	public async Task<Page[]> DownloadDatabaseAsync(string databaseID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
+		Guard.ArgumentNotNull(databaseID, nameof(databaseID));
+		var downloadedResources = new List<LocalNotionResource>();
 		var processedPages = new List<Page>();
 		await using (Repository.EnterUpdateScope()) {
-			// Fetch updated notion pages and transform into articles
-			var databasePages = QueryDatabasePagesAsync(databaseID, null, cancellationToken);
-			var databasePageIDs = new List<string>();
+
+			// Track the database objects
+			Database notionDatabase = null;
+			LocalNotionDatabase localDatabase = null;
+			IList<Page> pageObjects = default;
+			List<(string, DateTime?)> childPages = default;
+			
+			
+			// Nested method used to fetch notion page (if required, the logic herein
+			// tries to avoid calling this)
+			async Task FetchNotionDatabase() {
+				Logger.Info($"Fetching database: '{databaseID}'");
+				notionDatabase = await FetchDatabaseHeader(databaseID, cancellationToken);
+				knownNotionLastEditTime = notionDatabase.LastEditedTime;
+			}
+
+			var containsDatabase = Repository.TryGetDatabase(databaseID, out localDatabase);
+			var preDownloadRows = Repository.GetChildResources(databaseID).ToArray();
+			var databaseDifferent = containsDatabase && localDatabase.LastEditedOn != knownNotionLastEditTime;
+			var wasPrematurelySynced = containsDatabase && !databaseDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localDatabase.LastSyncedOn - localDatabase.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
+			var shouldDownload = !containsDatabase || databaseDifferent || forceRefresh || wasPrematurelySynced;
+			var lastKnownParent = localDatabase?.ParentResourceID;
+
+			if (shouldDownload) {
+
+				// fetch database if not already
+				if (notionDatabase == null)
+					await FetchNotionDatabase();
+
+				// Remove local database (if applicable)				
+				if (containsDatabase)
+					Repository.RemoveResource(databaseID, false);  // dangling child resources removed when fetching rows below
+
+				// Hydrate the fetched database from notion
+				localDatabase = LocalNotionHelper.ParseDatabase(notionDatabase);
+
+				// Ensure page name is unique (resolve conflicts)
+				localDatabase.Name = CalculateUniqueResourceName(localDatabase.Name);
+
+				// Determine the parent page
+				localDatabase.ParentResourceID = CalculateResourceParent(localDatabase.ID); // note: it's parent, if it has one, will be in the Repository at this point
+
+				// Save notion objects
+				if (Repository.ContainsObject(notionDatabase.Id))
+					Repository.RemoveObject(notionDatabase.Id);
+				Repository.SaveObject(notionDatabase);
+
+				// Save local notion page resource 
+				Repository.AddResource(localDatabase);
+
+				// Track this resource for rendering below
+				downloadedResources.Add(localDatabase);
+
+				// In order to support cyclic references between parent -> child pages in the case where
+				// no object-id folders are used, we generate blank stub at download time. This is because trying to predict
+				// the render as ILinkGenerator's do is unreliable due to potential for conflicting filenames.
+				// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
+				// issue.
+				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Database))
+					Repository.ImportBlankResourceRender(notionDatabase.Id, renderType);
+
+			}
+
+			// Fetch updated database pages
+			var postDownloadRows = new List<Page>();
 			// Download
-			var downloadedResources = new List<LocalNotionResource>();
 			var sequence = 0;
-			await foreach (var page in databasePages.WithCancellation(cancellationToken)) {
+			await foreach (var page in FetchDatabasePagesAsync(databaseID, null, cancellationToken).WithCancellation(cancellationToken)) {
 				cancellationToken.ThrowIfCancellationRequested();
 				try {
-					databasePageIDs.Add(page.Id);
+					postDownloadRows.Add(page);
 					var downloads = await DownloadPageAsync(page.Id, page.LastEditedTime, sequence: sequence++, render: false, forceRefresh: forceRefresh, cancellationToken: cancellationToken); // rendering deferred to below
 					downloadedResources.AddRange(downloads);
 					processedPages.Add(page);
@@ -69,23 +121,22 @@ public class NotionSyncOrchestrator {
 				}
 			}
 
-			// Remove deleted resources
-			var localDBItems = Repository.GetChildObjects(databaseID).Select(x => x.ID).ToArray();
-			foreach (var oldItem in localDBItems.Except(databasePageIDs)) {
-				Repository.RemoveResource(oldItem, true);
+			// Locally delete rows that were removed in Notion
+			foreach (var oldResource in preDownloadRows.Select(x => x.ID).Except(postDownloadRows.Select(x => x.Id))) {
+				Repository.RemoveResource(oldResource, true);
 			}
 
 			// Render
 			if (render) {
 				var renderer = new ResourceRenderer(Repository, Logger);
-				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Cast<LocalNotionPage>()) {
+				foreach (var resource in downloadedResources.Where(x => x is not LocalNotionFile)) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
-						renderer.RenderLocalResource(page.ID, renderType, renderMode);
+						renderer.RenderLocalResource(resource.ID, renderType, renderMode);
 					} catch (TaskCanceledException) {
 						throw;
 					} catch (Exception error) {
-						Logger.Error($"Failed to render page '{page.Title}' ({page.ID}).");
+						Logger.Error($"Failed to render resource '{resource.Title}' ({resource.ID}).");
 						Logger.Exception(error);
 						if (!faultTolerant)
 							throw;
@@ -108,6 +159,7 @@ public class NotionSyncOrchestrator {
 			IDictionary<string, IObject> pageObjects = default;
 			NotionObjectGraph pageGraph = default;
 			List<(string, DateTime?)> childPages = default;
+			List<(string, DateTime?)> childDatabases = default;
 
 			// Nested method used to fetch notion page (if required, the logic herein
 			// tries to avoid calling this)
@@ -124,7 +176,7 @@ public class NotionSyncOrchestrator {
 				await FetchNotionPage();
 
 			var containsPage = Repository.TryGetPage(pageID, out localPage);
-			var oldChildResources = Repository.GetChildObjects(pageID).ToArray();
+			var oldChildResources = Repository.GetChildResources(pageID).ToArray();
 			var pageDifferent = containsPage && localPage.LastEditedOn != knownNotionLastEditTime;
 			var wasPrematurelySynced = containsPage && !pageDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localPage.LastSyncedOn - localPage.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
 			var shouldDownload = !containsPage || pageDifferent || forceRefresh || wasPrematurelySynced;
@@ -149,11 +201,7 @@ public class NotionSyncOrchestrator {
 				localPage = LocalNotionHelper.ParsePage(notionPage);
 
 				// Ensure page name is unique (resolve conflicts)
-				var nameCandidate = localPage.Name;
-				var attempt = 2;
-				while (Repository.ContainsResourceByName(nameCandidate))
-					nameCandidate = $"{localPage.Name}-{attempt++}";
-				localPage.Name = nameCandidate;
+				localPage.Name = CalculateUniqueResourceName(localPage.Name);
 
 				// Fetch page graph from notion
 				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({notionPage.Id})");
@@ -164,7 +212,7 @@ public class NotionSyncOrchestrator {
 				// Determine the parent page
 				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects);
 
-				// Determine child pages
+				// Determine child resources
 				childPages =
 					pageObjects
 					.Values
@@ -172,6 +220,14 @@ public class NotionSyncOrchestrator {
 					.Cast<ChildPageBlock>()
 					.Select(x => (x.Id, new DateTime?(x.LastEditedTime)))
 					.ToList();
+
+				childDatabases =
+					pageObjects
+						.Values
+						.Where(x => x is ChildDatabaseBlock)
+						.Cast<ChildDatabaseBlock>()
+						.Select(x => (x.Id, new DateTime?(x.LastEditedTime)))
+						.ToList();
 
 				// Hydrate a Notion CMS summaries (and future plugins)
 				if (LocalNotionCMSHelper.IsCMSPage(notionPage)) {
@@ -184,20 +240,21 @@ public class NotionSyncOrchestrator {
 					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
 				}
 
-				if (localPage.CMSProperties != null && localPage.CMSProperties.Summary is null)
+				// If no summary was provided, generate one
+				if (localPage.CMSProperties is { Summary: null })
 					localPage.CMSProperties.Summary = LocalNotionHelper.ExtractDefaultPageSummary(pageGraph, pageObjects);
 
 				#endregion
 
 				#region Download attached files
 
-				var linkResolver = LinkGeneratorFactory.Create(Repository);
+				var linkGenerator = LinkGeneratorFactory.Create(Repository);
 				// Download cover
 				if (localPage.Cover != null && ShouldDownloadFile(localPage.Cover)) {
 					// Cover is a Notion file
 					var file = await DownloadFileAsync(localPage.Cover, notionPage.Id, forceRefresh, cancellationToken);
 					if (file != null) {
-						localPage.Cover = linkResolver.Generate(localPage, file.ID, RenderType.File, out _);
+						localPage.Cover = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
 						notionPage.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
 
@@ -211,7 +268,7 @@ public class NotionSyncOrchestrator {
 					// Thumbnail is a Notion file
 					var file = await DownloadFileAsync(localPage.Thumbnail.Data, notionPage.Id, forceRefresh, cancellationToken);
 					if (file != null) {
-						localPage.Thumbnail.Data = linkResolver.Generate(localPage, file.ID, RenderType.File, out _);
+						localPage.Thumbnail.Data = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
 						((FileObject)notionPage.Icon).SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
 
@@ -305,6 +362,21 @@ public class NotionSyncOrchestrator {
 					)
 					.ToList();
 
+				childDatabases =
+					pageObjects
+						.Values
+						.Where(x => x is ChildDatabaseBlock childDatabase && childDatabase.Id != pageID)
+						.Cast<ChildDatabaseBlock>()
+						.Select(x => (x.Id, null as DateTime?))
+						.Union(
+							pageObjects
+								.Values
+								.Where(x => x is Page page && page.Id != pageID)
+								.Cast<Page>()
+								.Select(x => (x.Id, null as DateTime?))
+						)
+						.ToList();
+
 				// Render the unchanged page if no render exists
 				if (!localPage.TryGetRender(renderType, out _))
 					downloadedResources.Add(localPage);
@@ -328,9 +400,25 @@ public class NotionSyncOrchestrator {
 
 			#endregion
 
+			#region Download any child databases
+
+			foreach (var childDatabase in childDatabases) {
+				// We download child database but with rendering off, only top-level will ever render itself and all children
+				var subPageDownloads = await DownloadDatabaseAsync(childDatabase.Item1, childDatabase.Item2, false, renderType, renderMode, faultTolerant, forceRefresh, cancellationToken);
+				downloadedResources.AddRange(subPageDownloads.Cast<LocalNotionResource>());
+			}
+
+			// If page was not changed but a child page was changed, then we add it to renderable
+			// set because links and other things may be changed
+			if (!downloadedResources.Contains(localPage) &&
+			    downloadedResources.Any(x => x is LocalNotionPage && childPages.Any(y => x.ID == y.Item1)))
+				downloadedResources.Add(localPage);
+
+			#endregion
+
 			#region Remove old child resources
 
-			foreach (var childResource in oldChildResources.Except(Repository.GetChildObjects(pageID), ProjectionEqualityComparer.Create<LocalNotionResource, string>(r => r.ID))) {
+			foreach (var childResource in oldChildResources.Except(Repository.GetChildResources(pageID), ProjectionEqualityComparer.Create<LocalNotionResource, string>(r => r.ID))) {
 				Logger.Info($"Removing '{childResource.Title}' ({childResource.ID})");
 				Repository.RemoveResource(childResource.ID, true);
 			}
@@ -341,6 +429,8 @@ public class NotionSyncOrchestrator {
 
 			if (render) {
 				var renderer = new ResourceRenderer(Repository, Logger);
+
+				// render pages
 				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Distinct().Cast<LocalNotionPage>()) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
@@ -356,6 +446,7 @@ public class NotionSyncOrchestrator {
 							throw;
 					}
 				}
+
 			}
 
 			#endregion
@@ -417,7 +508,11 @@ public class NotionSyncOrchestrator {
 		throw new NotImplementedException();
 	}
 
-	public IAsyncEnumerable<Page> QueryDatabasePagesAsync(string databaseID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
+	public async Task<Database> FetchDatabaseHeader(string databaseID, CancellationToken cancellationToken = default) {
+		return await NotionClient.Databases.RetrieveAsync(databaseID).WithCancellationToken(cancellationToken);
+	}
+
+	public IAsyncEnumerable<Page> FetchDatabasePagesAsync(string databaseID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
 		Logger.Info($"Fetching updated pages for database '{databaseID}'{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
 		return NotionClient.Databases.EnumerateAsync(
 			databaseID,
@@ -446,17 +541,11 @@ public class NotionSyncOrchestrator {
 		return result;
 	}
 
-
 	/// <summary>
 	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
 	/// </summary>
-	protected string CalculateResourceParent(string objectID)
-		=> CalculateResourceParent(objectID, new Dictionary<string, IObject>());
-
-	/// <summary>
-	/// Calculates the parent resource of the given object. A "resource" is something that is rendered by Local Notion.
-	/// </summary>
-	protected string CalculateResourceParent(string objectID, IDictionary<string, IObject> nonPersistedObjects) {
+	protected string CalculateResourceParent(string objectID, IDictionary<string, IObject> nonPersistedObjects = null) {
+		nonPersistedObjects ??= new Dictionary<string, IObject>();
 		var visited = new HashSet<string>();
 		while (!visited.Contains(objectID) && (nonPersistedObjects.TryGetValue(objectID, out var obj) || Repository.TryGetObject(objectID, out obj))) {
 			visited.Add(objectID);
@@ -477,4 +566,13 @@ public class NotionSyncOrchestrator {
 		}
 		return null;
 	}
+
+	protected string CalculateUniqueResourceName(string resourceName) {
+		var nameCandidate = resourceName;
+		var attempt = 2;
+		while (Repository.ContainsResourceByName(nameCandidate))
+			nameCandidate = $"{resourceName}-{attempt++}";
+		return nameCandidate;
+	}
+
 }

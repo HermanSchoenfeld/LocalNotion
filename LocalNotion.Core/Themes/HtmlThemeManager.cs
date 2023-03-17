@@ -5,10 +5,13 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.FileProviders;
 using LocalNotion.Extensions;
+using Notion.Client;
+using System.Runtime.Serialization;
 
 namespace LocalNotion.Core;
 
 public class HtmlThemeManager : IThemeManager {
+	
 
 	public HtmlThemeManager(IPathResolver pathResolver, ILogger logger = null) {
 		Guard.ArgumentNotNull(pathResolver, nameof(pathResolver));
@@ -64,6 +67,48 @@ public class HtmlThemeManager : IThemeManager {
 			}
 			return true;
 		}
+	}
+
+
+	public DictionaryChain<string, object> LoadThemeTokens(HtmlThemeInfo[] themes, string pageID, LocalNotionMode localNotionMode, RenderMode renderMode, out bool suppressFormatting) {
+		Guard.ArgumentNotNull(themes, nameof(themes));
+		DictionaryChain<string, object> tokens = null;
+
+
+		var htmlThemes = themes.Cast<HtmlThemeInfo>().ToArray();
+
+		suppressFormatting = htmlThemes.Any(t => t.Traits.HasFlag(HtmlThemeTraits.SuppressFormatting));
+
+		// Generate all the theme tokens
+		foreach(var theme in htmlThemes)
+			tokens = tokens == null ?
+				GetModeCorrectedTokens(theme) 
+				: tokens.AttachHead( GetModeCorrectedTokens(theme) );
+
+		// Attach rendering-specific tokens
+		tokens = tokens.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
+
+		return tokens;
+
+		DictionaryChain<string, object> GetModeCorrectedTokens(HtmlThemeInfo theme) {
+			// This method provides a "chain of responsibility" style dictionary of all the theme tokens
+			// Also it resolves a theme:// tokens which are aliases for links to a theme resource.
+			var dictionary = new DictionaryChain<string, object>(
+				theme.Tokens.ToDictionary(x => x.Key, x => localNotionMode switch { LocalNotionMode.Offline => ToLocalPathIfApplicable(x.Key, x.Value.Local), LocalNotionMode.Online => x.Value.Remote, _ => throw new NotSupportedException(localNotionMode.ToString())}),
+				theme.BaseTheme != null ? GetModeCorrectedTokens(theme.BaseTheme) : null
+			);
+
+			object ToLocalPathIfApplicable(string key, object value) {
+				if (key.StartsWith("theme://")) {
+					Guard.Ensure(value != null, $"Unexpected null value for key '{key}'");
+					var thisRendersExpectedParentFolder = PathResolver.GetResourceFolderPath(LocalNotionResourceType.Page, pageID, FileSystemPathType.Absolute);
+					return Path.GetRelativePath(thisRendersExpectedParentFolder, value.ToString()).ToUnixPath();
+				}
+				return value;
+			}
+			return dictionary;
+		}
+
 	}
 
 	public static void ExtractEmbeddedThemes(string folder, bool overwrite, ILogger logger) {

@@ -100,7 +100,7 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public virtual bool TryGetParentResource(string objectID, out LocalNotionResource parent) => InternalRepository.Value.TryGetParentResource(objectID, out parent);
 
-	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) => InternalRepository.Value.GetChildObjects(resourceID);
+	public virtual IEnumerable<LocalNotionResource> GetChildResources(string resourceID) => InternalRepository.Value.GetChildResources(resourceID);
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) => InternalRepository.Value.ContainsResourceRender(resourceID, renderType);
 

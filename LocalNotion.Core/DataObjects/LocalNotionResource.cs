@@ -8,6 +8,7 @@ namespace LocalNotion.Core;
 [JsonConverter(typeof(JsonSubtypes), "type")]
 [JsonSubtypes.KnownSubType(typeof(LocalNotionFile), LocalNotionResourceType.File)]
 [JsonSubtypes.KnownSubType(typeof(LocalNotionPage), LocalNotionResourceType.Page)]
+[JsonSubtypes.KnownSubType(typeof(LocalNotionDatabase), LocalNotionResourceType.Database)]
 public abstract class LocalNotionResource {
 
 	[JsonProperty("type")]
@@ -25,7 +26,6 @@ public abstract class LocalNotionResource {
 
 	[JsonProperty("renders", NullValueHandling = NullValueHandling.Ignore)]
 	public IDictionary<RenderType, RenderEntry> Renders { get; set; } = new Dictionary<RenderType, RenderEntry>();
-
 	
 	[JsonProperty("last_synced_on")]
 	public DateTime LastSyncedOn { get; set; }

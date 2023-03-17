@@ -7,14 +7,13 @@ namespace LocalNotion.Core;
 
 public static class RendererFactory {
 
-	public static IPageRenderer<string> CreatePageRenderer(LocalNotionPage page, RenderType renderType, RenderMode renderMode, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ILocalNotionRepository repository, ILogger logger) {
+	public static IRenderingEngine<string> CreatePageRenderer(RenderType renderType, RenderMode renderMode, ILocalNotionRepository repository, ILogger logger) {
 		switch (renderType) {
 			case RenderType.HTML:
 				var themeManager = new HtmlThemeManager(repository.Paths, logger);
-				var themes = DeterminePageThemes(page, repository);
 				var urlGenerator = LinkGeneratorFactory.Create(repository);
 				var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
-				return new HtmlPageRenderer(renderMode, repository.Paths.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themes.Select(themeManager.LoadTheme).Cast<HtmlThemeInfo>().ToArray());
+				return new HtmlRenderingEngine(renderMode, repository.Paths.Mode, repository.Paths, urlGenerator, breadcrumbGenerator, themeManager);
 			case RenderType.PDF:
 			case RenderType.File:
 			default:
@@ -22,12 +21,21 @@ public static class RendererFactory {
 		}
 	}
 
-
-	private static string[] DeterminePageThemes(LocalNotionPage page, ILocalNotionRepository repository) {
-		var pageThemes = Enumerable.Empty<string>();
-		if (page is { CMSProperties.Themes.Length: > 0 } && page.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
-			pageThemes = page.CMSProperties.Themes;
-		}
-		return repository.DefaultThemes.Concat(pageThemes).ToArray();
+	
+	public static IRenderingEngine<string> CreateDatabaseRenderer(LocalNotionDatabase database, RenderType renderType, RenderMode renderMode, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, string[] themes, ILocalNotionRepository repository, ILogger logger) {
+		throw new NotImplementedException();
+		//switch (renderType) {
+		//	case RenderType.HTML:
+		//		var themeManager = new HtmlThemeManager(repository.Paths, logger);
+		//		themes ??= new [] { "default" };
+		//		var urlGenerator = LinkGeneratorFactory.Create(repository);
+		//		var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
+		//		return new HtmlDatabaseRenderer(renderMode, repository.Paths.Mode, page, pageGraph, pageObjects, repository.Paths, urlGenerator, breadcrumbGenerator, themes.Select(themeManager.LoadTheme).Cast<HtmlThemeInfo>().ToArray());
+		//	case RenderType.PDF:
+		//	case RenderType.File:
+		//	default:
+		//		throw new NotImplementedException(renderType.ToString());
+		//}
 	}
+
 }

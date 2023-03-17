@@ -44,12 +44,15 @@ public class ResourceRenderer : IResourceRenderer {
 
 		// HTML render the page graph
 		Logger.Info($"Rendering page '{page.Title}'");
-		var renderer = RendererFactory.CreatePageRenderer(page, renderType, renderMode, pageGraph, pageObjects, _repository, Logger);
+		var renderer = RendererFactory.CreatePageRenderer(renderType, renderMode, _repository, Logger);
 		var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
 		var output = string.Empty;
 		try {
-			var html = renderer.Render();
-			File.WriteAllText(html, tmpFile);
+			var themes = CalculatePageThemes(page, _repository);
+			var themeManager = new HtmlThemeManager(_repository.Paths, Logger);
+			var htmlThemes = themes.Select(themeManager.LoadTheme).Cast<HtmlThemeInfo>().ToArray();
+			var html = renderer.RenderPage(page, pageGraph, pageObjects, htmlThemes);
+			File.WriteAllText(tmpFile, html);
 			output = _repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
 		} catch (TaskCanceledException) {
 			throw;
@@ -70,6 +73,17 @@ public class ResourceRenderer : IResourceRenderer {
 
 	public string RenderLocalDatabase(string databaseID, RenderType renderType, RenderMode renderMode) {
 		throw new NotImplementedException();
+		//var database = (LocalNotionDatabase) _repository.GetResource(databaseID);
+		//Logger.Info($"Rendering database '{database.Title}'");
+		//var renderer = RendererFactory.C
 	}
 
+
+	public static string[] CalculatePageThemes(LocalNotionPage page, ILocalNotionRepository repository) {
+		var pageThemes = Enumerable.Empty<string>();
+		if (page is { CMSProperties.Themes.Length: > 0 } && page.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
+			pageThemes = page.CMSProperties.Themes;
+		}
+		return repository.DefaultThemes.Concat(pageThemes).ToArray();
+	}
 }

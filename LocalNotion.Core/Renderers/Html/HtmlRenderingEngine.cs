@@ -6,55 +6,43 @@ using AngleSharp.Html.Parser;
 
 namespace LocalNotion.Core;
 
-public class HtmlPageRenderer : PageRendererBase<string> {
+public class HtmlRenderingEngine : RenderingEngineBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlPageRenderer(RenderMode renderMode, LocalNotionMode mode, LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, HtmlThemeInfo[] themes)
-		: base(page, pageGraph, pageObjects, resolver, breadCrumbGenerator) {
-		Guard.ArgumentNotNull(themes, nameof(themes));
-		Guard.ArgumentGT(themes.Length, 0, nameof(themes), "At least 1 theme must be provided to the renderer");
+	public HtmlRenderingEngine(RenderMode renderMode, LocalNotionMode mode, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, HtmlThemeManager themeManager)
+		: base(resolver, breadCrumbGenerator) {
 		Mode = mode;
 		BreadCrumbGenerator = breadCrumbGenerator;
 		RenderMode = renderMode;
-
-		SuppressFormatting = themes.Any(t => t.Traits.HasFlag(HtmlThemeTraits.SuppressFormatting));
-
-		// Generate all the theme tokens
-		foreach(var theme in themes)
-			_tokens = _tokens == null ?
-				GetModeCorrectedTokens(theme) 
-				: _tokens.AttachHead( GetModeCorrectedTokens(theme) );
-
-		// Attach rendering-specific tokens
-		_tokens = _tokens.AttachHead(new Dictionary<string, object> { ["render_mode"] = renderMode.GetAttribute<EnumMemberAttribute>().Value });
-
-		DictionaryChain<string, object> GetModeCorrectedTokens(HtmlThemeInfo theme) {
-			// This method provides a "chain of responsibility" style dictionary of all the theme tokens
-			// Also it resolves a theme:// tokens which are aliases for links to a theme resource.
-			var dictionary = new DictionaryChain<string, object>(
-				theme.Tokens.ToDictionary(x => x.Key, x => mode switch { LocalNotionMode.Offline => ToLocalPathIfApplicable(x.Key, x.Value.Local), LocalNotionMode.Online => x.Value.Remote, _ => throw new NotSupportedException(mode.ToString()) }),
-				theme.BaseTheme != null ? GetModeCorrectedTokens(theme.BaseTheme) : null
-			);
-
-			object ToLocalPathIfApplicable(string key, object value) {
-				if (key.StartsWith("theme://")) {
-					Guard.Ensure(value != null, $"Unexpected null value for key '{key}'");
-					var thisRendersExpectedParentFolder = pathResolver.GetResourceFolderPath(LocalNotionResourceType.Page, Page.ID, FileSystemPathType.Absolute);
-					return Path.GetRelativePath(thisRendersExpectedParentFolder, value.ToString()).ToUnixPath();
-				}
-				return value;
-			}
-			return dictionary;
-		}
+		PathResolver = pathResolver;
+		ThemeManager = themeManager;
 	}
 
 	protected LocalNotionMode Mode { get; }
 
 	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
 
+	protected IPathResolver PathResolver { get; }
+
 	protected RenderMode RenderMode { get; }
 
-	protected bool SuppressFormatting { get; }
+	protected HtmlThemeManager ThemeManager { get; }
+
+	protected bool SuppressFormatting { get; private set; }
+
+	public override string RenderPage(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ThemeInfo[] themes) {
+		Guard.ArgumentNotNull(page, nameof(page));
+		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
+		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
+		Guard.ArgumentNotNull(themes, nameof(themes));
+		Guard.ArgumentGT(themes.Length, 0, nameof(themes), "At least 1 theme must be provided to the renderer");
+		Guard.Argument(themes.All(x => x is HtmlThemeInfo), nameof(themes), $"Must all be instances of '{nameof(HtmlThemeInfo)}'");
+
+		_tokens = ThemeManager.LoadThemeTokens(themes.Cast<HtmlThemeInfo>().ToArray() , page.ID, Mode, RenderMode, out var suppressFormatting);
+		SuppressFormatting = suppressFormatting;;
+
+		return base.RenderPage(page, pageGraph, pageObjects, themes);
+	}
 
 	protected override string Merge(IEnumerable<string> outputs)
 		=> outputs.ToDelimittedString(string.Empty);
@@ -73,7 +61,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(Link link)
 		=> RenderTemplate(
 				"text_link",
-				new NotionObjectTokens {
+				new RenderTokens {
 					["url"] = SanitizeUrl(link.Url),
 					["text"] = link.Url,
 				}
@@ -112,7 +100,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		var mailto = $"mailto:{user.Person?.Email ?? string.Empty}";
 		return RenderTemplate(
 			"user",
-			new NotionObjectTokens(user) {
+			new RenderTokens(user) {
 				["name"] = user.Name,
 				["mailto"] = mailto,
 				["base64_mailto_string_exp"] = mailto.ToBase64().ToCharArray().Select(x => $"'{x}'").ToDelimittedString(" + ")
@@ -143,7 +131,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(RichTextEquation text)
 		=> RenderTemplate(
 				"equation_inline",
-				new NotionObjectTokens {
+				new RenderTokens {
 					["expression"] = System.Net.WebUtility.HtmlEncode(text.Equation.Expression),
 				}
 			);
@@ -153,7 +141,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			"user" => Render(text.Mention.User),
 			"page" => RenderTemplate(
 				"text_link",   // should be page_link (use svg's)
-				new NotionObjectTokens {
+				new RenderTokens {
 					["url"] = Resolver.TryGenerate(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
 					["text"] = Resolver.TryGenerate(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
 				}
@@ -171,7 +159,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (!string.IsNullOrWhiteSpace(link)) {
 				return RenderTemplate(
 					"text_link",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["url"] = SanitizeUrl(link),
 						["text"] = RenderInternal(null, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color, content)
 					}
@@ -182,7 +170,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (isBold) {
 				return RenderTemplate(
 					"text_bold",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["text"] = RenderInternal(null, false, isItalic, isStrikeThrough, isUnderline, isCode, color, content)
 					}
 				);
@@ -191,7 +179,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (isItalic) {
 				return RenderTemplate(
 					"text_italic",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["text"] = RenderInternal(null, false, false, isStrikeThrough, isUnderline, isCode, color, content)
 					}
 				);
@@ -200,7 +188,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (isStrikeThrough) {
 				return RenderTemplate(
 					"text_strikethrough",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["text"] = RenderInternal(null, false, false, false, isUnderline, isCode, color, content)
 					}
 				);
@@ -210,7 +198,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (isUnderline) {
 				return RenderTemplate(
 					"text_underline",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["text"] = RenderInternal(null, false, false, false, false, isCode, color, content)
 					}
 				);
@@ -219,7 +207,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (isCode) {
 				return RenderTemplate(
 					"text_code",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["text"] = System.Net.WebUtility.HtmlEncode(content),
 					}
 				);
@@ -228,7 +216,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			if (color != Color.Default) {
 				return RenderTemplate(
 					"text_colored",
-					new NotionObjectTokens {
+					new RenderTokens {
 						["color"] = color.GetAttribute<EnumMemberAttribute>().Value.Replace("_", "-"),
 						["text"] = RenderInternal(null, false, false, false, false, false, Color.Default, content)
 					}
@@ -237,7 +225,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 			return RenderTemplate(
 				"text",
-				new NotionObjectTokens {
+				new RenderTokens {
 					["text"] = System.Net.WebUtility.HtmlEncode(content).Replace("\n", "<br />"),
 				}
 			);
@@ -325,9 +313,10 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 	protected override string Render(Page page)
 		=> CleanUpHtml(
+
 			RenderTemplate(
 				"page",
-				new NotionObjectTokens(page) {
+				new RenderTokens(page) {
 					["title"] = this.Page.Title,   // html title
 					["page_name"] = this.Page.Name,
 					["page_title"] = RenderTemplate("page_title", new() { ["text"] = this.Page.Title }),   // title on the page 
@@ -336,7 +325,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						null => string.Empty,
 						_ => RenderTemplate(
 								"cover",
-								new NotionObjectTokens {
+								new RenderTokens {
 									["cover_url"] = SanitizeUrl(this.Page.Cover) ?? string.Empty,
 								}
 							)
@@ -345,13 +334,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 						ThumbnailType.None => string.Empty,
 						ThumbnailType.Emoji => RenderTemplate(
 							this.Page.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
-							new NotionObjectTokens {
+							new RenderTokens {
 								["thumbnail_emoji"] = this.Page.Thumbnail.Data,
 							}
 						),
 						ThumbnailType.Image => RenderTemplate(
 							this.Page.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
-							new NotionObjectTokens {
+							new RenderTokens {
 								["thumbnail_url"] = SanitizeUrl(this.Page.Thumbnail.Data)
 							}
 						),
@@ -367,7 +356,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(TableBlock block)
 		=> RenderTemplate(
 			"table",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["column_count"] = block.Table.TableWidth,
 				["table_rows"] = block.HasChildren ? RenderChildItems() : string.Empty,
 			}
@@ -381,13 +370,13 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		var hasColHeader = tableObj.Table.HasColumnHeader;
 		return RenderTemplate(
 		  hasRowHeader && rowIX == 0 ? "table_header_row" : "table_row",
-		  new NotionObjectTokens(block) {
+		  new RenderTokens(block) {
 			  ["row_index"] = rowIX.ToString(),
 			  ["table_row_cells"] = Merge(
 				  block.TableRow.Cells.Select(
 					  (cell, colIX) => RenderTemplate(
 						  hasRowHeader && rowIX == 0 || hasColHeader && colIX == 0 ? "table_header_cell" : "table_cell",
-						  new NotionObjectTokens(cell) {
+						  new RenderTokens(cell) {
 							  ["row_id"] = block.Id,
 							  ["row_index"] = rowIX.ToString(),
 							  ["col_index"] = colIX.ToString(),
@@ -403,7 +392,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(AudioBlock block)
 		=> RenderTemplate(
 			"audio",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["caption"] = Render(block.Audio.Caption),
 				["url"] = Render(block.Audio)
 			}
@@ -415,12 +404,12 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(BreadcrumbBlock block, BreadCrumb breadcrumb) {
 		return RenderTemplate(
 		   "breadcrumb",
-		   new NotionObjectTokens(block) {
+		   new RenderTokens(block) {
 			   ["breadcrumb_items"] = Merge(
 				  breadcrumb.Trail.Select(
 					  item => RenderTemplate(
 						  !item.Traits.HasFlag(BreadCrumbItemTraits.HasUrl) || item.Traits.HasFlag(BreadCrumbItemTraits.IsCurrentPage) ? "breadcrumb_item_disabled" : "breadcrumb_item",
-						  new NotionObjectTokens(item) {
+						  new RenderTokens(item) {
 							  ["type"] = item.Type.GetAttribute<EnumMemberAttribute>().Value,
 							  ["data"] = item.Data,
 							  ["text"] = item.Text,
@@ -428,14 +417,14 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 							  ["icon"] = item.Traits.HasFlag(BreadCrumbItemTraits.HasEmojiIcon) ?
 								   RenderTemplate(
 									   "icon_emoji",
-										new NotionObjectTokens(block) {
+										new RenderTokens(block) {
 											["emoji"] = item.Data
 										}
 								   ) :
 								   item.Traits.HasFlag(BreadCrumbItemTraits.HasImageIcon) ?
 									   RenderTemplate(
 										   "icon_image",
-											new NotionObjectTokens(block) {
+											new RenderTokens(block) {
 												["url"] = item.Data
 											}
 									   ) :
@@ -451,7 +440,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderBulletedList(IEnumerable<NotionObjectGraph> bullets)
 		=> RenderTemplate(
 				"bulleted_list",
-				new NotionObjectTokens {
+				new RenderTokens {
 					["contents"] = Merge(bullets.Select((bullet, index) => Render(bullet, index + 1))), // never call RenderBulletedItem directly to avoid infinite loop due to rendering stack
 					
 				}
@@ -462,7 +451,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 			
 			return RenderTemplate(
 				"bulleted_list_item",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["number"] = number,
 					["contents"] = Render(block.BulletedListItem.RichText),
 					["color"] = ToColorString(block.BulletedListItem.Color.Value),
@@ -476,17 +465,17 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(CalloutBlock block)
 		=> RenderTemplate(
 				"callout",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["icon"] = block.Callout.Icon switch {
 						EmojiObject emojiObject => RenderTemplate(
 													"icon_emoji",
-													 new NotionObjectTokens(block) {
+													 new RenderTokens(block) {
 														 ["emoji"] = Render(emojiObject)
 													 }
 												),
 						FileObject fileObject => RenderTemplate(
 													"icon_image",
-													 new NotionObjectTokens(block) {
+													 new RenderTokens(block) {
 														 ["url"] = Render(fileObject)
 													 }
 												),
@@ -507,17 +496,17 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 		return RenderTemplate(
 				"page_link",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["icon"] = resource switch {
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
 													"icon_emoji",
-													 new NotionObjectTokens(block) {
+													 new RenderTokens(block) {
 														 ["emoji"] = localNotionPage.Thumbnail.Data
 													 }
 												),
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
 													"icon_image",
-													 new NotionObjectTokens(block) {
+													 new RenderTokens(block) {
 														 ["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
 													 }
 												),
@@ -533,7 +522,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(CodeBlock block) {
 		return RenderTemplate(
 			"code",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["language"] = ToPrismLanguage(block.Code.Language),
 				["code"] = System.Net.WebUtility.HtmlEncode(block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty))
 			}
@@ -624,14 +613,14 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 		=> this.CurrentRenderingNode.Children.Length switch {
 			0 => RenderTemplate(
 					"column_list_1",
-					new NotionObjectTokens(block) {
+					new RenderTokens(block) {
 						["column_1"] = string.Empty,
 					}
 				),
 			var x and > 0 and <= 12 => RenderTemplate(
 					$"column_list_{x}",
-					new NotionObjectTokens(
-						NotionObjectTokens
+					new RenderTokens(
+						RenderTokens
 							.ExtractTokens(block)
 							.Concat(
 								Enumerable.Range(0, x).Select(
@@ -649,7 +638,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(EquationBlock block)
 		=> RenderTemplate(
 				"equation_block",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["expression"] = System.Net.WebUtility.HtmlEncode(block.Equation.Expression),
 				}
 			);
@@ -660,7 +649,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 		return RenderTemplate(
 			"file",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["filename"] = filename,
 				["caption"] = Render(block.File.Caption),
 				["url"] = SanitizeUrl(url),
@@ -670,90 +659,92 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	}
 
 	protected override string Render(HeadingOneBlock block)
-		=> RenderTemplate(
-				"heading_1",
-				new NotionObjectTokens(block) {
-					["text"] = Render(block.Heading_1.RichText),
-					["color"] = ToColorString(block.Heading_1.Color.Value)
-				}
-			);
+		=> block.Heading_1.IsToggleable switch {
 
-	protected override string RenderToggleHeader(HeadingOneBlock block)
-		=> RenderTemplate(
-			"toggle_closed",
-			new NotionObjectTokens(block) {
-				["toggle_id"] = $"toggle_{++_toggleCount}",
-				["title"] = RenderTemplate(
+			true => RenderTemplate(
+				"toggle_closed",
+				new RenderTokens(block) {
+					["toggle_id"] = $"toggle_{++_toggleCount}",
+					["title"] = RenderTemplate(
+						"heading_1",
+						new RenderTokens(block) {
+							["text"] = Render(block.Heading_1.RichText),
+							["color"] = ToColorString(block.Heading_1.Color.Value)
+						}
+					),
+					["color"] = ToColorString(block.Heading_1.Color.Value),
+					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				}
+			),
+
+			false => RenderTemplate(
 					"heading_1",
-					new NotionObjectTokens(block) {
+					new RenderTokens(block) {
 						["text"] = Render(block.Heading_1.RichText),
 						["color"] = ToColorString(block.Heading_1.Color.Value)
 					}
-				),
-				["color"] = ToColorString(block.Heading_1.Color.Value),
-				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
-			}
-		);
+				)
+		};
+
 
 	protected override string Render(HeadingTwoBlock block)
-		=> RenderTemplate(
+		=> block.Heading_2.IsToggleable switch {
+			true => RenderTemplate(
+				"toggle_closed",
+				new RenderTokens(block) {
+					["toggle_id"] = $"toggle_{++_toggleCount}",
+					["title"] = RenderTemplate(
+						"heading_2",
+						new RenderTokens(block) {
+							["text"] = Render(block.Heading_2.RichText),
+							["color"] = ToColorString(block.Heading_2.Color.Value)
+						}
+					),
+					["color"] = ToColorString(block.Heading_2.Color.Value),
+					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				}
+			),
+			false => RenderTemplate(
 				"heading_2",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["text"] = Render(block.Heading_2.RichText),
 					["color"] = ToColorString(block.Heading_2.Color.Value)
 				}
-			);
+			)
+		};
 
-	protected override string RenderToggleHeader(HeadingTwoBlock block)
-		=> RenderTemplate(
-			"toggle_closed",
-			new NotionObjectTokens(block) {
-				["toggle_id"] = $"toggle_{++_toggleCount}",
-				["title"] = RenderTemplate(
-					"heading_2",
-					new NotionObjectTokens(block) {
-						["text"] = Render(block.Heading_2.RichText),
-						["color"] = ToColorString(block.Heading_2.Color.Value)
-					}
-				),
-				["color"] = ToColorString(block.Heading_2.Color.Value),
-				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
-			}
-		);
 
 
 	protected override string Render(HeadingThreeBlock block)
-		=> RenderTemplate(
+		=> block.Heading_3.IsToggleable switch {
+			true => RenderTemplate(
+				"toggle_closed",
+				new RenderTokens(block) {
+					["toggle_id"] = $"toggle_{++_toggleCount}",
+					["title"] = RenderTemplate(
+						"heading_3",
+						new RenderTokens(block) {
+							["text"] = Render(block.Heading_3.RichText),
+							["color"] = ToColorString(block.Heading_3.Color.Value)
+						}
+					),
+					["color"] = ToColorString(block.Heading_3.Color.Value),
+					["children"] = block.HasChildren || block.Heading_3.IsToggleable ? RenderChildItems() : string.Empty,
+				}
+			),
+			false => RenderTemplate(
 				"heading_3",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["text"] = Render(block.Heading_3.RichText),
 					["color"] = ToColorString(block.Heading_3.Color.Value)
 				}
-			);
-
-
-	protected override string RenderToggleHeader(HeadingThreeBlock block)
-		=> RenderTemplate(
-			"toggle_closed",
-			new NotionObjectTokens(block) {
-				["toggle_id"] = $"toggle_{++_toggleCount}",
-				["title"] = RenderTemplate(
-					"heading_3",
-					new NotionObjectTokens(block) {
-						["text"] = Render(block.Heading_3.RichText),
-						["color"] = ToColorString(block.Heading_3.Color.Value)
-					}
-				),
-				["color"] = ToColorString(block.Heading_3.Color.Value),
-				["children"] = block.HasChildren || block.Heading_3.IsToggleable ? RenderChildItems() : string.Empty,
-			}
-		);
-
+			)
+		};
 
 	protected override string Render(ImageBlock block)
 		=> RenderTemplate(
 				"image",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["url"] = Render(block.Image),
 					["caption"] = Render(block.Image.Caption)
 				}
@@ -765,17 +756,17 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 		return RenderTemplate(
 				"page_link",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["icon"] = resource switch {
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
 													"icon_emoji",
-													 new NotionObjectTokens(block) {
+													 new RenderTokens(block) {
 														 ["emoji"] = localNotionPage.Thumbnail.Data
 													 }
 												),
 						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
 													"icon_image",
-													 new NotionObjectTokens(block) {
+													 new RenderTokens(block) {
 														 ["url"] = localNotionPage.Thumbnail.Data
 													 }
 												),
@@ -791,7 +782,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderNumberedItem(int number, NumberedListItemBlock block)
 		=> RenderTemplate(
 			"numbered_list_item",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["number"] = number,
 				["contents"] = Render(block.NumberedListItem.RichText),
 				["color"] = ToColorString(block.NumberedListItem.Color.Value),
@@ -802,7 +793,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderNumberedList(IEnumerable<NotionObjectGraph> numberedListItems)
 		=> RenderTemplate(
 				"numbered_list",
-				new NotionObjectTokens {
+				new RenderTokens {
 					["contents"] = Merge(numberedListItems.Select((item, index) => Render(item, index + 1)))   // never call RenderNumberedItem directly to avoid infinite loop due to rendering stack
 				}
 			);
@@ -810,7 +801,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(PDFBlock block)
 		=> RenderTemplate(
 			"pdf",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["caption"] = Render(block.PDF.Caption),
 				["url"] = Render(block.PDF)
 			}
@@ -819,7 +810,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(ParagraphBlock block)
 		=> RenderTemplate(
 				"paragraph",
-				new NotionObjectTokens(block) {
+				new RenderTokens(block) {
 					["contents"] = Render(block.Paragraph.RichText),
 					["color"] = ToColorString(block.Paragraph.Color.Value),
 					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
@@ -829,7 +820,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(QuoteBlock block)
 		=> RenderTemplate(
 			"quote",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["text"] = Render(block.Quote.RichText),
 				["color"] = ToColorString(block.Quote.Color.Value),
 				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
@@ -841,7 +832,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 	protected override string Render(TableOfContentsBlock block)
 		=> RenderTemplate("table_of_contents",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["color"] = ToColorString(block.TableOfContents.Color.Value)
 			}
 		);
@@ -852,7 +843,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(ToDoBlock block)
 		=> RenderTemplate(
 			"to_do",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["text"] = Render(block.ToDo.RichText),
 				["checked"] = block.ToDo.IsChecked ? "checked" : string.Empty,
 				["color"] = ToColorString(block.ToDo.Color.Value),
@@ -863,7 +854,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string Render(ToggleBlock block)
 		=> RenderTemplate(
 			"toggle_closed",
-			new NotionObjectTokens(block) {
+			new RenderTokens(block) {
 				["toggle_id"] = $"toggle_{++_toggleCount}",
 				["title"] = Render(block.Toggle.RichText),
 				["color"] = ToColorString(block.Toggle.Color.Value),
@@ -874,7 +865,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID)
 		=> RenderTemplate(
 			"embed_youtube",
-			new NotionObjectTokens(videoBlock) {
+			new RenderTokens(videoBlock) {
 				["caption"] = Render(videoBlock.Video.Caption),
 				["video_id"] = videoID,
 			}
@@ -883,7 +874,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderVimeoEmbed(VideoBlock videoBlock, string videoID)
 		=> RenderTemplate(
 			"embed_vimeo",
-			new NotionObjectTokens(videoBlock) {
+			new RenderTokens(videoBlock) {
 				["caption"] = Render(videoBlock.Video.Caption),
 				["video_id"] = videoID,
 			}
@@ -892,7 +883,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderVideoEmbed(VideoBlock videoBlock, string url)
 		=> RenderTemplate(
 			"embed_video",
-			new NotionObjectTokens(videoBlock) {
+			new RenderTokens(videoBlock) {
 				["caption"] = Render(videoBlock.Video.Caption),
 				["url"] = Render(videoBlock.Video)
 			}
@@ -901,7 +892,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderTwitterEmbed(EmbedBlock embedBlock, string url)
 		=> RenderTemplate(
 			"embed_twitter",
-			new NotionObjectTokens(embedBlock) {
+			new RenderTokens(embedBlock) {
 				["url"] = SanitizeUrl(embedBlock.Embed.Url),
 				["caption"] = Render(embedBlock.Embed.Caption)
 			}
@@ -910,7 +901,7 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	protected override string RenderUnsupported(object @object)
 		=> RenderTemplate(
 			"unsupported",
-			new NotionObjectTokens(@object) {
+			new RenderTokens(@object) {
 				["json"] = Tools.Json.WriteToString(@object ?? "NULL"),
 			}
 		);
@@ -920,9 +911,9 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 	#region Aux
 
 	protected virtual string RenderTemplate(string widgetType)
-		=> RenderTemplate(widgetType, new NotionObjectTokens());
+		=> RenderTemplate(widgetType, new RenderTokens());
 
-	protected virtual string RenderTemplate(string widget, NotionObjectTokens tokens) {
+	protected virtual string RenderTemplate(string widget, RenderTokens tokens) {
 		_tokens = _tokens.AttachHead(tokens);
 		try {
 			return FetchTemplate(widget, ".html").FormatWithDictionary(_tokens, true);
@@ -1005,17 +996,17 @@ public class HtmlPageRenderer : PageRendererBase<string> {
 
 	#region Inner Classes
 
-	protected class NotionObjectTokens : DictionaryDecorator<string, object> {
+	protected class RenderTokens : DictionaryDecorator<string, object> {
 
-		public NotionObjectTokens()
+		public RenderTokens()
 			: this(Enumerable.Empty<KeyValuePair<string, object>>()) {
 		}
 
-		public NotionObjectTokens(object @object)
+		public RenderTokens(object @object)
 			: this(@object is not null ? ExtractTokens(@object) : Enumerable.Empty<KeyValuePair<string, object>>()) {
 		}
 
-		public NotionObjectTokens(IEnumerable<KeyValuePair<string, object>> values) : base(new Dictionary<string, object>()) {
+		public RenderTokens(IEnumerable<KeyValuePair<string, object>> values) : base(new Dictionary<string, object>()) {
 			Guard.ArgumentNotNull(values, nameof(values));
 			this.AddRange(values, CollectionConflictPolicy.Throw);
 		}

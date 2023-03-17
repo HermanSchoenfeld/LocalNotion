@@ -574,7 +574,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		// Remove child resource if any
 		if (removeChildren) {
-			foreach(var child in GetChildObjects(resourceID))
+			foreach(var child in GetChildResources(resourceID))
 				RemoveResource(child.ID, removeChildren);
 		}
 
@@ -599,7 +599,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	}
 
-	public virtual IEnumerable<LocalNotionResource> GetChildObjects(string resourceID) 
+	public virtual IEnumerable<LocalNotionResource> GetChildResources(string resourceID) 
 		=> Resources.Where(x => x.ParentResourceID == resourceID).ToArray();  // ToArray ensures enumeration completes as 
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) {

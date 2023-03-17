@@ -40,54 +40,89 @@ internal class LocalNotionHelper {
 		return true;
 	}
 
-	public static LocalNotionPage ParsePage(Page page) {
+	public static LocalNotionPage ParsePage(Page notionPage) {
 		var result = new LocalNotionPage();
-		ParsePage(page, result);
+		ParsePage(notionPage, result);
 		return result;
 	}
 
-	public static void ParsePage(Page page, LocalNotionPage dest) {
-		dest.ID = page.Id;
-		dest.LastSyncedOn = DateTime.UtcNow;
-		dest.LastEditedOn = page.LastEditedTime;
-		dest.CreatedOn = page.CreatedTime;
-		dest.Title = page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
-		dest.Name = CalculatePageName(page.Id, dest.Title); // note: this is made unique by NotionSyncOrchestrator
-		dest.Cover = page.Cover != null ? ParseFileUrl(page.Cover, out _) : null;
-		if (page.Icon != null) {
-			dest.Thumbnail = new() {
-				Type = page.Icon switch {
+	public static void ParsePage(Page notionPage, LocalNotionPage localNotionPage) {
+		localNotionPage.ID = notionPage.Id;
+		localNotionPage.LastSyncedOn = DateTime.UtcNow;
+		localNotionPage.LastEditedOn = notionPage.LastEditedTime;
+		localNotionPage.CreatedOn = notionPage.CreatedTime;
+		localNotionPage.Title = notionPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		localNotionPage.Name = CalculatePageName(notionPage.Id, localNotionPage.Title); // note: this is made unique by NotionSyncOrchestrator
+		localNotionPage.Cover = notionPage.Cover != null ? ParseFileUrl(notionPage.Cover, out _) : null;
+		if (notionPage.Icon != null) {
+			localNotionPage.Thumbnail = new() {
+				Type = notionPage.Icon switch {
 					null => ThumbnailType.None,
 					EmojiObject => ThumbnailType.Emoji,
 					FileObject => ThumbnailType.Image,
 					_ => throw new ArgumentOutOfRangeException()
 				},
 
-				Data = page.Icon switch {
+				Data = notionPage.Icon switch {
 					EmojiObject emojiObject => emojiObject.Emoji,
 					FileObject fileObject => ParseFileUrl(fileObject, out _),
 					_ => throw new ArgumentOutOfRangeException()
 				}
 			};
-		} else dest.Thumbnail = LocalNotionThumbnail.None;
+		} else localNotionPage.Thumbnail = LocalNotionThumbnail.None;
 
 	}
+	
+	public static LocalNotionDatabase ParseDatabase(Database notionDatabase) {
+		var result = new LocalNotionDatabase();
+		ParseDatabase(notionDatabase, result);
+		return result;
+	}
 
-	public static string ParseFileUrl(FileObject fileObject, out string name) {
-		name = Constants.DefaultResourceTitle;
-		return fileObject switch {
-			UploadedFile uploadedFile => TryParseNotionFileUrl(uploadedFile.File.Url, out _, out name) ? uploadedFile.File.Url : uploadedFile.File.Url,
+	public static void ParseDatabase(Database notionDatabase, LocalNotionDatabase localNotionDatabase) {
+		localNotionDatabase.ID = notionDatabase.Id;
+		localNotionDatabase.LastSyncedOn = DateTime.UtcNow;
+		localNotionDatabase.LastEditedOn = notionDatabase.LastEditedTime;
+		localNotionDatabase.CreatedOn = notionDatabase.CreatedTime;
+		localNotionDatabase.Title = notionDatabase.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		localNotionDatabase.Name = CalculatePageName(notionDatabase.Id, localNotionDatabase.Title); // note: this is made unique by NotionSyncOrchestrator
+		localNotionDatabase.Cover = notionDatabase.Cover != null ? ParseFileUrl(notionDatabase.Cover, out _) : null;
+		if (notionDatabase.Icon != null) {
+			localNotionDatabase.Thumbnail = new() {
+				Type = notionDatabase.Icon switch {
+					null => ThumbnailType.None,
+					EmojiObject => ThumbnailType.Emoji,
+					FileObject => ThumbnailType.Image,
+					_ => throw new ArgumentOutOfRangeException()
+				},
+
+				Data = notionDatabase.Icon switch {
+					EmojiObject emojiObject => emojiObject.Emoji,
+					FileObject fileObject => ParseFileUrl(fileObject, out _),
+					_ => throw new ArgumentOutOfRangeException()
+				}
+			};
+		} else localNotionDatabase.Thumbnail = LocalNotionThumbnail.None;
+		localNotionDatabase.Description = notionDatabase.Description.ToPlainText();
+		localNotionDatabase.Properties = notionDatabase.Properties;
+	}
+
+
+	public static string ParseFileUrl(FileObject notionFile, out string fileName) {
+		fileName = Constants.DefaultResourceTitle;
+		return notionFile switch {
+			UploadedFile uploadedFile => TryParseNotionFileUrl(uploadedFile.File.Url, out _, out fileName) ? uploadedFile.File.Url : uploadedFile.File.Url,
 			ExternalFile externalFile => externalFile.External.Url,
-			_ => throw new ArgumentOutOfRangeException(nameof(fileObject), fileObject, null)
+			_ => throw new ArgumentOutOfRangeException(nameof(notionFile), notionFile, null)
 		};
 	}
 
-	public static string ParseFileUrl(FileObjectWithName fileObject, out string name) {
-		name = fileObject.Name;
-		return fileObject switch {
+	public static string ParseFileUrl(FileObjectWithName notionFile, out string fileName) {
+		fileName = notionFile.Name;
+		return notionFile switch {
 			UploadedFileWithName uploadedFileWithName => TryParseNotionFileUrl(uploadedFileWithName.File.Url, out _, out _) ? uploadedFileWithName.File.Url : uploadedFileWithName.File.Url,
 			ExternalFileWithName externalFileWithName => externalFileWithName.External.Url,
-			_ => throw new ArgumentOutOfRangeException(nameof(fileObject), fileObject, null)
+			_ => throw new ArgumentOutOfRangeException(nameof(notionFile), notionFile, null)
 		};
 	}
 

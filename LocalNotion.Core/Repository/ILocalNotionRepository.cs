@@ -84,7 +84,7 @@ public interface ILocalNotionRepository  {
 
 	bool TryGetParentResource(string objectID, out LocalNotionResource parent);
 
-	IEnumerable<LocalNotionResource> GetChildObjects(string resourceID);
+	IEnumerable<LocalNotionResource> GetChildResources(string resourceID);
 
 	bool ContainsResourceRender(string resourceID, RenderType renderType);
 
@@ -152,6 +152,21 @@ public static class ILocalNotionRepositoryExtensions {
 	public static LocalNotionPage GetPage(this ILocalNotionRepository repository, string pageID)
 		=> repository.TryGetPage(pageID, out var resource) ? resource : throw new InvalidOperationException($"Page '{pageID}' not found");
 
+	public static bool TryGetDatabase(this ILocalNotionRepository repository, string databaseID, out LocalNotionDatabase database) {
+		database = null;
+		if (!repository.TryGetResource(databaseID, out var resource))
+			return false;
+
+		if (resource is not LocalNotionDatabase lndb)
+			return false;
+
+		database = lndb;
+		return true;
+	}
+
+	public static LocalNotionPage GetDatabase(this ILocalNotionRepository repository, string databaseID)
+		=> repository.TryGetPage(databaseID, out var resource) ? resource : throw new InvalidOperationException($"Database '{databaseID}' not found");
+
 	public static bool TryGetFile(this ILocalNotionRepository repository, string fileID, out LocalNotionFile file) {
 		file = null;
 		if (!repository.TryGetResource(fileID, out var resource))
@@ -194,4 +209,5 @@ public static class ILocalNotionRepositoryExtensions {
 		resource = repository.GetResource(slug);
 		return resource.Renders[render.RenderType];
 	}
+
 }
