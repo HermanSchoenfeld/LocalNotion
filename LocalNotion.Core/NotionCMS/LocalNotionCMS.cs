@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Mime;
-using System.Security.AccessControl;
-using System.Text;
-using System.Threading.Tasks;
-using FluentNHibernate.Conventions;
-using Hydrogen;
-using Microsoft.Win32;
-using Notion.Client;
+﻿using Hydrogen;
 
 namespace LocalNotion.Core;
 

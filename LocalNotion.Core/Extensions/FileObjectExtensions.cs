@@ -4,7 +4,7 @@ using Notion.Client;
 namespace LocalNotion.Core;
 
 public static class FileObjectExtensions {
-	public static string GetUrl(this FileObject fileObject) 
+	public static string GetUrl(this FileObject fileObject)
 		=> fileObject switch {
 			ExternalFile externalFile => externalFile.External.Url,
 			UploadedFile uploadedFile => uploadedFile.File.Url,
@@ -12,7 +12,7 @@ public static class FileObjectExtensions {
 		};
 
 
-	public static void SetUrl(this FileObject fileObject, string value)  {
+	public static void SetUrl(this FileObject fileObject, string value) {
 		switch (fileObject) {
 			case ExternalFile externalFile:
 				externalFile.External.Url = value;

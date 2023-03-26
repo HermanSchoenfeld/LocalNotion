@@ -5,6 +5,12 @@ namespace LocalNotion.Core;
 
 public abstract class LocalNotionEditableResource : LocalNotionResource {
 
+	[JsonProperty("cover", NullValueHandling = NullValueHandling.Ignore)]
+	public string Cover { get; set; }
+
+	[JsonProperty("thumbnail")]
+	public LocalNotionThumbnail Thumbnail { get; set; } = LocalNotionThumbnail.None;
+
 	[JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
 	public string Name { get; set; }
 

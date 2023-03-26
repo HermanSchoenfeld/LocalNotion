@@ -71,16 +71,16 @@ public static class IObjectExtensions {
 	public static FileObject GetFileAttachment(this IObject @object) 
 		=> @object.GetFileAttachmentOrDefault() ?? throw new InvalidOperationException("Object type does not have file attachment property");
 
-	public static FileObject GetFileAttachmentOrDefault(this IObject block) 
-		=> TypeSwitch<FileObject>.For(block,
-			TypeSwitch<FileObject>.Case<AudioBlock>(x => x.Audio),
-			TypeSwitch<FileObject>.Case<FileBlock>(x => x.File),
-			TypeSwitch<FileObject>.Case<ImageBlock>(x => x.Image),
-			TypeSwitch<FileObject>.Case<PDFBlock>(x => x.PDF),
-			TypeSwitch<FileObject>.Case<VideoBlock>(vb => vb.Video),
-			TypeSwitch<FileObject>.Case<CalloutBlock>(cb => cb.Callout.Icon as FileObject),
-			TypeSwitch<FileObject>.Default(default)
-		);
+	public static FileObject GetFileAttachmentOrDefault(this IObject block)
+		=> block switch {
+			AudioBlock audioBlock => audioBlock.Audio,
+			FileBlock fileBlock => fileBlock.File,
+			ImageBlock imageBlock => imageBlock.Image,
+			VideoBlock videoBlock => videoBlock.Video,
+			PDFBlock pdfBlock => pdfBlock.PDF,
+			CalloutBlock calloutBlock => calloutBlock.Callout.Icon as FileObject,
+			_ => default
+		};
 
 	public static IParent GetParent(this IObject obj) 
 		=> TryGetParent(obj, out var parent) ? parent : throw new InvalidOperationException($"{nameof(IObject)} of type {obj.GetType().Name} does not have a parent");

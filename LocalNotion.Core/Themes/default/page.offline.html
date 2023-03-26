@@ -2,6 +2,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{theme://resources/datatables/css/jquery.dataTables.min.css}" />
     <link rel="stylesheet" href="{theme://resources/bootstrap/bootstrap.min.css}">
     <link rel="stylesheet" href="{theme://resources/prism/prism.css}">
     <link rel="stylesheet" href="{theme://resources/local-notion/css/common.css}" />
@@ -23,10 +24,16 @@
         </div>
     </div>
     <script src="{theme://resources/jquery/jquery.min.js}"></script>
+    <script src="{theme://resources/datatables/js/jquery.dataTables.min.js}"></script>
     <script src="{theme://resources/bootstrap/bootstrap.bundle.min.js}"></script>
     <script src="{theme://resources/local-notion/js/toc.js}"></script>
     <script src="{theme://resources/local-notion/js/ln.js}"></script>
     <script async id="MathJax-script" src="{theme://resources/mathjax/tex-mml-chtml.js}"></script>
     <script async src="{theme://resources/prism/prism.js}"></script>
     <script async src="{theme://resources/twitter/widgets.js}" charset="utf-8"></script>
+    <script language="javascript">
+        $(document).ready(function () {
+		$('.ln-database').DataTable();
+        });
+    </script>
 </body>

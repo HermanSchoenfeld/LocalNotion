@@ -15,7 +15,6 @@ public class ResourceRenderer : IResourceRenderer {
 
 	public ILogger Logger { get; set; }
 
-
 	/// <summary>
 	/// Renders a Local Notion resource (page or database).
 	/// </summary>
@@ -25,65 +24,40 @@ public class ResourceRenderer : IResourceRenderer {
 	/// <returns>Filename of rendered file</returns>
 	public string RenderLocalResource(string resourceID, RenderType renderType, RenderMode renderMode) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
-		if (!_repository.TryGetObject(resourceID, out var @obj)) 
-			throw new ObjectNotFoundException(resourceID); 
-		switch(@obj.Object) {
+		if (!_repository.TryGetObject(resourceID, out var @obj))
+			throw new ObjectNotFoundException(resourceID);
+		switch (@obj.Object) {
 			case ObjectType.Page:
-				return RenderLocalPage(resourceID, renderType, renderMode);
 			case ObjectType.Database:
-				return RenderLocalDatabase(resourceID, renderType, renderMode);
+				var resource = (LocalNotionEditableResource)_repository.GetResource(resourceID);
+				var themeManager = new HtmlThemeManager(_repository.Paths, Logger);
+				var renderer = RendererFactory.CreateRenderer(renderType, renderMode, _repository, Logger);
+				var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
+				var output = string.Empty;
+				try {
+					var html = renderer.Render(resource);
+					File.WriteAllText(tmpFile, html);
+					output = _repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
+				} catch (TaskCanceledException) {
+					throw;
+				} catch (Exception error) {
+					// Save exception to rendered file (for html)
+					Tools.Exceptions.ExecuteIgnoringException(() => {
+						if (renderType == RenderType.HTML) {
+							File.WriteAllText(tmpFile, error.ToDiagnosticString());
+							_repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
+						}
+					});
+					throw;
+				} finally {
+					File.Delete(tmpFile);
+				}
+				return output;
+
+
 			default:
 				throw new InvalidOperationException($"Unable to render {@obj.Object} '{resourceID}' as it is not a top-level object");
 		}
 	}
 
-	public string RenderLocalPage(string pageID, RenderType renderType, RenderMode renderMode) {
-		var page = (LocalNotionPage) _repository.GetResource(pageID);
-		var pageGraph = _repository.GetPageGraph(pageID);
-		var pageObjects = _repository.LoadObjects(pageGraph);
-
-		// HTML render the page graph
-		Logger.Info($"Rendering page '{page.Title}'");
-		var renderer = RendererFactory.CreatePageRenderer(renderType, renderMode, _repository, Logger);
-		var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
-		var output = string.Empty;
-		try {
-			var themes = CalculatePageThemes(page, _repository);
-			var themeManager = new HtmlThemeManager(_repository.Paths, Logger);
-			var htmlThemes = themes.Select(themeManager.LoadTheme).Cast<HtmlThemeInfo>().ToArray();
-			var html = renderer.RenderPage(page, pageGraph, pageObjects, htmlThemes);
-			File.WriteAllText(tmpFile, html);
-			output = _repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
-		} catch (TaskCanceledException) {
-			throw;
-		} catch (Exception error) {
-			// Save exception to rendered file (for html)
-			Tools.Exceptions.ExecuteIgnoringException(() => {
-				if (renderType == RenderType.HTML) {
-					File.WriteAllText(tmpFile, error.ToDiagnosticString());
-					_repository.ImportResourceRender(pageID, RenderType.HTML, tmpFile);
-				}
-			});
-			throw;
-		} finally {
-			File.Delete(tmpFile);
-		}
-		return output;
-	}
-
-	public string RenderLocalDatabase(string databaseID, RenderType renderType, RenderMode renderMode) {
-		throw new NotImplementedException();
-		//var database = (LocalNotionDatabase) _repository.GetResource(databaseID);
-		//Logger.Info($"Rendering database '{database.Title}'");
-		//var renderer = RendererFactory.C
-	}
-
-
-	public static string[] CalculatePageThemes(LocalNotionPage page, ILocalNotionRepository repository) {
-		var pageThemes = Enumerable.Empty<string>();
-		if (page is { CMSProperties.Themes.Length: > 0 } && page.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
-			pageThemes = page.CMSProperties.Themes;
-		}
-		return repository.DefaultThemes.Concat(pageThemes).ToArray();
-	}
 }

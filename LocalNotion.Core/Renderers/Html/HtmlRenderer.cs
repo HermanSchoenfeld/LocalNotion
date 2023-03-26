@@ -2,46 +2,26 @@
 using Notion.Client;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
-using AngleSharp.Html.Parser;
 
 namespace LocalNotion.Core;
 
-public class HtmlRenderingEngine : RenderingEngineBase<string> {
+public class HtmlRenderer : RecursiveRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlRenderingEngine(RenderMode renderMode, LocalNotionMode mode, IPathResolver pathResolver, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, HtmlThemeManager themeManager)
-		: base(resolver, breadCrumbGenerator) {
-		Mode = mode;
-		BreadCrumbGenerator = breadCrumbGenerator;
-		RenderMode = renderMode;
-		PathResolver = pathResolver;
-		ThemeManager = themeManager;
+	public HtmlRenderer(RenderMode renderMode, ILocalNotionRepository repository,  HtmlThemeManager themeManager, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, ILogger logger)
+		: base(renderMode, repository, themeManager, resolver, breadCrumbGenerator, logger) {
 	}
 
-	protected LocalNotionMode Mode { get; }
-
-	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
-
-	protected IPathResolver PathResolver { get; }
-
-	protected RenderMode RenderMode { get; }
-
-	protected HtmlThemeManager ThemeManager { get; }
+	protected new HtmlThemeManager ThemeManager => (HtmlThemeManager)base.ThemeManager;
 
 	protected bool SuppressFormatting { get; private set; }
 
-	public override string RenderPage(LocalNotionPage page, NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects, ThemeInfo[] themes) {
-		Guard.ArgumentNotNull(page, nameof(page));
-		Guard.ArgumentNotNull(pageGraph, nameof(pageGraph));
-		Guard.ArgumentNotNull(pageObjects, nameof(pageObjects));
-		Guard.ArgumentNotNull(themes, nameof(themes));
-		Guard.ArgumentGT(themes.Length, 0, nameof(themes), "At least 1 theme must be provided to the renderer");
-		Guard.Argument(themes.All(x => x is HtmlThemeInfo), nameof(themes), $"Must all be instances of '{nameof(HtmlThemeInfo)}'");
-
-		_tokens = ThemeManager.LoadThemeTokens(themes.Cast<HtmlThemeInfo>().ToArray() , page.ID, Mode, RenderMode, out var suppressFormatting);
-		SuppressFormatting = suppressFormatting;;
-
-		return base.RenderPage(page, pageGraph, pageObjects, themes);
+	protected override void OnRenderingContextCreated(PageRenderingContext context) {
+		Guard.ArgumentNotNull(context, nameof(context));
+		Guard.ArgumentGT(context.Themes.Length, 0, nameof(context.Themes), "At least 1 theme must be provided to the renderer");
+		Guard.Argument(context.Themes.All(x => x is HtmlThemeInfo), nameof(context.Themes), $"Must all be instances of '{nameof(HtmlThemeInfo)}'");
+		_tokens = ThemeManager.LoadThemeTokens(context.Themes.Cast<HtmlThemeInfo>().ToArray(), context.Resource.ID, Repository.Paths.Mode, Mode, out var suppressFormatting);
+		SuppressFormatting = suppressFormatting; ;
 	}
 
 	protected override string Merge(IEnumerable<string> outputs)
@@ -52,35 +32,36 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 	protected override string Render(EmojiObject emojiObject)
 		 => emojiObject.Emoji;
 
-	protected override string Render(ExternalFile externalFile)
-		=> SanitizeUrl(externalFile.External.Url);
-
-	protected override string Render(UploadedFile uploadedFile)
-		 => Resolver.GenerateUploadedFileLink(Page, uploadedFile, out _);
-
-	protected override string Render(Link link)
-		=> RenderTemplate(
+	protected override string Render(Link link) =>
+		!string.IsNullOrWhiteSpace(link.Url) ?
+		RenderTemplate(
 				"text_link",
 				new RenderTokens {
 					["url"] = SanitizeUrl(link.Url),
 					["text"] = link.Url,
 				}
-			);
+			) :
+		string.Empty;
 
 	protected override string Render(Date date) {
+		if (date == null)
+			return string.Empty;
+
 		var start = Render(date.Start);
 		var end = Render(date.End);
 		return date.End == null ? start : $"{start} - {end}";
 	}
 
 	protected override string Render(DateTime? date)
-		=> date != null ? date.ToString("yyyy-MM-dd HH:mm:ss.fff") : "Empty";
+		=> date != null ? date.ToString("yyyy-MM-dd HH:mm") : "Empty";
 
 	protected override string Render(bool? val)
 		=> !val.HasValue ? string.Empty : val.Value ? "[X]" : "[ ]";
 
 	protected override string Render(double? val)
 		=> !val.HasValue ? string.Empty : $"{val.Value:G}";
+
+	protected override string Render(string val) => !string.IsNullOrEmpty(val) ? System.Net.WebUtility.HtmlEncode(val).Replace("\n", "<br />") : string.Empty; 
 
 	#endregion
 
@@ -96,12 +77,17 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 
 	#region Users
 
-	protected override string Render(User user) {
-		var mailto = $"mailto:{user.Person?.Email ?? string.Empty}";
+	protected override string Render(User user)
+		=> RenderEmailLink(user.Name, user.Person?.Email);
+
+	protected virtual string RenderEmailLink(string linkTitle, string email) {
+		linkTitle ??= string.Empty;
+		email ??= string.Empty;
+		var mailto = $"mailto:{email}";
 		return RenderTemplate(
 			"user",
-			new RenderTokens(user) {
-				["name"] = user.Name,
+			new RenderTokens {
+				["name"] = linkTitle,
 				["mailto"] = mailto,
 				["base64_mailto_string_exp"] = mailto.ToBase64().ToCharArray().Select(x => $"'{x}'").ToDelimittedString(" + ")
 			}
@@ -118,8 +104,349 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 
 	#region Database
 
-	protected override string Render(Database database)
-		=> RenderUnsupported(database);
+	protected override string Render(Database database, bool inline) {
+		var graph = Repository.GetEditableResourceGraph(database.Id);
+		var rows = graph.Children.Select(x => Repository.GetObject(x.ObjectID)).Cast<Page>();
+
+		return inline switch {
+			false => RenderTemplate(
+					"page_database",
+					new RenderTokens(database) {
+						["title"] = database.Title.ToPlainText(),   // html title
+						["page_name"] = RenderingContext.Resource.Name,
+						["description"] = Render(database.Description),
+						["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
+						["style"] = "wide",
+						["cover"] = RenderingContext.Resource.Cover switch {
+							null => string.Empty,
+							_ => RenderTemplate(
+								"cover",
+								new RenderTokens {
+									["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
+								}
+							)
+						},
+						["thumbnail"] = RenderingContext.Resource.Thumbnail.Type switch {
+							ThumbnailType.None => string.Empty,
+							ThumbnailType.Emoji => RenderTemplate(
+								RenderingContext.Resource.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
+								new RenderTokens {
+									["thumbnail_emoji"] = RenderingContext.Resource.Thumbnail.Data,
+								}
+							),
+							ThumbnailType.Image => RenderTemplate(
+								RenderingContext.Resource.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
+								new RenderTokens {
+									["thumbnail_url"] = SanitizeUrl(RenderingContext.Resource.Thumbnail.Data)
+								}
+							),
+						},
+						["id"] = RenderingContext.Resource.ID,
+						["created_time"] = RenderingContext.Resource.CreatedOn,
+						["last_updated_time"] = RenderingContext.Resource.LastEditedOn,
+						["contents"] = Render(database, true)
+					}
+				),
+
+			true => RenderTemplate(
+				"database",
+				new RenderTokens(database) {
+					["header"] = Merge(database.Properties.Select(x => RenderTemplate("database_header_cell", new RenderTokens(x) { ["contents"] =  Render(x.Key, x.Value) }))),
+					["contents"] = Merge(
+						rows.Select(page =>
+							RenderTemplate(
+								"database_row",
+								new RenderTokens(database) {
+									["contents"] = Merge(
+										database.Properties.Select(x => RenderTemplate("database_row_cell", new RenderTokens(x) { ["contents"] = Render(page, page.Properties[x.Key]) }))
+									)
+								}
+							)
+						)
+					)
+				}
+			),
+		};
+	}
+
+	#region Properties
+
+	protected override string Render(CheckboxProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(CreatedByProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(CreatedTimeProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(DateProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(EmailProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(FilesProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(FormulaProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(LastEditedByProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(LastEditedTimeProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(MultiSelectProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(NumberProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(PeopleProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(PhoneNumberProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(RelationProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(RichTextProperty property) => RenderPropertyCommon(property, null, property.Name);
+	
+	protected override string Render(RollupProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(SelectProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(StatusProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(TitleProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected override string Render(UrlProperty property) => RenderPropertyCommon(property, null, property.Name);
+
+	protected virtual string RenderPropertyCommon(Property property, string icon, string text) 
+		=> RenderTemplate(
+			"property", 
+			new RenderTokens(property) { ["text"] = Render(text) }
+		);
+
+	#endregion
+
+	#region Property Values
+
+	protected override string Render(CheckboxPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = RenderTemplate (
+					"to_do",
+					new RenderTokens(propertyValue) {
+						["text"] = string.Empty,
+						["checked"] = propertyValue.Checkbox ? "checked" : string.Empty,
+						["color"] = "default",
+						["children"] = string.Empty,
+					}
+				)
+			} 
+		);
+
+	protected override string Render(CreatedByPropertyValue propertyValue) 
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.CreatedBy)
+			} 
+		);
+
+	protected override string Render(CreatedTimePropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.CreatedTime.ChompEnd(":00"))
+			} 
+		);
+
+	protected override string Render(DatePropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.Date)
+			} 
+		);
+
+	protected override string Render(EmailPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = RenderEmailLink(propertyValue.Email, propertyValue.Email)
+			} 
+		);
+
+	protected override string Render(FilesPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Merge (
+					propertyValue.Files.Select( 
+						x => {
+							var url = GetFileUrl(x, out var filename);
+							return RenderTemplate(
+								"file",
+								new RenderTokens() {
+									["filename"] = filename,
+									["caption"] = string.Empty,
+									["url"] = SanitizeUrl(url),
+									["size"] = string.Empty,
+								}
+							);
+						}
+					)
+				)
+			} 
+		);
+
+	protected override string Render(FormulaPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = propertyValue.Formula.Type switch {
+					"string" => Render(propertyValue.Formula.String),
+					"number" => Render(propertyValue.Formula.Number),
+					"date" => Render(propertyValue.Formula.Date),
+					"array" => Render(propertyValue.Formula.String),
+					_ => throw new NotSupportedException(propertyValue.Formula.Type.ToString())
+				}
+			} 
+		);
+
+	protected override string Render(LastEditedByPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.LastEditedBy)
+			} 
+		);
+
+	protected override string Render(LastEditedTimePropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.LastEditedTime.ChompEnd(":00"))
+			} 
+		);
+
+	protected override string Render(MultiSelectPropertyValue propertyValue) 
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Merge( 
+					propertyValue.MultiSelect.Select(
+						x => RenderTemplate(
+							 "text_badge",
+				 			 new RenderTokens(propertyValue) {
+								["text"] = Render(x.Name),
+								["color"] = x.Color
+							} 
+						)
+					)
+				)
+			} 
+		);
+
+	protected override string Render(NumberPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.Number)
+			} 
+		);
+
+	protected override string Render(PeoplePropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Merge( propertyValue.People.Select(Render) )
+			} 
+		);
+
+	protected override string Render(PhoneNumberPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.PhoneNumber)
+			} 
+		);
+
+	protected override string Render(RelationPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.ToPlainText())
+			} 
+		);
+
+	protected override string Render(RichTextPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = Render(propertyValue.RichText)
+			} 
+		);
+
+	protected override string Render(Page page, RollupPropertyValue propertyValue) 
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = propertyValue.Rollup.Type switch {
+					"number" => Render(propertyValue.Rollup.Number),
+					"date" => Render(propertyValue.Rollup.Date),
+					"array" => Merge(propertyValue.Rollup.Array.Select(x => Render(page, x))),
+					_ => throw new NotSupportedException(propertyValue.Rollup.Type.ToString())
+				}
+			} 
+		);
+
+	protected override string Render(SelectPropertyValue propertyValue)
+		=>
+		propertyValue.Select != null ?
+		RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = RenderTemplate(
+					"text_badge",
+					new RenderTokens(propertyValue) {
+						["text"] = Render(propertyValue.Select.Name),
+						["color"] = propertyValue.Select.Color
+					} 
+				)
+			} 
+		) :
+		string.Empty;
+
+	protected override string Render(StatusPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = RenderTemplate(
+					"text_badge",
+					new RenderTokens(propertyValue) {
+						["text"] = Render(propertyValue.Status.Name),
+						["color"] = propertyValue.Status.Color
+					} 
+				)
+			} 
+		);
+
+	protected override string Render(TitlePropertyValue propertyValue, string pageID)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = RenderReference(pageID)
+			} 
+		);
+
+	protected override string Render(UrlPropertyValue propertyValue)
+		=> RenderTemplate(
+			"property_value",
+			new RenderTokens(propertyValue) {
+				["contents"] = RenderTemplate(
+					"text_link",
+					new RenderTokens {
+						["url"] = !string.IsNullOrWhiteSpace(propertyValue.Url) ? SanitizeUrl(propertyValue.Url) : string.Empty,
+						["text"] = !string.IsNullOrWhiteSpace(propertyValue.Url) ? Render(propertyValue.Url) : string.Empty
+					}
+				)
+			} 
+		);
+
+	#endregion
 
 	#endregion
 
@@ -142,8 +469,8 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 			"page" => RenderTemplate(
 				"text_link",   // should be page_link (use svg's)
 				new RenderTokens {
-					["url"] = Resolver.TryGenerate(Page, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
-					["text"] = Resolver.TryGenerate(Page, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
+					["url"] = Resolver.TryGenerate(RenderingContext.Resource, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
+					["text"] = Resolver.TryGenerate(RenderingContext.Resource, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
 				}
 			),
 			"database" => $"[{text.Mention.Type}]{text.Mention.Database.Id}",
@@ -155,7 +482,6 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 		return RenderInternal(text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, text.Text?.Content ?? text.PlainText ?? string.Empty);
 
 		string RenderInternal(string link, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, string content) {
-
 			if (!string.IsNullOrWhiteSpace(link)) {
 				return RenderTemplate(
 					"text_link",
@@ -208,7 +534,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				return RenderTemplate(
 					"text_code",
 					new RenderTokens {
-						["text"] = System.Net.WebUtility.HtmlEncode(content),
+						["text"] = Render(content),
 					}
 				);
 			}
@@ -226,131 +552,62 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 			return RenderTemplate(
 				"text",
 				new RenderTokens {
-					["text"] = System.Net.WebUtility.HtmlEncode(content).Replace("\n", "<br />"),
+					["text"] = System.Net.WebUtility.HtmlEncode(content),  // <--- this line recursion problem
 				}
 			);
-
 		}
-
 	}
 
-	#endregion
-
-	#region Property Values
-
-	protected override string Render(CheckboxPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(CreatedByPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(CreatedTimePropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(DatePropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(EmailPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(FilesPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(FormulaPropertyValue propertyValue)
-		=> propertyValue.Formula.Type switch {
-			"string" => RenderUnsupported(propertyValue),
-			"number" => RenderUnsupported(propertyValue),
-			"date" => RenderUnsupported(propertyValue),
-			"array" => RenderUnsupported(propertyValue),
-			_ => throw new NotSupportedException(propertyValue.Formula.Type.ToString())
-		};
-
-	protected override string Render(LastEditedByPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(LastEditedTimePropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(MultiSelectPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(NumberPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(PeoplePropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(PhoneNumberPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(RelationPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(RichTextPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(RollupPropertyValue propertyValue) {
-		return propertyValue.Rollup.Type switch {
-			"number" => $"{ToString(propertyValue.Type)}:{propertyValue.Rollup.Type} [{Render(propertyValue.Rollup.Number)}]",
-			"date" => $"{ToString(propertyValue.Type)}:{propertyValue.Rollup.Type} [{Render(propertyValue.Rollup.Date)}]",
-			"array" => $"{ToString(propertyValue.Type)}:{propertyValue.Rollup.Type} [{propertyValue.Rollup.Array.Select(Render).ToDelimittedString(", ")}]",
-			_ => throw new InvalidOperationException($"Unrecognized rollup type '{propertyValue.Rollup.Type}'")
-		};
-	}
-
-	protected override string Render(SelectPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(TitlePropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
-	protected override string Render(UrlPropertyValue propertyValue)
-		=> RenderUnsupported(propertyValue);
-
+	protected override string RenderBadge(string text, Color color) 
+		=> RenderTemplate(
+			"text_badge",
+			new RenderTokens {
+				["color"] = color.GetAttribute<EnumMemberAttribute>().Value.Replace("_", "-"),
+				["text"] = Render(text)
+			}
+		);
+	
 	#endregion
 
 	#region Page
 
 	protected override string Render(Page page)
-		=> CleanUpHtml(
-
-			RenderTemplate(
-				"page",
-				new RenderTokens(page) {
-					["title"] = this.Page.Title,   // html title
-					["page_name"] = this.Page.Name,
-					["page_title"] = RenderTemplate("page_title", new() { ["text"] = this.Page.Title }),   // title on the page 
-					["style"] = "wide",
-					["cover"] = this.Page.Cover switch {
-						null => string.Empty,
-						_ => RenderTemplate(
-								"cover",
-								new RenderTokens {
-									["cover_url"] = SanitizeUrl(this.Page.Cover) ?? string.Empty,
-								}
-							)
-					},
-					["thumbnail"] = this.Page.Thumbnail.Type switch {
-						ThumbnailType.None => string.Empty,
-						ThumbnailType.Emoji => RenderTemplate(
-							this.Page.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
+		=> RenderTemplate(
+			"page",
+			new RenderTokens(page) {
+				["title"] = RenderingContext.Resource.Title,   // html title
+				["page_name"] = RenderingContext.Resource.Name,
+				["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
+				["style"] = "wide",
+				["cover"] = RenderingContext.Resource.Cover switch {
+					null => string.Empty,
+					_ => RenderTemplate(
+							"cover",
 							new RenderTokens {
-								["thumbnail_emoji"] = this.Page.Thumbnail.Data,
+								["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
 							}
-						),
-						ThumbnailType.Image => RenderTemplate(
-							this.Page.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
-							new RenderTokens {
-								["thumbnail_url"] = SanitizeUrl(this.Page.Thumbnail.Data)
-							}
-						),
-					},
-					["id"] = page.Id,
-					["created_time"] = page.CreatedTime,
-					["last_updated_time"] = page.LastEditedTime,
-					["children"] = RenderChildItems()
-				}
-			)
+						)
+				},
+				["thumbnail"] = RenderingContext.Resource.Thumbnail.Type switch {
+					ThumbnailType.None => string.Empty,
+					ThumbnailType.Emoji => RenderTemplate(
+						page.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
+						new RenderTokens {
+							["thumbnail_emoji"] = RenderingContext.Resource.Thumbnail.Data,
+						}
+					),
+					ThumbnailType.Image => RenderTemplate(
+						page.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
+						new RenderTokens {
+							["thumbnail_url"] = SanitizeUrl(RenderingContext.Resource.Thumbnail.Data)
+						}
+					),
+				},
+				["id"] = RenderingContext.Resource.ID,
+				["created_time"] = RenderingContext.Resource.CreatedOn,
+				["last_updated_time"] = RenderingContext.Resource.LastEditedOn,
+				["children"] = RenderChildPageItems()
+			}
 		);
 
 	protected override string Render(TableBlock block)
@@ -358,14 +615,14 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 			"table",
 			new RenderTokens(block) {
 				["column_count"] = block.Table.TableWidth,
-				["table_rows"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				["table_rows"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 			}
 		);
 
 	protected override string Render(TableRowBlock block) {
-		var tableNode = GetParentRenderingNode(2);
-		var tableObj = (TableBlock)GetParentRenderingObject(2);
-		var rowIX = tableNode.Children.EnumeratedIndexOf(CurrentRenderingNode);
+		var tableNode = RenderingContext.GetParentRenderingNode(2);
+		var tableObj = (TableBlock)RenderingContext.GetParentRenderingObject(2);
+		var rowIX = tableNode.Children.EnumeratedIndexOf(RenderingContext.CurrentRenderingNode);
 		var hasRowHeader = tableObj.Table.HasRowHeader;
 		var hasColHeader = tableObj.Table.HasColumnHeader;
 		return RenderTemplate(
@@ -442,20 +699,20 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				"bulleted_list",
 				new RenderTokens {
 					["contents"] = Merge(bullets.Select((bullet, index) => Render(bullet, index + 1))), // never call RenderBulletedItem directly to avoid infinite loop due to rendering stack
-					
+
 				}
 			);
 
 	protected override string RenderBulletedItem(int number, BulletedListItemBlock block) {
 		try {
-			
+
 			return RenderTemplate(
 				"bulleted_list_item",
 				new RenderTokens(block) {
 					["number"] = number,
 					["contents"] = Render(block.BulletedListItem.RichText),
 					["color"] = ToColorString(block.BulletedListItem.Color.Value),
-					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+					["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 				}
 			);
 		} finally {
@@ -483,41 +740,14 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 					},
 					["text"] = Render(block.Callout.RichText),
 					["color"] = ToColorString(block.Callout.Color.Value),
-					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+					["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 				}
 			);
 
 	protected override string Render(ChildDatabaseBlock block)
 		=> RenderUnsupported(block);
 
-	protected override string Render(ChildPageBlock block) {
-		if (!Resolver.TryGenerate(Page, block.Id, RenderType.HTML, out var childPageUrl, out var resource))
-			return $"Unresolved child page {block.Id}";
-
-		return RenderTemplate(
-				"page_link",
-				new RenderTokens(block) {
-					["icon"] = resource switch {
-						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
-													"icon_emoji",
-													 new RenderTokens(block) {
-														 ["emoji"] = localNotionPage.Thumbnail.Data
-													 }
-												),
-						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
-													"icon_image",
-													 new RenderTokens(block) {
-														 ["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
-													 }
-												),
-						_ => string.Empty
-					},
-					["url"] = SanitizeUrl(childPageUrl),
-					["title"] = block.ChildPage.Title,
-					["indicator"] = string.Empty,
-				}
-			);
-	}
+	protected override string Render(ChildPageBlock block) => RenderReference(block.Id);
 
 	protected override string Render(CodeBlock block) {
 		return RenderTemplate(
@@ -607,10 +837,10 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 	}
 
 	protected override string Render(ColumnBlock block)
-		=> block.HasChildren ? RenderChildItems() : string.Empty;
+		=> block.HasChildren ? RenderChildPageItems() : string.Empty;
 
 	protected override string Render(ColumnListBlock block)
-		=> this.CurrentRenderingNode.Children.Length switch {
+		=> RenderingContext.CurrentRenderingNode.Children.Length switch {
 			0 => RenderTemplate(
 					"column_list_1",
 					new RenderTokens(block) {
@@ -624,7 +854,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 							.ExtractTokens(block)
 							.Concat(
 								Enumerable.Range(0, x).Select(
-										i => new KeyValuePair<string, object>($"column_{i + 1}", (object)Render(CurrentRenderingNode.Children[i]))
+										i => new KeyValuePair<string, object>($"column_{i + 1}", (object)Render(RenderingContext.CurrentRenderingNode.Children[i]))
 								)
 						)
 					)
@@ -644,9 +874,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 			);
 
 	protected override string Render(FileBlock block) {
-		var url = Render(block.File);
-		var filename = Path.GetFileName(Tools.Url.TryParse(url, out _, out _, out _, out var path, out _) ? path : url) ?? Constants.DefaultResourceTitle;
-
+		var url = GetFileUrl(block.File, out var filename);
 		return RenderTemplate(
 			"file",
 			new RenderTokens(block) {
@@ -673,7 +901,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 						}
 					),
 					["color"] = ToColorString(block.Heading_1.Color.Value),
-					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+					["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 				}
 			),
 
@@ -685,7 +913,6 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 					}
 				)
 		};
-
 
 	protected override string Render(HeadingTwoBlock block)
 		=> block.Heading_2.IsToggleable switch {
@@ -701,7 +928,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 						}
 					),
 					["color"] = ToColorString(block.Heading_2.Color.Value),
-					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+					["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 				}
 			),
 			false => RenderTemplate(
@@ -712,8 +939,6 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				}
 			)
 		};
-
-
 
 	protected override string Render(HeadingThreeBlock block)
 		=> block.Heading_3.IsToggleable switch {
@@ -729,7 +954,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 						}
 					),
 					["color"] = ToColorString(block.Heading_3.Color.Value),
-					["children"] = block.HasChildren || block.Heading_3.IsToggleable ? RenderChildItems() : string.Empty,
+					["children"] = block.HasChildren || block.Heading_3.IsToggleable ? RenderChildPageItems() : string.Empty,
 				}
 			),
 			false => RenderTemplate(
@@ -750,34 +975,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				}
 			);
 
-	protected override string Render(LinkToPageBlock block) {
-		if (!Resolver.TryGenerate(Page, block.LinkToPage.GetId(), RenderType.HTML, out var childPageUrl, out var resource))
-			return $"Unresolved page {block.LinkToPage.GetId()}";
-
-		return RenderTemplate(
-				"page_link",
-				new RenderTokens(block) {
-					["icon"] = resource switch {
-						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
-													"icon_emoji",
-													 new RenderTokens(block) {
-														 ["emoji"] = localNotionPage.Thumbnail.Data
-													 }
-												),
-						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
-													"icon_image",
-													 new RenderTokens(block) {
-														 ["url"] = localNotionPage.Thumbnail.Data
-													 }
-												),
-						_ => string.Empty
-					},
-					["url"] = SanitizeUrl(childPageUrl),
-					["title"] = resource.Title,
-					["indicator"] = RenderTemplate("indicator_link")
-				}
-			);
-	}
+	protected override string Render(LinkToPageBlock block) => RenderReference(block.LinkToPage.GetId());
 
 	protected override string RenderNumberedItem(int number, NumberedListItemBlock block)
 		=> RenderTemplate(
@@ -786,7 +984,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				["number"] = number,
 				["contents"] = Render(block.NumberedListItem.RichText),
 				["color"] = ToColorString(block.NumberedListItem.Color.Value),
-				["children"] =block.HasChildren ? RenderChildItems() : string.Empty,
+				["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 			}
 		);
 
@@ -813,7 +1011,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				new RenderTokens(block) {
 					["contents"] = Render(block.Paragraph.RichText),
 					["color"] = ToColorString(block.Paragraph.Color.Value),
-					["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+					["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 				}
 			);
 
@@ -823,7 +1021,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 			new RenderTokens(block) {
 				["text"] = Render(block.Quote.RichText),
 				["color"] = ToColorString(block.Quote.Color.Value),
-				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 			}
 		);
 
@@ -847,7 +1045,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				["text"] = Render(block.ToDo.RichText),
 				["checked"] = block.ToDo.IsChecked ? "checked" : string.Empty,
 				["color"] = ToColorString(block.ToDo.Color.Value),
-				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 			}
 		);
 
@@ -858,9 +1056,38 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				["toggle_id"] = $"toggle_{++_toggleCount}",
 				["title"] = Render(block.Toggle.RichText),
 				["color"] = ToColorString(block.Toggle.Color.Value),
-				["children"] = block.HasChildren ? RenderChildItems() : string.Empty,
+				["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 			}
 		);
+
+	protected override string RenderReference(string objectID) {
+		if (!Resolver.TryGenerate(RenderingContext.Resource, objectID, RenderType.HTML, out var childPageUrl, out var resource))
+			return $"Unresolved child page {objectID}";
+
+		return RenderTemplate(
+				"page_link",
+				new RenderTokens(resource) {
+					["icon"] = resource switch {
+						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
+													"icon_emoji",
+													 new RenderTokens(resource) {
+														 ["emoji"] = localNotionPage.Thumbnail.Data
+													 }
+												),
+						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
+													"icon_image",
+													 new RenderTokens(resource) {
+														 ["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
+													 }
+												),
+						_ => string.Empty
+					},
+					["url"] = SanitizeUrl(childPageUrl),
+					["title"] = resource.Title,
+					["indicator"] = string.Empty,
+				}
+			);
+	}
 
 	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID)
 		=> RenderTemplate(
@@ -879,7 +1106,7 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 				["video_id"] = videoID,
 			}
 		);
-	
+
 	protected override string RenderVideoEmbed(VideoBlock videoBlock, string url)
 		=> RenderTemplate(
 			"embed_video",
@@ -923,9 +1150,10 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 	}
 
 	protected virtual string FetchTemplate(string widgetname, string fileExt) {
-		var renderModePrefix = RenderMode switch { RenderMode.Editable => "editable", RenderMode.ReadOnly => "readonly", _ => throw new NotSupportedException(RenderMode.ToString()) };
+		var localNotionMode = Repository.Paths.Mode;
+		var renderModePrefix = Mode switch { RenderMode.Editable => "editable", RenderMode.ReadOnly => "readonly", _ => throw new NotSupportedException(Mode.ToString()) };
 		var sanitizedWidgetName = Tools.FileSystem.ToValidFolderOrFilename(widgetname);
-		var sanitizedWidgetNameWithMode = $"{sanitizedWidgetName}.{Mode switch { LocalNotionMode.Offline => "offline", LocalNotionMode.Online => "online", _ => throw new NotSupportedException(Mode.ToString()) }}";
+		var sanitizedWidgetNameWithMode = $"{sanitizedWidgetName}.{localNotionMode switch { LocalNotionMode.Offline => "offline", LocalNotionMode.Online => "online", _ => throw new NotSupportedException(localNotionMode.ToString()) }}";
 		fileExt = fileExt.TrimStart(".");
 		var rootedWidgetTemplateName = $"include://{renderModePrefix}/{sanitizedWidgetName}.{fileExt}";
 		var rootedWidgetWithModeTemplate = $"include://{renderModePrefix}/{sanitizedWidgetNameWithMode}.{fileExt}";
@@ -939,23 +1167,6 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 						throw new InvalidOperationException($"Widget `{widgetname}` not found in theme(s).");
 
 		return Regex.Replace(widgetValue.ToString(), "^<!--.*?-->", string.Empty, RegexOptions.Singleline);
-	}
-
-	protected virtual string CleanUpHtml(string html) {
-		if (SuppressFormatting)
-			return html;
-
-		var options = new HtmlParserOptions {
-			IsEmbedded = true,
-			IsScripting = true
-		};
-		var parser = new HtmlParser(options);
-		var document = parser.ParseDocument(html);
-		var sw = new StringWriter();
-		var formatter = new CleanHtmlFormatter();
-		document.ToHtml(sw, formatter);
-		var indentedHtml = sw.ToString();
-		return indentedHtml;
 	}
 
 	protected virtual string ToString(Annotations annotations) {
@@ -991,7 +1202,29 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 
 	protected string ToColorString(Color color)
 		=> color.GetAttribute<EnumMemberAttribute>()?.Value.Replace("_", "-") ?? throw new InvalidOperationException($"Color '{color}' did not have {nameof(EnumMemberAttribute)} defined");
-	
+
+	protected string SanitizeUrl(string url) {
+		// Resource link?
+		if (LocalNotionRenderLink.TryParse(url, out var link))  
+			return $"/{Resolver.Generate(RenderingContext.Resource, link.ResourceID, link.RenderType, out _)}";
+
+		// Page link?
+		if (url.StartsWith("/")) {
+			var destObject = new string(url.Substring(1).TakeUntil(c => c == '#').ToArray());
+			var anchor = new string (url.Substring(1).Skip(destObject.Length).ToArray()).TrimStart('#');
+			if (Guid.TryParse(destObject, out var destGuid)) 
+				destObject = LocalNotionHelper.ObjectGuidToId(destGuid);
+
+			if (LocalNotionHelper.IsValidObjectID(destObject) && Resolver.TryGenerate(RenderingContext.Resource, destObject, RenderType.HTML, out var parentUrl, out _)) {
+				url = parentUrl;
+				if (!string.IsNullOrEmpty(anchor))
+					url += $"#{anchor}";
+			}
+		}
+
+		return url;
+	}
+
 	#endregion
 
 	#region Inner Classes
@@ -1024,7 +1257,10 @@ public class HtmlRenderingEngine : RenderingEngineBase<string> {
 			if (@object == null)
 				yield break;
 
-			if (@object is IObject notionObject) {
+			if (@object is LocalNotionResource lnr) {
+				yield return new KeyValuePair<string, object>("object_id", lnr.ID.Replace("-", string.Empty));
+
+			} else if (@object is IObject notionObject) {
 				yield return new KeyValuePair<string, object>("object_id", notionObject.Id.Replace("-", string.Empty));
 				yield return new KeyValuePair<string, object>("object_type", notionObject.Object.ToString().ToLowerInvariant().Replace("_", "-"));
 				yield return new KeyValuePair<string, object>(

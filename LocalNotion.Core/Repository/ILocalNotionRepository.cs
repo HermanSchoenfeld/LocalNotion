@@ -124,7 +124,7 @@ public static class ILocalNotionRepositoryExtensions {
 			repository.AddObject(@object);
 	}
 
-	public static NotionObjectGraph GetPageGraph(this ILocalNotionRepository repository, string pageID)
+	public static NotionObjectGraph GetEditableResourceGraph(this ILocalNotionRepository repository, string pageID)
 		=> repository.TryGetResourceGraph(pageID, out var pageGraph) ? pageGraph : throw new InvalidOperationException($"Page '{pageID}' not found");
 
 	public static void SavePageGraph(this ILocalNotionRepository repository, NotionObjectGraph graph) {
@@ -210,4 +210,11 @@ public static class ILocalNotionRepositoryExtensions {
 		return resource.Renders[render.RenderType];
 	}
 
+	public static string[] CalculateApplicableThemes(this ILocalNotionRepository repository, LocalNotionEditableResource resource) {
+		var pageThemes = Enumerable.Empty<string>();
+		if (resource is { CMSProperties.Themes.Length: > 0 } && resource.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
+			pageThemes = resource.CMSProperties.Themes;
+		}
+		return repository.DefaultThemes.Concat(pageThemes).ToArray();
+	}
 }

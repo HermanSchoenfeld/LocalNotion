@@ -17,7 +17,7 @@ public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 
 		var localNotionPage = Repository.GetPage(pageID);
 
-		var pageGraph = Repository.GetPageGraph(pageID);
+		var pageGraph = Repository.GetEditableResourceGraph(pageID);
 
 		// LoadAsync the page objects
 		var pageObjects = await Task.Run(() => Repository.LoadObjects(pageGraph));

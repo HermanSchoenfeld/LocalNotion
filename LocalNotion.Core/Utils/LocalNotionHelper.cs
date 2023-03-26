@@ -104,9 +104,33 @@ internal class LocalNotionHelper {
 			};
 		} else localNotionDatabase.Thumbnail = LocalNotionThumbnail.None;
 		localNotionDatabase.Description = notionDatabase.Description.ToPlainText();
-		localNotionDatabase.Properties = notionDatabase.Properties;
-	}
+		var properties = notionDatabase.Properties.Reverse().ToList();
+		MoveToBeginning<TitleProperty>(properties);
+		MoveToEnd<LastEditedByProperty>(properties);
+		MoveToEnd<LastEditedTimeProperty>(properties);
+		MoveToEnd<CreatedByProperty>(properties);
+		MoveToEnd<CreatedTimeProperty>(properties);
+		notionDatabase.Properties = properties.ToDictionary();
 
+		void MoveToBeginning<T>(List<KeyValuePair<string, Property>> list) where T : Property {
+			var ix = list.FindIndex(x => x.Value is T);
+			if (ix >= 0) {
+				var item = list[ix];
+				list.RemoveAt(ix);
+				list.Insert(0, item);
+			}
+		}
+
+		void MoveToEnd<T>(List<KeyValuePair<string, Property>> list) where T : Property {
+			var ix = list.FindIndex(x => x.Value is T);
+			if (ix >= 0) {
+				var item = list[ix];
+				list.RemoveAt(ix);
+				list.Add(item);
+			}
+		}
+
+	}
 
 	public static string ParseFileUrl(FileObject notionFile, out string fileName) {
 		fileName = Constants.DefaultResourceTitle;

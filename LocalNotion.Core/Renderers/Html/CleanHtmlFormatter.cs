@@ -157,4 +157,3 @@ internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 
 	#endregion
 }
-

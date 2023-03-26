@@ -33,10 +33,25 @@ public static class ILinkGeneratorExtensions {
 		return false;
 	}
 
+	public static bool TryGenerateUploadedFileLink(this ILinkGenerator localResourceResolver, LocalNotionResource from, UploadedFileWithName file, out string url, out LocalNotionResource toResource) {
+		if (localResourceResolver.TryResolveResourceRender(file.File.Url, out toResource, out _))
+			if (localResourceResolver.TryGenerate(from, toResource.ID, RenderType.File, out url, out toResource))
+				return true;
+
+		url = default!;
+		toResource = default!;
+		return false;
+	}
+
 	public static string GenerateUploadedFileLink(this ILinkGenerator localResourceResolver, LocalNotionResource from, UploadedFile file, out LocalNotionResource toResource) {
 		if (!localResourceResolver.TryGenerateUploadedFileLink(from, file, out var url, out toResource))
 			throw new InvalidOperationException($"Uploaded file '{file.File.Url}' was not found as a local resource");
 		return url;
 	}
 
+	public static string GenerateUploadedFileLink(this ILinkGenerator localResourceResolver, LocalNotionResource from, UploadedFileWithName file, out LocalNotionResource toResource) {
+		if (!localResourceResolver.TryGenerateUploadedFileLink(from, file, out var url, out toResource))
+			throw new InvalidOperationException($"Uploaded file '{file.File.Url}' was not found as a local resource");
+		return url;
+	}
 }

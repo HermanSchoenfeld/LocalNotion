@@ -9,9 +9,5 @@ public interface IResourceRenderer {
 	/// <param name="renderMode">Mode rendering should be performed in</param>
 	/// <returns>Filename of rendered file</returns>
 	string RenderLocalResource(string resourceID, RenderType renderType, RenderMode renderMode);
-
-	string RenderLocalPage(string pageID, RenderType renderType, RenderMode renderMode);
-
-	public string RenderLocalDatabase(string databaseID, RenderType renderType, RenderMode renderMode);
 }
 

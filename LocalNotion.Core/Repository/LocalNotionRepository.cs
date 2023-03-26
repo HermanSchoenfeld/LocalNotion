@@ -1,9 +1,5 @@
-﻿using System.Runtime.CompilerServices;
-using AngleSharp.Html.Dom;
-using Hydrogen;
-using Hydrogen.Application;
+﻿using Hydrogen;
 using Hydrogen.Data;
-using Microsoft.Win32;
 using Notion.Client;
 
 namespace LocalNotion.Core;

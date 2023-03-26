@@ -24,6 +24,9 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 		var trail = new List<BreadCrumbItem>();
 
+		// When generating crumb to inline database, we want to link to it's parent page + anchor to database
+		var skippedCrumbName = string.Empty;
+		var skippedCrumbID = string.Empty;
 		foreach (var (item, i) in ancestors.WithIndex()) {
 			BreadCrumbItemTraits traits = 0;
 
@@ -33,20 +36,23 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			if (item.Type == LocalNotionResourceType.Page)
 				traits.SetFlags(BreadCrumbItemTraits.IsPage, true);
 
-			var isCmsPage = item is LocalNotionPage { CMSProperties: not null } itemPage;
-			if (isCmsPage) {
-				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
+			
+			if (item.Type == LocalNotionResourceType.Database) {
+				traits.SetFlags(BreadCrumbItemTraits.IsDatabase, true);
+				var isInternalDB = Repository.ContainsResource(item.ParentResourceID);
+				if (isInternalDB) {
+					skippedCrumbName = item.Title;
+					skippedCrumbID = item.ID;
+					continue;;
+				}
 			}
 
-			var isPartialPage = 
-				isCmsPage &&
-				((LocalNotionPage)item).CMSProperties.PageType.IsIn(CMSPageType.Section, CMSPageType.Footer);
+			var isCmsPage = item is LocalNotionPage { CMSProperties: not null } itemPage;
+			if (isCmsPage)
+				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
 
-			//IsFile			= 1 << 3,
-			//IsDatabase		= 1 << 4,
-			//IsCategory		= 1 << 5,
-			//IsRoot			= 1 << 6,
-			//IsWorkspace		= 1 << 7,
+			var isPartialPage = 
+				isCmsPage && ((LocalNotionPage)item).CMSProperties.PageType.IsIn(CMSPageType.Section, CMSPageType.Footer);
 
 			var hasUrl = LinkGenerator.TryGenerate(from, item.ID, RenderType.HTML, out var url, out var resource);
 			traits.SetFlags(BreadCrumbItemTraits.HasUrl, hasUrl);
@@ -54,9 +60,9 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				url = DefaultUrl;
 
 			var data = string.Empty;
-			if (resource is LocalNotionPage localNotionPage) {
-				data = localNotionPage.Thumbnail.Data;
-				switch (localNotionPage.Thumbnail.Type) {
+			if (resource is LocalNotionEditableResource lner) {
+				data = lner.Thumbnail.Data;
+				switch (lner.Thumbnail.Type) {
 					case ThumbnailType.None:
 						break;
 					case ThumbnailType.Emoji:
@@ -81,18 +87,21 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
 				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section or CMSPageType.Footer }; 
 
-			var title = isPartialPage ? BuildCompositeSlugPartTitle(((LocalNotionPage)item).CMSProperties.GetTipCategory(),item.Title ) : item.Title;
+			var title = isPartialPage ? 
+				 BuildCompositeSlugPartTitle(((LocalNotionEditableResource)item).CMSProperties.GetTipCategory(), item.Title) :
+				 BuildCompositeSlugPartTitle(item.Title, skippedCrumbName);
 			var breadCrumbItem = new BreadCrumbItem() {
 				Type = item.Type,
-				Text = title ,
+				Text = title,
 				Data = data,
 				Traits = traits,
-				Url = url
+				Url = url + (!string.IsNullOrWhiteSpace(skippedCrumbID) ? $"#{skippedCrumbID.Replace("-", string.Empty)}" : string.Empty)
 			};
 
 			trail.Add(breadCrumbItem);
-
-
+			
+			skippedCrumbName = string.Empty;
+			skippedCrumbID = string.Empty;
 
 			#region Process CMS-based slug
 			
@@ -144,7 +153,6 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 						}
 					);
 				}
-			 
 
 				// Break outer foreach loop
 				break;
