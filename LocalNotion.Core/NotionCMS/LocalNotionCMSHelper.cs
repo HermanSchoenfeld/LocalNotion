@@ -6,8 +6,57 @@ namespace LocalNotion.Core;
 
 public class LocalNotionCMSHelper {
 
+	public static bool IsCMSDatabase(LocalNotionDatabase database)
+		=> database.Properties != null &&
+		   database.Properties.ContainsKey(Constants.PageTypePropertyName) &&
+		   database.Properties.ContainsKey(Constants.TitlePropertyName) &&
+		   database.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
+		   database.Properties.ContainsKey(Constants.StatusPropertyName) &&
+		   database.Properties.ContainsKey(Constants.ThemesPropertyName) &&
+		   database.Properties.ContainsKey(Constants.SlugPropertyName) &&
+		   database.Properties.ContainsKey(Constants.SequencePropertyName) &&
+		   database.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category1PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category2PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category3PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category4PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category5PropertyName) &&
+		   database.Properties.ContainsKey(Constants.TagsPropertyName) &&
+		   database.Properties.ContainsKey(Constants.SummaryPropertyName) &&
+		   database.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
+		   database.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
+		   database.Properties.ContainsKey(Constants.EditedByPropertyName) &&
+		   database.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
+		   database.Properties[Constants.ThemesPropertyName] is MultiSelectProperty &&
+		   database.Properties[Constants.SequencePropertyName] is NumberProperty;
+
+	public static bool IsCMSDatabase(Database database)
+		=> database.Properties != null &&
+		   database.Properties.ContainsKey(Constants.PageTypePropertyName) &&
+		   database.Properties.ContainsKey(Constants.TitlePropertyName) &&
+		   database.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
+		   database.Properties.ContainsKey(Constants.StatusPropertyName) &&
+		   database.Properties.ContainsKey(Constants.ThemesPropertyName) &&
+		   database.Properties.ContainsKey(Constants.SlugPropertyName) &&
+		   database.Properties.ContainsKey(Constants.SequencePropertyName) &&
+		   database.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category1PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category2PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category3PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category4PropertyName) &&
+		   database.Properties.ContainsKey(Constants.Category5PropertyName) &&
+		   database.Properties.ContainsKey(Constants.TagsPropertyName) &&
+		   database.Properties.ContainsKey(Constants.SummaryPropertyName) &&
+		   database.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
+		   database.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
+		   database.Properties.ContainsKey(Constants.EditedByPropertyName) &&
+		   database.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
+		   database.Properties[Constants.ThemesPropertyName] is MultiSelectProperty &&
+		   database.Properties[Constants.SequencePropertyName] is NumberProperty;
+
 	public static bool IsCMSPage(Page page)
-		=> page.Properties.ContainsKey(Constants.PageTypePropertyName) &&
+		=> page.Properties != null &&
+		   page.Properties.ContainsKey(Constants.PageTypePropertyName) &&
 		   page.Properties.ContainsKey(Constants.TitlePropertyName) &&
 		   page.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
 		   page.Properties.ContainsKey(Constants.StatusPropertyName) &&

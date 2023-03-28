@@ -668,7 +668,6 @@ $@"Local Notion Status:
 		psi.Arguments = "license --verify";
 		Process.Start(psi);
 
-
 		// Enforce license (this shouldn't quit and will just downgrade license to free on expiration)
 		var licenseEnforcer = HydrogenFramework.Instance.ServiceProvider.GetService<IProductLicenseEnforcer>();
 		licenseEnforcer.EnforceLicense(false);
@@ -686,7 +685,7 @@ $@"Local Notion Status:
 			if (!_usageServices.SystemEncryptedProperties.TryGetValue("UsedAuthTokens", out var prop)) {
 				prop = "{}";
 			} 
-			var usedAuthTokens = Tools.Json.ReadFromString<IDictionary<string, int>>(prop.ToString());
+			var usedAuthTokens =  prop is IDictionary<string, int> ? (IDictionary<string, int>)prop : Tools.Json.ReadFromString<IDictionary<string, int>>(prop.ToString());
 
 			if (usedAuthTokens.Count > maxReposAllowed) {
 				// The license detected more repos than allowed, this is either license tampering or a downgrade. Solution here
@@ -740,6 +739,8 @@ $@"Local Notion Status:
 //		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
 //		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 //		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
+//		string[] SyncCmd3 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490", "-f", "3" };
+		
 //		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 //		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 //		string[] PullCmd3 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
@@ -764,9 +765,9 @@ $@"Local Notion Status:
 //		string[] PullBug12Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
 //		string[] PullBug13Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56", "--force" };
 //		string[] PullBug14Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b8a76f00-befd-42ca-a5f4-864e1981fc39", "--force" };
-		
-//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force"};
-//		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391"};
+
+//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
+//		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391" };
 //		string[] RenderDatabasePage = new[] { "render", "-p", "d:\\databases\\test", "-o", "95741d25-ae23-428e-88b9-a8919066483c" };
 
 //		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
@@ -793,6 +794,8 @@ $@"Local Notion Status:
 //		string[] RenderBug17Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "6314c05c-8581-4cee-b94a-08666fb8f9c1" };
 //		string[] RenderBug18Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56" };
 //		string[] RenderBug19Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "18bca27f-7300-4c23-9135-bb497fae36e9" };
+//		string[] RenderBug20Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "d9b1c2c0-7d74-48cd-ac77-8ae947f9200d" };
+		
 
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
@@ -810,7 +813,7 @@ $@"Local Notion Status:
 //		string[] LicenseVerify = new[] { "license", "--verify" };
 //		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 //		if (args.Length == 0)
-//			args = RenderDatabasePage;
+//			args = RenderBug20Page;
 //#endif
 
 		try {

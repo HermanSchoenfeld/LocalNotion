@@ -111,6 +111,7 @@ internal class LocalNotionHelper {
 		MoveToEnd<CreatedByProperty>(properties);
 		MoveToEnd<CreatedTimeProperty>(properties);
 		notionDatabase.Properties = properties.ToDictionary();
+		localNotionDatabase.Properties = notionDatabase.Properties;
 
 		void MoveToBeginning<T>(List<KeyValuePair<string, Property>> list) where T : Property {
 			var ix = list.FindIndex(x => x.Value is T);

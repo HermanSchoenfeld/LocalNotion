@@ -39,7 +39,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			
 			if (item.Type == LocalNotionResourceType.Database) {
 				traits.SetFlags(BreadCrumbItemTraits.IsDatabase, true);
-				var isInternalDB = Repository.ContainsResource(item.ParentResourceID);
+				var isInternalDB = item.ParentResourceID != null &&  Repository.ContainsResource(item.ParentResourceID);
 				if (isInternalDB) {
 					skippedCrumbName = item.Title;
 					skippedCrumbID = item.ID;
@@ -79,9 +79,9 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			}
 
 			// TODO: when implementing databases, the check is
-			//var parentIsCMSDatabase = Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMS.IsCMSDatabase(database);
+			var parentIsCmsDatabase = item.ParentResourceID != null  && Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMSHelper.IsCMSDatabase(database);   // note: properties can be null when only downloading pages
 			var repoContainsParentResource = item.ParentResourceID != null && Repository.ContainsResource(item.ParentResourceID);
-			var parentIsCmsDatabase = item.ParentResourceID != null && !repoContainsParentResource;  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
+			//var parentIsCmsDatabase = item.ParentResourceID != null && !repoContainsParentResource;  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
 			var parentIsPartial = 
 				repoContainsParentResource && 
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
