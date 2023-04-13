@@ -552,7 +552,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			return RenderTemplate(
 				"text",
 				new RenderTokens {
-					["text"] = System.Net.WebUtility.HtmlEncode(content),  // <--- this line recursion problem
+					["text"] = Render(content), 
 				}
 			);
 		}
