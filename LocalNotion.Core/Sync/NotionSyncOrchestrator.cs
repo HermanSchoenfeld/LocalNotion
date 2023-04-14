@@ -386,14 +386,14 @@ public class NotionSyncOrchestrator {
 				childDatabases =
 					pageObjects
 						.Values
-						.Where(x => x is ChildDatabaseBlock childDatabase && childDatabase.Id != pageID)
+						.Where(x => x is ChildDatabaseBlock)
 						.Cast<ChildDatabaseBlock>()
 						.Select(x => (x.Id, null as DateTime?))
 						.Union(
 							pageObjects
 								.Values
-								.Where(x => x is Page page && page.Id != pageID)
-								.Cast<Page>()
+								.Where(x => x is Database)
+								.Cast<Database>()
 								.Select(x => (x.Id, null as DateTime?))
 						)
 						.ToList();

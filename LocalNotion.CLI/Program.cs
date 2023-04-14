@@ -559,21 +559,23 @@ $@"Local Notion Status:
 	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
-		var renderer = new ResourceRenderer(repo, repo.Logger);
-		var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects;
-		if (!toRender.Any()) {
-			consoleLogger.Warning("Nothing to render");
-			return Constants.ERRORCODE_OK;
-		}
+		await using (repo.EnterUpdateScope()) {
+			var renderer = new ResourceRenderer(repo, repo.Logger);
+			var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects;
+			if (!toRender.Any()) {
+				consoleLogger.Warning("Nothing to render");
+				return Constants.ERRORCODE_OK;
+			}
 
-		foreach (var resource in toRender) {
-			try {
-				cancellationToken.ThrowIfCancellationRequested();
-				renderer.RenderLocalResource(resource, arguments.RenderOutput, arguments.RenderMode);
-			} catch (Exception error) {
-				consoleLogger.Exception(error);
-				if (!arguments.FaultTolerant)
-					throw;
+			foreach (var resource in toRender) {
+				try {
+					cancellationToken.ThrowIfCancellationRequested();
+					renderer.RenderLocalResource(resource, arguments.RenderOutput, arguments.RenderMode);
+				} catch (Exception error) {
+					consoleLogger.Exception(error);
+					if (!arguments.FaultTolerant)
+						throw;
+				}
 			}
 		}
 		return Constants.ERRORCODE_OK;
@@ -766,7 +768,9 @@ $@"Local Notion Status:
 //		string[] PullBug12Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "0fd5e986-86e2-4a9e-ab9f-a1007769eb53", "--force" };
 //		string[] PullBug13Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56", "--force" };
 //		string[] PullBug14Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b8a76f00-befd-42ca-a5f4-864e1981fc39", "--force" };
+//		string[] PullBug15Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "61b8ed7e-760d-4ebb-9c59-f919d8a58dd9" };
 
+		
 //		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 //		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391" };
 //		string[] RenderDatabasePage = new[] { "render", "-p", "d:\\databases\\test", "-o", "95741d25-ae23-428e-88b9-a8919066483c" };
@@ -797,7 +801,9 @@ $@"Local Notion Status:
 //		string[] RenderBug19Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "18bca27f-7300-4c23-9135-bb497fae36e9" };
 //		string[] RenderBug20Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "d9b1c2c0-7d74-48cd-ac77-8ae947f9200d" };
 //		string[] RenderBug21Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "8ba6b610-879f-493c-a544-738bc3b46edb" };
+//		string[] RenderBug22Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "8cc7f753-a8a7-416d-939a-c2d73bd9201b" };
 		
+
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
 //		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
@@ -813,10 +819,10 @@ $@"Local Notion Status:
 //		string[] LicenseStatus = new[] { "license", "--status" };
 //		string[] LicenseVerify = new[] { "license", "--verify" };
 //		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
-//		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC"};
+//		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = RenderBug21Page;
+//			args = PullCmd3;
 //#endif
 
 		try {
