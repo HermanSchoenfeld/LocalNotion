@@ -770,7 +770,7 @@ $@"Local Notion Status:
 //		string[] PullBug14Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b8a76f00-befd-42ca-a5f4-864e1981fc39", "--force" };
 //		string[] PullBug15Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "61b8ed7e-760d-4ebb-9c59-f919d8a58dd9" };
 
-		
+
 //		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 //		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391" };
 //		string[] RenderDatabasePage = new[] { "render", "-p", "d:\\databases\\test", "-o", "95741d25-ae23-428e-88b9-a8919066483c" };
@@ -802,7 +802,8 @@ $@"Local Notion Status:
 //		string[] RenderBug20Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "d9b1c2c0-7d74-48cd-ac77-8ae947f9200d" };
 //		string[] RenderBug21Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "8ba6b610-879f-493c-a544-738bc3b46edb" };
 //		string[] RenderBug22Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "8cc7f753-a8a7-416d-939a-c2d73bd9201b" };
-		
+//		string[] RenderBug23Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "61b8ed7e-760d-4ebb-9c59-f919d8a58dd9" };
+
 
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
@@ -822,8 +823,10 @@ $@"Local Notion Status:
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = PullCmd3;
+//			args = RenderAll2;
 //#endif
+
+		//https://ossified-barnacle-a72.notion.site/Resources-61b8ed7e760d4ebb9c59f919d8a58dd9
 
 		try {
 			HydrogenFramework.Instance.StartFramework(HydrogenFrameworkOptions.EnableDrm); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work

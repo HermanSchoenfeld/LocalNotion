@@ -428,7 +428,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderTemplate(
 			"property_value",
 			new RenderTokens(propertyValue) {
-				["contents"] = RenderReference(pageID)
+				["contents"] = RenderReference(pageID, false)
 			} 
 		);
 
@@ -465,16 +465,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	protected override string Render(RichTextMention text)
 		=> text.Mention.Type switch {
-			"user" => Render(text.Mention.User),
-			"page" => RenderTemplate(
-				"text_link",   // should be page_link (use svg's)
-				new RenderTokens {
-					["url"] = Resolver.TryGenerate(RenderingContext.Resource, text.Mention.Page.Id, null, out var url, out _) ? url : $"Unresolved link to '{text.Mention.Page.Id}'",
-					["text"] = Resolver.TryGenerate(RenderingContext.Resource, text.Mention.Page.Id, null, out _, out var resource) ? resource.Title : $"Unresolved name for page '{text.Mention.Page.Id}'",
-				}
-			),
-			"database" => $"[{text.Mention.Type}]{text.Mention.Database.Id}",
+			"database" => RenderReference(text.Mention.Database.Id, true),
 			"date" => Render(text.Mention.Date), // maybe a link to calendar here?
+			"link_preview" => Render(text.PlainText),   // TODO: implement
+			"page" => RenderReference(text.Mention.Page.Id, true),
+			"template_mention" => Render(text.PlainText), // TODO: implement
+			"user" => Render(text.Mention.User),
 			_ => throw new InvalidOperationException($"Unrecognized mention type '{text.Mention.Type}'")
 		};
 
@@ -747,7 +743,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(ChildDatabaseBlock block)
 		=> RenderUnsupported(block);
 
-	protected override string Render(ChildPageBlock block) => RenderReference(block.Id);
+	protected override string Render(ChildPageBlock block) => RenderReference(block.Id, false);
 
 	protected override string Render(CodeBlock block) {
 		return RenderTemplate(
@@ -975,7 +971,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				}
 			);
 
-	protected override string Render(LinkToPageBlock block) => RenderReference(block.LinkToPage.GetId());
+	protected override string Render(LinkToPageBlock block) => RenderReference(block.LinkToPage.GetId(), true);
 
 	protected override string RenderNumberedItem(int number, NumberedListItemBlock block)
 		=> RenderTemplate(
@@ -1005,8 +1001,13 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			}
 		);
 
-	protected override string Render(ParagraphBlock block)
-		=> RenderTemplate(
+	protected override string Render(ParagraphBlock block) {
+		var paragraphItems = block.Paragraph?.RichText?.ToArray();
+
+		if (paragraphItems is [RichTextMention mention]) 
+			return RenderReference(mention.Mention.GetObjectID(), true);
+
+		return RenderTemplate(
 				"paragraph",
 				new RenderTokens(block) {
 					["contents"] = Render(block.Paragraph.RichText),
@@ -1014,6 +1015,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 					["children"] = block.HasChildren ? RenderChildPageItems() : string.Empty,
 				}
 			);
+	}
 
 	protected override string Render(QuoteBlock block)
 		=> RenderTemplate(
@@ -1060,21 +1062,21 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			}
 		);
 
-	protected override string RenderReference(string objectID) {
-		if (!Resolver.TryGenerate(RenderingContext.Resource, objectID, RenderType.HTML, out var childPageUrl, out var resource))
-			return $"Unresolved child page {objectID}";
+	protected override string RenderReference(string objectID, bool drawIndicator) {
+		if (!Resolver.TryGenerate(RenderingContext.Resource, objectID, RenderType.HTML, out var childResourceUrl, out var resource))
+			return $"Unresolved child resource {objectID}";
 
 		return RenderTemplate(
 				"page_link",
 				new RenderTokens(resource) {
 					["icon"] = resource switch {
-						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
+						LocalNotionEditableResource { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
 													"icon_emoji",
 													 new RenderTokens(resource) {
 														 ["emoji"] = localNotionPage.Thumbnail.Data
 													 }
 												),
-						LocalNotionPage { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
+						LocalNotionEditableResource { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
 													"icon_image",
 													 new RenderTokens(resource) {
 														 ["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
@@ -1082,9 +1084,9 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 												),
 						_ => string.Empty
 					},
-					["url"] = SanitizeUrl(childPageUrl),
+					["url"] = SanitizeUrl(childResourceUrl),
 					["title"] = resource.Title,
-					["indicator"] = string.Empty,
+					["indicator"] = drawIndicator ? RenderTemplate("indicator_link") : string.Empty,
 				}
 			);
 	}
