@@ -13,6 +13,7 @@ public class OnlineLinkGenerator : LinkGeneratorBase {
 	public override LocalNotionMode Mode => LocalNotionMode.Online;
 
 	public override bool TryGenerate(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
+		Tools.Debugger.CounterA++;
 		url = default;
 
 		if (from.ID == toResourceID) {

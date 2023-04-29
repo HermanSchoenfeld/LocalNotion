@@ -1004,7 +1004,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(ParagraphBlock block) {
 		var paragraphItems = block.Paragraph?.RichText?.ToArray();
 
-		if (paragraphItems is [RichTextMention mention]) 
+		if (paragraphItems.Trim().ToArray() is [RichTextMention mention]) 
 			return RenderReference(mention.Mention.GetObjectID(), true);
 
 		return RenderTemplate(

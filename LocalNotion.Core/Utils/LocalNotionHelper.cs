@@ -17,6 +17,8 @@ internal class LocalNotionHelper {
 	public static string ObjectGuidToId(Guid guid)
 		=> guid.ToString().Trim("{}".ToCharArray());
 
+	public static string SanitizeObjectID(string objectID) => ObjectGuidToId(ObjectIdToGuid(objectID));
+
 	public static bool TryParseNotionFileUrl(string url, out string resourceID, out string filename) {
 		resourceID = filename = null;
 		if (!Tools.Url.TryParse(url, out var protocol, out var port, out var host, out var path, out var queryString))

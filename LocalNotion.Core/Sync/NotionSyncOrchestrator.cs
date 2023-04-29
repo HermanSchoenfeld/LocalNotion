@@ -31,6 +31,7 @@ public class NotionSyncOrchestrator {
 	/// </summary>
 	public async Task<LocalNotionResource[]> DownloadDatabaseAsync(string databaseID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNull(databaseID, nameof(databaseID));
+		databaseID = LocalNotionHelper.SanitizeObjectID(databaseID);
 		var downloadedResources = new List<LocalNotionResource>();
 		var processedPages = new List<Page>();
 		await using (Repository.EnterUpdateScope()) {
@@ -162,6 +163,9 @@ public class NotionSyncOrchestrator {
 	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, int? sequence = null, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNull(pageID, nameof(pageID));
 		var downloadedResources = new List<LocalNotionResource>();
+
+		// ensure correct
+		pageID = LocalNotionHelper.SanitizeObjectID(pageID);
 
 		await using (Repository.EnterUpdateScope()) {
 

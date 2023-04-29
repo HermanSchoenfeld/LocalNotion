@@ -7,6 +7,9 @@ public static class PlainTextExtensions {
 	public static string ToPlainText(this IEnumerable<RichTextBase> formattedText)
 		=> formattedText.Select(x => x.PlainText).ToDelimittedString(" ");
 
+	public static IEnumerable<RichTextBase> Trim(this IEnumerable<RichTextBase> formattedText)
+		=> formattedText.Where(x => x.PlainText.Trim() != string.Empty);
+
 	public static string ToPlainText(this Date date) {
 		var start = date.Start.ToPlainText();
 		var end = date.End.ToPlainText();

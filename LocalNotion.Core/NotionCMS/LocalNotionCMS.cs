@@ -33,12 +33,8 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 	public bool TryGetFooter(string slug, out LocalNotionPage page) {
 		var contentNode = _contentHierarchy[slug];
-		if (contentNode == null || !contentNode.Content.Any(x => x.CMSProperties.PageType == CMSPageType.Footer)) {
-			page = null;
-			return false;
-		}
-		page = contentNode.Content.First(x => x.CMSProperties.PageType == CMSPageType.Footer);
-		return true;
+		page = contentNode?.Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.Footer);
+		return page != default;
 	}
 
 	protected virtual CMSContentType DetermineContentType(CMSContentNode node) {

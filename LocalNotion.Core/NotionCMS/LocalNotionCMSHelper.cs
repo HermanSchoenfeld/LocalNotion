@@ -176,9 +176,10 @@ public class LocalNotionCMSHelper {
 	}
 
 	public static string CalculatePageSlug(string pageTitle, CMSProperties cmsProperties)  {
+		var calculatedSlug = cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories);
 		return cmsProperties.PageType switch {
-			CMSPageType.Section => (cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories)) + (cmsProperties.CustomSlug?.Contains("#") == false ? "#{page_name}": string.Empty),
-			CMSPageType.Footer => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories),
+			CMSPageType.Section => calculatedSlug + (calculatedSlug.Contains("#") == false ? "#{page_name}": string.Empty),
+			CMSPageType.Footer => calculatedSlug,
 			_ => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}

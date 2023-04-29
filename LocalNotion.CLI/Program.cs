@@ -748,9 +748,9 @@ $@"Local Notion Status:
 //		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 //		string[] PullCmd3 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490" };
 //		string[] PullCmd4 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
-
 //		string[] PullCmd5 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "a86be05b-ac35-4279-9307-26628c4a0e7f", "--force" };
-
+//		string[] PullCmd6 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc", "--force" };
+//		string[] PullCmd7 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
 
 //		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 //		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
@@ -769,7 +769,10 @@ $@"Local Notion Status:
 //		string[] PullBug13Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "9b3f36a8-aaf0-4eb7-9380-239af5decb56", "--force" };
 //		string[] PullBug14Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b8a76f00-befd-42ca-a5f4-864e1981fc39", "--force" };
 //		string[] PullBug15Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "61b8ed7e-760d-4ebb-9c59-f919d8a58dd9" };
-
+//		string[] PullBug16Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "97518a54-62f4-4000-b8ac-4b3569c4f762", "--force" };
+//		string[] PullBug17Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f7b05c2e0a4d4e7cab2f1181b238e75d", "--force" };
+//		string[] PullBug18Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "e0d29170-b5e3-4667-b6e4-c4d94b004389", "--force" };
+		
 
 //		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 //		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391" };
@@ -803,8 +806,8 @@ $@"Local Notion Status:
 //		string[] RenderBug21Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "8ba6b610-879f-493c-a544-738bc3b46edb" };
 //		string[] RenderBug22Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "8cc7f753-a8a7-416d-939a-c2d73bd9201b" };
 //		string[] RenderBug23Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "61b8ed7e-760d-4ebb-9c59-f919d8a58dd9" };
-
-
+//		string[] RenderBug24Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "97518a54-62f4-4000-b8ac-4b3569c4f762"};
+																											
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
 //		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
@@ -816,14 +819,14 @@ $@"Local Notion Status:
 //		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 //		string[] List2 = new[] { "list", "-p", "d:\\temp\\t1" };
 
-
 //		string[] LicenseStatus = new[] { "license", "--status" };
 //		string[] LicenseVerify = new[] { "license", "--verify" };
 //		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = RenderAll2;
+//			args = RenderBug24Page;
+
 //#endif
 
 		//https://ossified-barnacle-a72.notion.site/Resources-61b8ed7e760d4ebb9c59f919d8a58dd9
@@ -836,7 +839,7 @@ $@"Local Notion Status:
 				args.Cancel = true;
 				CancelProgram.Cancel();
 			};
-			return await Parser.Default.ParseArguments< 
+			return await Parser.Default.ParseArguments<
 				StatusRepositoryCommandArguments,
 				InitRepositoryCommandArguments,
 				CleanRepositoryCommandArguments,
