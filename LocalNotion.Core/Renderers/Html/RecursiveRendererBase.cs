@@ -438,7 +438,9 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	protected abstract TOutput Render(ToggleBlock block);
 
-	protected abstract TOutput RenderReference(string objectID, bool drawIndicator);
+	protected abstract TOutput RenderText(string content, string url, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color);
+
+	protected abstract TOutput RenderReference(string objectID, bool isInline, bool omitIndicator = false);
 
 	protected abstract TOutput RenderYouTubeEmbed(VideoBlock videoBlock, string videoID);
 

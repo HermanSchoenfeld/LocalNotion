@@ -428,7 +428,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderTemplate(
 			"property_value",
 			new RenderTokens(propertyValue) {
-				["contents"] = RenderReference(pageID, false)
+				["contents"] = RenderReference(pageID, false, true)
 			} 
 		);
 
@@ -464,95 +464,18 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			);
 
 	protected override string Render(RichTextMention text)
-		=> text.Mention.Type switch {
-			"database" => RenderReference(text.Mention.Database.Id, true),
+		=> text.Mention.Type switch { 
+			"database" => RenderReference(text.Mention.Database.Id, true), 
 			"date" => Render(text.Mention.Date), // maybe a link to calendar here?
 			"link_preview" => Render(text.PlainText),   // TODO: implement
-			"page" => RenderReference(text.Mention.Page.Id, true),
+			"page" => RenderReference(text.Mention.Page.Id, true), 
 			"template_mention" => Render(text.PlainText), // TODO: implement
 			"user" => Render(text.Mention.User),
 			_ => throw new InvalidOperationException($"Unrecognized mention type '{text.Mention.Type}'")
 		};
 
-	protected override string Render(RichTextText text) {
-		return RenderInternal(text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, text.Text?.Content ?? text.PlainText ?? string.Empty);
-
-		string RenderInternal(string link, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, string content) {
-			if (!string.IsNullOrWhiteSpace(link)) {
-				return RenderTemplate(
-					"text_link",
-					new RenderTokens {
-						["url"] = SanitizeUrl(link),
-						["text"] = RenderInternal(null, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color, content)
-					}
-				);
-
-			}
-
-			if (isBold) {
-				return RenderTemplate(
-					"text_bold",
-					new RenderTokens {
-						["text"] = RenderInternal(null, false, isItalic, isStrikeThrough, isUnderline, isCode, color, content)
-					}
-				);
-			}
-
-			if (isItalic) {
-				return RenderTemplate(
-					"text_italic",
-					new RenderTokens {
-						["text"] = RenderInternal(null, false, false, isStrikeThrough, isUnderline, isCode, color, content)
-					}
-				);
-			}
-
-			if (isStrikeThrough) {
-				return RenderTemplate(
-					"text_strikethrough",
-					new RenderTokens {
-						["text"] = RenderInternal(null, false, false, false, isUnderline, isCode, color, content)
-					}
-				);
-			}
-
-
-			if (isUnderline) {
-				return RenderTemplate(
-					"text_underline",
-					new RenderTokens {
-						["text"] = RenderInternal(null, false, false, false, false, isCode, color, content)
-					}
-				);
-			}
-
-			if (isCode) {
-				return RenderTemplate(
-					"text_code",
-					new RenderTokens {
-						["text"] = Render(content),
-					}
-				);
-			}
-
-			if (color != Color.Default) {
-				return RenderTemplate(
-					"text_colored",
-					new RenderTokens {
-						["color"] = color.GetAttribute<EnumMemberAttribute>().Value.Replace("_", "-"),
-						["text"] = RenderInternal(null, false, false, false, false, false, Color.Default, content)
-					}
-				);
-			}
-
-			return RenderTemplate(
-				"text",
-				new RenderTokens {
-					["text"] = Render(content), 
-				}
-			);
-		}
-	}
+	protected override string Render(RichTextText text) 
+		=> RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value);
 
 	protected override string RenderBadge(string text, Color color) 
 		=> RenderTemplate(
@@ -743,7 +666,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(ChildDatabaseBlock block)
 		=> RenderUnsupported(block);
 
-	protected override string Render(ChildPageBlock block) => RenderReference(block.Id, false);
+	protected override string Render(ChildPageBlock block) => RenderReference(block.Id, false, true);
 
 	protected override string Render(CodeBlock block) {
 		return RenderTemplate(
@@ -971,7 +894,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				}
 			);
 
-	protected override string Render(LinkToPageBlock block) => RenderReference(block.LinkToPage.GetId(), true);
+	protected override string Render(LinkToPageBlock block) => RenderReference(block.LinkToPage.GetId(), false);
 
 	protected override string RenderNumberedItem(int number, NumberedListItemBlock block)
 		=> RenderTemplate(
@@ -1004,8 +927,10 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(ParagraphBlock block) {
 		var paragraphItems = block.Paragraph?.RichText?.ToArray();
 
+		// A paragraph containing a single mention, we render it as a Notion-style mention.
+		// Otherwise a mention within a paragraph is rendered as a link.
 		if (paragraphItems.Trim().ToArray() is [RichTextMention mention]) 
-			return RenderReference(mention.Mention.GetObjectID(), true);
+			return RenderReference(mention.Mention.GetObjectID(), false);
 
 		return RenderTemplate(
 				"paragraph",
@@ -1062,33 +987,121 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			}
 		);
 
-	protected override string RenderReference(string objectID, bool drawIndicator) {
+	protected override string RenderText(string content, string url, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color) {
+		if (!string.IsNullOrWhiteSpace(url)) {
+			return RenderTemplate(
+				"text_link",
+				new RenderTokens {
+					["url"] = SanitizeUrl(url),
+					["text"] = RenderText(content, null, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color)
+				}
+			);
+
+		}
+
+		if (isBold) {
+			return RenderTemplate(
+				"text_bold",
+				new RenderTokens {
+					["text"] = RenderText(content, null, false, isItalic, isStrikeThrough, isUnderline, isCode, color)
+				}
+			);
+		}
+
+		if (isItalic) {
+			return RenderTemplate(
+				"text_italic",
+				new RenderTokens {
+					["text"] = RenderText(content, null, false, false, isStrikeThrough, isUnderline, isCode, color)
+				}
+			);
+		}
+
+		if (isStrikeThrough) {
+			return RenderTemplate(
+				"text_strikethrough",
+				new RenderTokens {
+					["text"] = RenderText(content, null, false, false, false, isUnderline, isCode, color)
+				}
+			);
+		}
+
+
+		if (isUnderline) {
+			return RenderTemplate(
+				"text_underline",
+				new RenderTokens {
+					["text"] = RenderText(content, null, false, false, false, false, isCode, color)
+				}
+			);
+		}
+
+		if (isCode) {
+			return RenderTemplate(
+				"text_code",
+				new RenderTokens {
+					["text"] = Render(content),
+				}
+			);
+		}
+
+		if (color != Color.Default) {
+			return RenderTemplate(
+				"text_colored",
+				new RenderTokens {
+					["color"] = color.GetAttribute<EnumMemberAttribute>().Value.Replace("_", "-"),
+					["text"] = RenderText(content, null, false, false, false, false, false, Color.Default)
+				}
+			);
+		}
+
+		return RenderTemplate(
+			"text",
+			new RenderTokens {
+				["text"] = Render(content), 
+			}
+		);
+	}
+
+	protected override string RenderReference(string objectID, bool isInline, bool omitIndicator = false) {
+
 		if (!Resolver.TryGenerate(RenderingContext.Resource, objectID, RenderType.HTML, out var childResourceUrl, out var resource))
 			return $"Unresolved child resource {objectID}";
 
-		return RenderTemplate(
-				"page_link",
+		var icon = resource switch {
+			LocalNotionEditableResource { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
+				"icon_emoji",
 				new RenderTokens(resource) {
-					["icon"] = resource switch {
-						LocalNotionEditableResource { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Emoji } localNotionPage => RenderTemplate(
-													"icon_emoji",
-													 new RenderTokens(resource) {
-														 ["emoji"] = localNotionPage.Thumbnail.Data
-													 }
-												),
-						LocalNotionEditableResource { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
-													"icon_image",
-													 new RenderTokens(resource) {
-														 ["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
-													 }
-												),
-						_ => string.Empty
-					},
-					["url"] = SanitizeUrl(childResourceUrl),
-					["title"] = resource.Title,
-					["indicator"] = drawIndicator ? RenderTemplate("indicator_link") : string.Empty,
+					["emoji"] = localNotionPage.Thumbnail.Data
 				}
-			);
+			),
+			LocalNotionEditableResource { Thumbnail: not null, Thumbnail.Type: ThumbnailType.Image } localNotionPage => RenderTemplate(
+				"icon_image",
+				new RenderTokens(resource) {
+					["url"] = SanitizeUrl(localNotionPage.Thumbnail.Data)
+				}
+			),
+			_ => string.Empty
+		};
+
+		omitIndicator |= string.IsNullOrWhiteSpace(icon);
+
+		
+
+		if (isInline) {
+			// TODO: add inline page_link template that matches Notion
+			return RenderText(resource.Title, SanitizeUrl(childResourceUrl), false, false, false, false, false, Color.Default);
+		}
+
+		return RenderTemplate(
+			"page_link",
+			new RenderTokens(resource) {
+				["icon"] = icon,
+				["url"] = SanitizeUrl(childResourceUrl),
+				["title"] = resource.Title,
+				["indicator"] = !omitIndicator ? RenderTemplate("indicator_link") : string.Empty,
+			}
+		);
 	}
 
 	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID)
@@ -1138,6 +1151,8 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	#endregion
 
 	#region Aux
+
+	
 
 	protected virtual string RenderTemplate(string widgetType)
 		=> RenderTemplate(widgetType, new RenderTokens());
