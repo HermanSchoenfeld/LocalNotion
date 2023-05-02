@@ -280,6 +280,19 @@
 	  <None Remove="Themes\embedded\page.online.html" />
 	  <None Remove="Themes\embedded\readonly\page.offline.html" />
 	  <None Remove="Themes\embedded\readonly\page.online.html" />
+	  <None Remove="Themes\empty\.config.json" />
+	  <None Remove="Themes\empty\page.offline.html" />
+	  <None Remove="Themes\empty\page.online.html" />
+	  <None Remove="Themes\empty\page_database.offline.html" />
+	  <None Remove="Themes\empty\page_database.online.html" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <EmbeddedResource Include="Themes\empty\.config.json" />
+	  <EmbeddedResource Include="Themes\empty\page.offline.html" />
+	  <EmbeddedResource Include="Themes\empty\page.online.html" />
+	  <EmbeddedResource Include="Themes\empty\page_database.offline.html" />
+	  <EmbeddedResource Include="Themes\empty\page_database.online.html" />
 	</ItemGroup>
 
 	<ItemGroup>
