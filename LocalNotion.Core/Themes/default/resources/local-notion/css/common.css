@@ -30,6 +30,7 @@
 }
 
 .ln-icon-emoji {
+    display: inline;
     object-fit: fill;
     width: 21.312px;
     height: 21.312px;
