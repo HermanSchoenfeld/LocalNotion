@@ -456,16 +456,16 @@ public class NotionSyncOrchestrator {
 				var renderer = new ResourceRenderer(Repository, Logger);
 
 				// render pages
-				foreach (var page in downloadedResources.Where(x => x is LocalNotionPage).Distinct().Cast<LocalNotionPage>()) {
+				foreach (var renderableResource in downloadedResources.Where(x => x is LocalNotionEditableResource).Distinct().Cast<LocalNotionEditableResource>()) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
-						renderer.RenderLocalResource(page.ID, renderType, renderMode);
+						renderer.RenderLocalResource(renderableResource.ID, renderType, renderMode);
 					} catch (ProductLicenseLimitException) {
 						throw;
 					} catch (TaskCanceledException) {
 						throw;
 					} catch (Exception error) {
-						Logger.Error($"Failed to render page '{page.Title}' ({page.ID}).");
+						Logger.Error($"Failed to render page '{renderableResource.Title}' ({renderableResource.ID}).");
 						Logger.Exception(error);
 						if (!faultTolerant)
 							throw;
