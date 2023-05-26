@@ -29,10 +29,4 @@ public class ModuleConfiguration : ModuleConfigurationBase {
 
 	}
 
-	public override void OnInitialize(IServiceProvider serviceProvider) {
-		base.OnInitialize(serviceProvider);
-		Hydrogen.CryptoEx.ExplicitModuleConfiguration.Initialize();
-	}
-
-
 }
