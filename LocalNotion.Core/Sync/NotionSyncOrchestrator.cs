@@ -443,7 +443,7 @@ public class NotionSyncOrchestrator {
 
 			#region Remove old child resources
 
-			foreach (var childResource in oldChildResources.Except(Repository.GetChildResources(pageID), ProjectionEqualityComparer.Create<LocalNotionResource, string>(r => r.ID))) {
+			foreach (var childResource in oldChildResources.Except(Repository.GetChildResources(pageID), EqualityComparerBuilder.For<LocalNotionResource>().By(r => r.ID))) {
 				Logger.Info($"Removing '{childResource.Title}' ({childResource.ID})");
 				Repository.RemoveResource(childResource.ID, true);
 			}

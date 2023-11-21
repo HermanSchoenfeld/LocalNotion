@@ -52,17 +52,16 @@ using System.Runtime.InteropServices;
 	      "limitFeatureA": 1,
 	      "limitFeatureB": 100
 	    },
-	    "Signature": "MEQCIAMJtW2j5vzj6YjDegeyfh5jdrYI/ws84JDehfG+uVF2AiAFNc3U+03vrwPqpIPF9GAZMAzS23/TsONHC+POm4ZDBw=="
+	    "Signature": "MEQCIHPzC7L6jdJZDi4hog4bZcuVrb+Q+TAdcPC+/BGcPT6qAiAJVvGPPxT9HIJ+8caCND8tu0GXnHPp4WZSYV/bl0eFdg=="
 	  },
 	  "command": {
 	    "Item": {
 	      "productKey": "0000-0000-0000-0002",
 	      "action": "enable"
 	    },
-	    "Signature": "MEQCIHcZcf+8MvivmZF/TTKDQt1v6dz/pscQNfrJ/OOqyop+AiBkLBj5ugambukYjCFa3EbdZPUuMqXtD2Bwe+My/x4wjQ=="
+	    "Signature": "MEQCICc1df+K9lGWBna950qmoM/OBzrx27nO2E7dEr7aC18kAiAO7xqWkOXlWrosGDgTtPHM5DMezjl+pTdF9AUlPxvEwQ=="
 	  }
 	}
-	
 	"""
 )]    // full version product key
 [assembly: AssemblyCopyright("Copyright © Sphere 10 Software 2015 - {CurrentYear}")]
@@ -74,5 +73,5 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]

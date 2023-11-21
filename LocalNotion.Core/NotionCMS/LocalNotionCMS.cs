@@ -155,7 +155,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 	// 2022-10-28 The below methods were written during development but are no longer required. They are left here for potential future use cases (although none are known).
 
 	private IDictionary<string, string[]> FetchCategoriesByCategorySlug() {
-		var result = new LookupEx<string, string>(StringComparer.InvariantCultureIgnoreCase);
+		var result = new ExtendedLookup<string, string>(StringComparer.InvariantCultureIgnoreCase);
 		foreach (var page in Repository.Resources.Where(r => r.Type == LocalNotionResourceType.Page).Cast<LocalNotionPage>()) {
 			if (string.IsNullOrWhiteSpace(page.CMSProperties.Root))
 				continue;
@@ -187,7 +187,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 
 	private IDictionary<string, string[]> FetchPagesByCategorySlug() {
 
-		var result = new LookupEx<string, string>(StringComparer.InvariantCultureIgnoreCase);
+		var result = new ExtendedLookup<string, string>(StringComparer.InvariantCultureIgnoreCase);
 		foreach (var page in Repository.Resources.Where(r => r is LocalNotionPage { CMSProperties: not null }).Cast<LocalNotionPage>()) {
 			// Add entry for parent container 
 			var categoryKey = LocalNotionCMSHelper.CalculateSlug(

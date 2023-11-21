@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net7.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
 		<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
@@ -608,9 +608,9 @@
 
 
 	<ItemGroup>
-		<PackageReference Include="AngleSharp" Version="1.0.1" />
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
-		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="7.0.5" />
+		<PackageReference Include="AngleSharp" Version="1.0.5" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.54" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="7.0.13" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
 	</ItemGroup>
 
@@ -621,7 +621,7 @@
 	  <ProjectReference Include="..\..\..\notion-sdk-net\Src\Notion.Client\Notion.Client.csproj" />
 	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Application\Hydrogen.Application.csproj" />
 	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
-	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.NETCore\Hydrogen.NETCore.csproj" />
+	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.NET\Hydrogen.NET.csproj" />
 	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
 	</ItemGroup>
 

@@ -772,7 +772,7 @@ $@"Local Notion Status:
 //		string[] PullBug16Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "97518a54-62f4-4000-b8ac-4b3569c4f762", "--force" };
 //		string[] PullBug17Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f7b05c2e0a4d4e7cab2f1181b238e75d", "--force" };
 //		string[] PullBug18Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "e0d29170-b5e3-4667-b6e4-c4d94b004389", "--force" };
-//		string[] PullBug19Page = new[] { "pull", "-p", "d:\\Backup\\Notion\\Sphere10", "-o", "c649e6d6-754d-4d68-bea0-cb44c08be1fe"};
+//		string[] PullBug19Page = new[] { "pull", "-p", "d:\\Backup\\Notion\\Sphere10", "-o", "c649e6d6-754d-4d68-bea0-cb44c08be1fe" };
 
 
 //		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
@@ -816,7 +816,7 @@ $@"Local Notion Status:
 //		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 //		string[] Remove = new[] { "remove", "--all" };
 //		string[] HelpInit = new[] { "help", "init" };
-//		string[] Version = new[] { "version" };
+//		string[] Version = new[] { "--version" };
 //		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
 //		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 //		string[] List2 = new[] { "list", "-p", "d:\\temp\\t1" };
@@ -827,7 +827,7 @@ $@"Local Notion Status:
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = PullBug19Page;
+//			args = Version;
 
 //#endif
 
