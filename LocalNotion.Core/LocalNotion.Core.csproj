@@ -608,9 +608,9 @@
 
 
 	<ItemGroup>
-		<PackageReference Include="AngleSharp" Version="1.0.5" />
+		<PackageReference Include="AngleSharp" Version="1.0.7" />
 		<PackageReference Include="HtmlAgilityPack" Version="1.11.54" />
-		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="7.0.13" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.0" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
 	</ItemGroup>
 
