@@ -426,7 +426,7 @@ $@"Local Notion Status:
 		var client = CreateNotionClientWithLicenseCheck(apiKey);
 
 		if (!arguments.Objects.Any()) {
-			// List workspace level
+			// List workspace levelrm
 			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
 			var searchParameters = new SearchParameters { Query = arguments.Filter };
 			var results = client.Search.EnumerateAsync(searchParameters, cancellationToken);
@@ -614,7 +614,7 @@ $@"Local Notion Status:
 				throw new InvalidOperationException("No license found");
 			var last4 = new string( license.Command.Item.ProductKey.TakeLast(4).ToArray() );
 			var rights = enforcer.CalculateRights(out var message);
-			consoleLogger.Info($"Product Key: ****-****-****-{last4}. {message}");
+			consoleLogger.Info(ParagraphBuilder.Combine($"Product Key: ****-****-****-{last4}", message, rights.ToString("Workspaces", "Pages")));
 		}
 	}
 
@@ -818,6 +818,7 @@ $@"Local Notion Status:
 //		string[] HelpInit = new[] { "help", "init" };
 //		string[] Version = new[] { "--version" };
 //		string[] ListWithTrigger = new[] { "list", "--all", "--cancel-trigger", "d:\\temp\\test.txt" };
+//		string[] ListAll = new[] { "list" };
 //		string[] List = new[] { "list", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--all" };
 //		string[] List2 = new[] { "list", "-p", "d:\\temp\\t1" };
 
@@ -827,7 +828,7 @@ $@"Local Notion Status:
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = Version;
+//			args = LicenseStatus;
 
 //#endif
 
