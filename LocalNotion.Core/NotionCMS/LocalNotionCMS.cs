@@ -81,7 +81,7 @@ public class LocalNotionCMS : ILocalNotionCMS {
 	}
 
 	private void FlushCache() {
-		_contentHierarchy?.Flush();
+		_contentHierarchy?.Purge();
 	}
 
 	private Dictionary<string, CMSContentNode> FetchContentHierarchy(string cmsDatabaseID, bool publishedOnly) {

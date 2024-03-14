@@ -920,9 +920,9 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	}
 
 	protected void FlushCaches() {
-		_resourcesByNID.Flush();
-		_renderBySlug.Flush();
-		_resourceByName.Flush();
+		_resourcesByNID.Purge();
+		_renderBySlug.Purge();
+		_resourceByName.Purge();
 	}
 
 	private void CheckNotLoaded() {
