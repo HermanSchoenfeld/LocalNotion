@@ -61,7 +61,8 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(double? val)
 		=> !val.HasValue ? string.Empty : $"{val.Value:G}";
 
-	protected override string Render(string val) => !string.IsNullOrEmpty(val) ? System.Net.WebUtility.HtmlEncode(val).Replace("\n", "<br />") : string.Empty; 
+	protected override string Render(string val) 
+		=> !string.IsNullOrEmpty(val) ? Encode(val, true, false, true) : string.Empty; 
 
 	#endregion
 
@@ -459,7 +460,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderTemplate(
 				"equation_inline",
 				new RenderTokens {
-					["expression"] = System.Net.WebUtility.HtmlEncode(text.Equation.Expression),
+					["expression"] = Encode(text.Equation.Expression, true, true, false),
 				}
 			);
 
@@ -489,7 +490,6 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	#endregion
 
 	#region Page
-
 	protected override string Render(Page page)
 		=> RenderTemplate(
 			"page",
@@ -673,7 +673,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			"code",
 			new RenderTokens(block) {
 				["language"] = ToPrismLanguage(block.Code.Language),
-				["code"] = System.Net.WebUtility.HtmlEncode(block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty))
+				["code"] = Encode(block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty), true, true, false)
 			}
 		);
 
@@ -788,7 +788,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderTemplate(
 				"equation_block",
 				new RenderTokens(block) {
-					["expression"] = System.Net.WebUtility.HtmlEncode(block.Equation.Expression),
+					["expression"] = Encode(block.Equation.Expression, true, true, false),
 				}
 			);
 
@@ -1152,8 +1152,6 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	#region Aux
 
-	
-
 	protected virtual string RenderTemplate(string widgetType)
 		=> RenderTemplate(widgetType, new RenderTokens());
 
@@ -1240,6 +1238,21 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		}
 
 		return url;
+	}
+
+	protected string Encode(string text, bool htmlEncode, bool escapeBraces, bool convertNewlinesToBreaks) {
+
+		if (htmlEncode)
+			text = System.Net.WebUtility.HtmlEncode(text);
+
+		if (escapeBraces)
+			text = text.Replace("{", "{{").Replace("}", "}}");
+
+		if (convertNewlinesToBreaks) {
+			text = text.Replace("\n\r", "<br />");
+			text = text.Replace("\n", "<br />");
+		}
+		return text;
 	}
 
 	#endregion
