@@ -290,7 +290,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		NotifyClearing();
 		SuppressNotifications = true;
 		try {
-			await Task.Run(() =>_objectStore.Clear());
+			await Task.Run(() => _objectStore.Clear());
 			await Task.Run(() => _graphStore.Clear());
 			await Task.Run(() => Resources.Select(r => r.ID).ToArray().ForEach(x => RemoveResource(x, false)));
 			if (RequiresSave)
