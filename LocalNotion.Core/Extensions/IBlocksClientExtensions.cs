@@ -8,11 +8,12 @@ public static class IBlocksClientExtensions {
 
 	public static async IAsyncEnumerable<IBlock> EnumerateChildrenAsync(this IBlocksClient blocksClient, string blockId, CancellationToken cancellationToken) {
 		PaginatedList<IBlock> searchResult;
-		var parameters = new BlocksRetrieveChildrenParameters();
+		var parameters = new BlockRetrieveChildrenRequest();
+		parameters.BlockId = blockId;
 		var cursor = parameters.StartCursor;
 		do {
 			parameters.StartCursor = cursor;
-			searchResult = await blocksClient.RetrieveChildrenAsync(blockId, parameters).WithCancellationToken(cancellationToken);
+			searchResult = await blocksClient.RetrieveChildrenAsync(parameters, cancellationToken);
 			if (searchResult == null)
 				break;
 			foreach(var result in searchResult.Results)
@@ -27,7 +28,7 @@ public static class IBlocksClientExtensions {
 			Children = Array.Empty<NotionObjectGraph>()
 		};
 		
-		var rootObject = objects.TryGetValue(objectID, out var x) ? x : await blocksClient.RetrieveAsync(objectID);
+		var rootObject = objects.TryGetValue(objectID, out var x) ? x : await blocksClient.RetrieveAsync(objectID, cancellationToken);
 		objects[objectID] = rootObject;
 
 		if (rootObject is Page or IBlock { HasChildren: true })  // note will not populate child page blocks

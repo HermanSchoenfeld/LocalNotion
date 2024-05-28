@@ -419,7 +419,7 @@ $@"Local Notion Status:
 		if (!arguments.Objects.Any()) {
 			// List workspace levelrm
 			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
-			var searchParameters = new SearchParameters { Query = arguments.Filter };
+			var searchParameters = new SearchRequest { Query = arguments.Filter };
 			var results = client.Search.EnumerateAsync(searchParameters, cancellationToken);
 			if (!arguments.All) 
 				results = results.WhereAwait(async x => x is Database or Page && x.GetParent() is WorkspaceParent);
@@ -488,7 +488,7 @@ $@"Local Notion Status:
 				consoleLogger.Info("Querying Notion for objects to pull");
 				var rootItems = await client
 					.Search
-					.EnumerateAsync(new SearchParameters(), cancellationToken: cancellationToken)
+					.EnumerateAsync(new SearchRequest(), cancellationToken: cancellationToken)
 					.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent))
 					.Select(x => Guid.Parse(x.Id))
 					.ToArrayAsync();
@@ -629,7 +629,7 @@ $@"Local Notion Status:
 				disposables.Add(monitor);
 			}
 
-			if (typeof(T) != typeof(LicenseCommandArguments)) 
+			if (HydrogenFramework.Instance.Options.HasFlag(HydrogenFrameworkOptions.EnableDrm) && typeof(T) != typeof(LicenseCommandArguments)) 
 				EnforceLicense();
 
 			return await command(args, CancelProgram.Token);
@@ -821,7 +821,7 @@ $@"Local Notion Status:
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = RenderAll2;
+//			args = SyncCmd3;
 
 //#endif
 
@@ -835,7 +835,9 @@ $@"Local Notion Status:
 #endif
 			HydrogenFramework.Instance.StartFramework(frameworkOptions); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work
 			
-			LoadLicense();
+			if (HydrogenFramework.Instance.Options.HasFlag(HydrogenFrameworkOptions.EnableDrm))
+				LoadLicense();
+
 			Console.CancelKeyPress += (sender, args) => {
 				Console.WriteLine("Cancelling");
 				args.Cancel = true;

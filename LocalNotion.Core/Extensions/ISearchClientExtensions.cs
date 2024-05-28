@@ -8,22 +8,22 @@ public static class ISearchClientExtensions {
 
 	public static IAsyncEnumerable<Page> EnumeratePagesAsync(this ISearchClient searchClient)
 		=> searchClient
-		   .EnumerateAsync(new SearchParameters { Filter = new SearchFilter { Value = SearchObjectType.Page } })
+		   .EnumerateAsync(new SearchRequest { Filter = new SearchFilter { Value = SearchObjectType.Page } })
 		   .Cast<Page>();
 
 	public static IAsyncEnumerable<Database> EnumerateDatabasesAsync(this ISearchClient searchClient)
 		=> searchClient
-		    .EnumerateAsync(new SearchParameters { Filter = new SearchFilter { Value = SearchObjectType.Database } })
+		    .EnumerateAsync(new SearchRequest { Filter = new SearchFilter { Value = SearchObjectType.Database } })
 		    .Cast<Database>();
 
-	public static async IAsyncEnumerable<IObject> EnumerateAsync(this ISearchClient searchClient, SearchParameters parameters = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
-		parameters ??= new SearchParameters();
+	public static async IAsyncEnumerable<IObject> EnumerateAsync(this ISearchClient searchClient, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+		request ??= new SearchRequest();
 		PaginatedList<IObject> searchResult;
-		var cursor = parameters.StartCursor;
+		var cursor = request.StartCursor;
 		do {
 			cancellationToken.ThrowIfCancellationRequested();
-			parameters.StartCursor = cursor;
-			searchResult = await searchClient.SearchAsync(parameters).WithCancellationToken(cancellationToken);
+			request.StartCursor = cursor;
+			searchResult = await searchClient.SearchAsync(request).WithCancellationToken(cancellationToken);
 			foreach(var result in searchResult.Results)
 				yield return result;
 			cursor = searchResult.NextCursor;
