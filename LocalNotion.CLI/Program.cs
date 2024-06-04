@@ -6,6 +6,7 @@ using System.Runtime.Serialization;
 using LocalNotion.Core;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace LocalNotion.CLI;
 
@@ -15,6 +16,9 @@ public static partial class Program {
 	private static IProductUsageServices _usageServices = null;
 	private static IUserInterfaceServices _userInterfaceServices = null;
 	private static ProductRights _licenseRights = ProductRights.None;
+
+	private const string LinuxNGinxReloadCommand = "systemctl reload nginx";
+	private const string WinNGinxReloadCommand = "nginx -s reload";
 
 	private static CancellationTokenSource CancelProgram { get; } = new CancellationTokenSource();
 
@@ -180,7 +184,7 @@ public static partial class Program {
 
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
-
+		
 		[Option("render", Default = (bool)true, HelpText = "Renders objects after pull")]
 		public bool Render { get; set; }
 
@@ -189,6 +193,18 @@ public static partial class Program {
 
 		[Option("render-mode", Default = RenderMode.ReadOnly, HelpText = "Rendering mode for objects (ReadOnly, Editable)")]
 		public RenderMode RenderMode { get; set; }
+
+		[Option("nginx", Default = (bool)false, HelpText = "Generate nginx configuration for web hosting")]
+		public bool GenerateNginxMapping { get; set; }
+
+		[Option("nginx-reload", Default = false, HelpText = "Reloads NGINX server by executing the \"nginx-reload-cmd\" command line")]
+		public bool NginxReload { get; set; }
+
+		[Option("nginx-reload-cmd", Default = null, HelpText = "The command line used to reload NGINX web server (executed from the .localnotion/nginx dir)")]
+		public string NginxReloadCommand { get; set; }
+
+		[Option("nginx-update-only", Default = false, HelpText = "Only run NGINX commands if an update was detected (avoids unnecessary NGINX reloads on sync)")]
+		public bool NginxUpdateOnly { get; set; }
 
 		[Option("fault-tolerant", Default = (bool)true, HelpText = "Continues processing on failures")]
 		public bool FaultTolerant { get; set; }
@@ -484,6 +500,7 @@ $@"Local Notion Status:
 
 			var syncOrchestrator = new NotionSyncOrchestrator(client, repo);
 
+			// If pulling all, add all objects into list of objects to pull
 			if (arguments.PullAll) {
 				consoleLogger.Info("Querying Notion for objects to pull");
 				var rootItems = await client
@@ -495,33 +512,77 @@ $@"Local Notion Status:
 				arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
 
 			}
+			
+			// Pull explicitly specified objects if applicable
+			var itemsDownloaded = 0L;
 			foreach (var @obj in arguments.Objects.Select(x => x.ToString())) {
 				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
+				var downloads = Array.Empty<LocalNotionResource>();
 				switch (objType) {
 					case (null, _):
 						consoleLogger.Info($"Unrecognized object: {@obj}");
 						break;
 					case (LocalNotionResourceType.Database, var lastEditedTime):
-						await syncOrchestrator.DownloadDatabaseAsync(
+						downloads = await syncOrchestrator.DownloadDatabaseAsync(
 							@obj,
 							lastEditedTime,
-							arguments.Render,
-							arguments.RenderOutput,
-							arguments.RenderMode,
-							arguments.FaultTolerant,
-							arguments.Force,
+							new DownloadOptions {
+								Render = arguments.Render, 
+								RenderType = arguments.RenderOutput, 
+								RenderMode = arguments.RenderMode,
+								ForceRefresh = arguments.Force,
+								FaultTolerant = arguments.FaultTolerant
+							},
 							cancellationToken
 						);
 						break;
 					case (LocalNotionResourceType.Page, var lastEditTimeNotion):
-						await syncOrchestrator.DownloadPageAsync(@obj, lastEditTimeNotion, arguments.Render, arguments.RenderOutput, arguments.RenderMode, null, arguments.FaultTolerant, arguments.Force, cancellationToken);
+						downloads = await syncOrchestrator.DownloadPageAsync(
+							@obj, 
+							lastEditTimeNotion,
+							new DownloadOptions() {
+								Render = arguments.Render,
+								RenderType = arguments.RenderOutput,
+								RenderMode = arguments.RenderMode,
+								ForceRefresh = arguments.Force,
+								FaultTolerant = arguments.FaultTolerant
+							},
+							cancellationToken
+						);
 						break;
 					default:
 						consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
 						break; ;
 				}
+				itemsDownloaded += downloads.Length;
 			}
+			consoleLogger.Info($"Updated {itemsDownloaded} items");
 			
+			// Generate nginx mapping if applicable
+			if (arguments.GenerateNginxMapping) {
+				try {
+					var nginxMappingFilePath = NginxMappingsGenerator.CalculateMappingFile(repo);
+					if (!arguments.NginxUpdateOnly || !File.Exists(nginxMappingFilePath) || itemsDownloaded > 0) {
+						var folderPath =  await NginxMappingsGenerator.GenerateNGinxFiles(repo);
+						consoleLogger.Info($"Generated NGINX hosting files: {folderPath}");
+
+						if (arguments.NginxReload) {
+							var reloadCmd = arguments.NginxReloadCommand ?? (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? WinNGinxReloadCommand : LinuxNGinxReloadCommand);
+							consoleLogger.Info($"Reloading NGINX configuration: {reloadCmd}");
+							var (executable, args) = Tools.Runtime.ParseCommandLine(reloadCmd);
+
+							var process = Process.Start(new ProcessStartInfo(executable, args) { UseShellExecute  = true, WorkingDirectory = folderPath });
+							await process.WaitForExitAsync(cancellationToken);
+							consoleLogger.Info($"NGINX reload exited with code {process.ExitCode}");
+
+						}
+					} else {
+						consoleLogger.Info("NGINX configurations not changed as no changes detected");
+					}
+				} catch (Exception error) {
+					consoleLogger.Exception(error);
+				}
+			}
 		}
 		return 0;
 	}
@@ -729,8 +790,8 @@ $@"Local Notion Status:
 //		string[] InitCmd2 = new[] { "init", "-p", "d:\\databases\\LN-SPHERE10.COM", "-k", "YOUR_NOTION_API_KEY_HERE" };
 
 //		string[] InitPublishingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "publishing" };
-//		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting" };
-//		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "webhosting", "-t", "embedded" };
+//		string[] InitWebhostingCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "website" };
+//		string[] InitWebhostingEmbeddedCmd = new[] { "init", "-k", "YOUR_NOTION_API_KEY_HERE", "-x", "website", "-t", "embedded" };
 //		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 //		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
 //		string[] SyncCmd3 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490", "-f", "3" };
@@ -743,6 +804,8 @@ $@"Local Notion Status:
 //		string[] PullCmd6 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc", "--force" };
 //		string[] PullCmd7 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc" };
 //		string[] PullCmd8 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94fe561409fa2d84f43b85e9490", "--force" };
+//		string[] PullCmd9 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94fe561409fa2d84f43b85e9490", "--nginx"};
+//		string[] PullCmd10 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3d669586-6566-44b8-b610-801db04956bc", "--nginx" };
 
 //		string[] PullForceCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
 //		string[] PullForceCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "--force" };
@@ -821,7 +884,7 @@ $@"Local Notion Status:
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 //		if (args.Length == 0)
-//			args = SyncCmd3;
+//			args = PullCmd10;
 
 //#endif
 

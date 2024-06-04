@@ -8,8 +8,6 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 
-// Add Scoping to ResourceRepository
-
 public class NotionSyncOrchestrator {
 
 	public NotionSyncOrchestrator(INotionClient notionClient, ILocalNotionRepository repository) {
@@ -29,8 +27,14 @@ public class NotionSyncOrchestrator {
 	/// <summary>
 	/// Downloads and renders pages from a LocalNotionCMS Database.
 	/// </summary>
-	public async Task<LocalNotionResource[]> DownloadDatabaseAsync(string databaseID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
+	/// <param name="databaseID">Notion ID of database to download</param>
+	/// <param name="knownNotionLastEditTime">The last edited time of database as currently on notion. Only specify IF KNOWN and leave null otherwise. This can help speed-up sync in many items scenarios.</param>
+	/// <param name="options">The options for downloading database.</param>
+	/// <param name="cancellationToken">Task cancellation token</param>
+	/// <returns>All updated resources. Will be empty if nothing was synced.</returns>
+	public async Task<LocalNotionResource[]> DownloadDatabaseAsync(string databaseID, DateTime? knownNotionLastEditTime = null, DownloadOptions options = null, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNull(databaseID, nameof(databaseID));
+		options ??= DownloadOptions.Default;
 		databaseID = LocalNotionHelper.SanitizeObjectID(databaseID);
 		var downloadedResources = new List<LocalNotionResource>();
 		var processedPages = new List<Page>();
@@ -48,11 +52,15 @@ public class NotionSyncOrchestrator {
 				knownNotionLastEditTime = notionDatabase.LastEditedTime;
 			}
 
+			// Fetch page, we need to know last edit tie on notion
+			if (knownNotionLastEditTime == null)
+				await FetchNotionDatabase();
+
 			var containsDatabase = Repository.TryGetDatabase(databaseID, out var localDatabase);
 			var preDownloadLocalRows = Repository.GetChildResources(databaseID).ToArray();
 			var databaseDifferent = containsDatabase && localDatabase.LastEditedOn != knownNotionLastEditTime;
 			var wasPrematurelySynced = containsDatabase && !databaseDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localDatabase.LastSyncedOn - localDatabase.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
-			var shouldDownload = !containsDatabase || databaseDifferent || forceRefresh || wasPrematurelySynced;
+			var shouldDownload = !containsDatabase || databaseDifferent || options.ForceRefresh || wasPrematurelySynced;
 			var lastKnownParent = localDatabase?.ParentResourceID;
 
 			// Fetch child page headers (will be needed)
@@ -105,22 +113,22 @@ public class NotionSyncOrchestrator {
 				// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
 				// issue.
 				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Database))
-					Repository.ImportBlankResourceRender(notionDatabase.Id, renderType);
+					Repository.ImportBlankResourceRender(notionDatabase.Id, options.RenderType);
 
 			}
-	
 
 			// Fetch updated database pages
 			var postDownloadRows = new List<Page>();
 			// Download
-			var sequence = 0;
+			var pageSequence = 0;
 			 foreach (var page in notionChildPages) {
 				cancellationToken.ThrowIfCancellationRequested();
 				try {
 					postDownloadRows.Add(page);
-					var downloads = await DownloadPageAsync(page.Id, page.LastEditedTime, sequence: sequence++, render: false, forceRefresh: forceRefresh, cancellationToken: cancellationToken); // rendering deferred to below
+					var downloads = await DownloadPageAsync(page.Id, page.LastEditedTime, DownloadOptions.WithoutRender(options), cancellationToken: cancellationToken); // rendering deferred to below
 					downloadedResources.AddRange(downloads);
 					processedPages.Add(page);
+					pageSequence++;
 				} catch (ProductLicenseLimitException) {
 					Logger.Error("You have reached the limit of pages available under your license. Please purchase a license to pull more pages/databases from Notion.");
 					break;
@@ -129,7 +137,7 @@ public class NotionSyncOrchestrator {
 				} catch (Exception error) {
 					Logger.Error($"Failed to process page '{page.Id}'.");
 					Logger.Exception(error);
-					if (!faultTolerant)
+					if (!options.FaultTolerant)
 						throw;
 				}
 			}
@@ -140,18 +148,18 @@ public class NotionSyncOrchestrator {
 			}
 
 			// Render
-			if (render) {
+			if (options.Render) {
 				var renderer = new ResourceRenderer(Repository, Logger);
 				foreach (var resource in downloadedResources.Where(x => x is not LocalNotionFile)) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
-						renderer.RenderLocalResource(resource.ID, renderType, renderMode);
+						renderer.RenderLocalResource(resource.ID, options.RenderType, options.RenderMode);
 					} catch (TaskCanceledException) {
 						throw;
 					} catch (Exception error) {
 						Logger.Error($"Failed to render resource '{resource.Title}' ({resource.ID}).");
 						Logger.Exception(error);
-						if (!faultTolerant)
+						if (!options.FaultTolerant)
 							throw;
 					}
 				}
@@ -160,8 +168,9 @@ public class NotionSyncOrchestrator {
 		}
 	}
 
-	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, DateTime? knownNotionLastEditTime = null, bool render = true, RenderType renderType = RenderType.HTML, RenderMode renderMode = RenderMode.ReadOnly, int? sequence = null, bool faultTolerant = true, bool forceRefresh = false, CancellationToken cancellationToken = default) {
+	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, DateTime? knownNotionLastEditTime = null, DownloadOptions options = null, CancellationToken cancellationToken = default) {
 		Guard.ArgumentNotNull(pageID, nameof(pageID));
+		options ??= DownloadOptions.Default;
 		var downloadedResources = new List<LocalNotionResource>();
 
 		// ensure correct
@@ -195,7 +204,7 @@ public class NotionSyncOrchestrator {
 			var oldChildResources = Repository.GetChildResources(pageID).ToArray();
 			var pageDifferent = containsPage && localPage.LastEditedOn != knownNotionLastEditTime;
 			var wasPrematurelySynced = containsPage && !pageDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localPage.LastSyncedOn - localPage.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
-			var shouldDownload = !containsPage || pageDifferent || forceRefresh || wasPrematurelySynced;
+			var shouldDownload = !containsPage || pageDifferent || options.ForceRefresh || wasPrematurelySynced;
 			var lastKnownParent = localPage?.ParentResourceID;
 
 			#endregion
@@ -268,7 +277,7 @@ public class NotionSyncOrchestrator {
 				// Download cover
 				if (localPage.Cover != null && ShouldDownloadFile(localPage.Cover)) {
 					// Cover is a Notion file
-					var file = await DownloadFileAsync(localPage.Cover, notionPage.Id, forceRefresh, cancellationToken);
+					var file = await DownloadFileAsync(localPage.Cover, notionPage.Id, options.ForceRefresh, cancellationToken);
 					if (file != null) {
 						localPage.Cover = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
@@ -282,7 +291,7 @@ public class NotionSyncOrchestrator {
 				// Download thumbnail
 				if (localPage.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localPage.Thumbnail.Data)) {
 					// Thumbnail is a Notion file
-					var file = await DownloadFileAsync(localPage.Thumbnail.Data, notionPage.Id, forceRefresh, cancellationToken);
+					var file = await DownloadFileAsync(localPage.Thumbnail.Data, notionPage.Id, options.ForceRefresh, cancellationToken);
 					if (file != null) {
 						localPage.Thumbnail.Data = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
@@ -299,7 +308,7 @@ public class NotionSyncOrchestrator {
 						.VisitAll()
 						.Where(x => pageObjects[x.ObjectID].HasFileAttachment())
 						.Select(x => pageObjects[x.ObjectID].GetFileAttachment())
-						.Where(x => (x is FileObject) || (x is FileObjectWithName))
+						.Where(x => x is FileObject || x is FileObjectWithName)
 						.Select(x => new WrappedNotionFile(x))
 						.Union(
 							notionPage
@@ -314,7 +323,7 @@ public class NotionSyncOrchestrator {
 				foreach (var file in uploadedFiles) {
 					var url = file.GetUrl();
 					if (ShouldDownloadFile(url)) {
-						var downloadedFile = await DownloadFileAsync(url, notionPage.Id, forceRefresh, cancellationToken);
+						var downloadedFile = await DownloadFileAsync(url, notionPage.Id, options.ForceRefresh, cancellationToken);
 						if (downloadedFile != null) {
 							file.SetUrl(LocalNotionRenderLink.GenerateUrl(downloadedFile.ID, RenderType.File));
 							downloadedResources.Add(downloadedFile);
@@ -347,7 +356,7 @@ public class NotionSyncOrchestrator {
 				// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
 				// issue.
 				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Page))
-					Repository.ImportBlankResourceRender(notionPage.Id, renderType);
+					Repository.ImportBlankResourceRender(notionPage.Id, options.RenderType);
 
 				#endregion
 
@@ -403,7 +412,7 @@ public class NotionSyncOrchestrator {
 						.ToList();
 
 				// Render the unchanged page if no render exists
-				if (!localPage.TryGetRender(renderType, out _))
+				if (!localPage.TryGetRender(options.RenderType, out _))
 					downloadedResources.Add(localPage);
 
 				#endregion
@@ -413,7 +422,7 @@ public class NotionSyncOrchestrator {
 
 			foreach (var childPage in childPages) {
 				// We call download to sub-pages but with rendering off, only top-level will ever render itself and all children
-				var subPageDownloads = await DownloadPageAsync(childPage.Item1, childPage.Item2, false, renderType, renderMode, null, faultTolerant, forceRefresh, cancellationToken);
+				var subPageDownloads = await DownloadPageAsync(childPage.Item1, childPage.Item2, DownloadOptions.WithoutRender(options), cancellationToken);
 				downloadedResources.AddRange(subPageDownloads);
 			}
 
@@ -429,7 +438,7 @@ public class NotionSyncOrchestrator {
 
 			foreach (var childDatabase in childDatabases) {
 				// We download child database but with rendering off, only top-level will ever render itself and all children
-				var subPageDownloads = await DownloadDatabaseAsync(childDatabase.Item1, childDatabase.Item2, false, renderType, renderMode, faultTolerant, forceRefresh, cancellationToken);
+				var subPageDownloads = await DownloadDatabaseAsync(childDatabase.Item1, childDatabase.Item2, DownloadOptions.WithoutRender(options), cancellationToken);
 				downloadedResources.AddRange(subPageDownloads);
 			}
 
@@ -452,14 +461,14 @@ public class NotionSyncOrchestrator {
 
 			#region Render page and child-pages
 
-			if (render) {
+			if (options.Render) {
 				var renderer = new ResourceRenderer(Repository, Logger);
 
 				// render pages
 				foreach (var renderableResource in downloadedResources.Where(x => x is LocalNotionEditableResource).Distinct().Cast<LocalNotionEditableResource>()) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
-						renderer.RenderLocalResource(renderableResource.ID, renderType, renderMode);
+						renderer.RenderLocalResource(renderableResource.ID, options.RenderType, options.RenderMode);
 					} catch (ProductLicenseLimitException) {
 						throw;
 					} catch (TaskCanceledException) {
@@ -467,11 +476,10 @@ public class NotionSyncOrchestrator {
 					} catch (Exception error) {
 						Logger.Error($"Failed to render page '{renderableResource.Title}' ({renderableResource.ID}).");
 						Logger.Exception(error);
-						if (!faultTolerant)
+						if (!options.FaultTolerant)
 							throw;
 					}
 				}
-
 			}
 
 			#endregion
