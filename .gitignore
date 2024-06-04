@@ -197,3 +197,6 @@ project.lock.json
 **/wwwroot/lib/
 **/wwwroot/**/*.min.*
 *.DS_Store
+
+# Local Batch files
+set-dev-path.bat
