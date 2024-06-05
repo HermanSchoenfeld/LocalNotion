@@ -36,6 +36,8 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual string DefaultNotionApiKey => InternalRepository.DefaultNotionApiKey;
 
+	public string CMSDatabaseID => InternalRepository.CMSDatabaseID;
+
 	public virtual IEnumerable<string> Objects => InternalRepository.Objects;
 	
 	public virtual IEnumerable<string> Graphs => InternalRepository.Graphs;

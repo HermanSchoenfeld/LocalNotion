@@ -226,5 +226,11 @@ public class LocalNotionCMSHelper {
 			true
 		);
 
+	/// <summary>
+	/// Orders the given resources in a render-friendly order, ensuring menu and footer page includes are rendered first
+	/// </summary>
+	public static IEnumerable<LocalNotionEditableResource> RenderFirstOrder(IEnumerable<LocalNotionEditableResource> resources) 
+		=> resources.OrderBy(x => x is { CMSProperties.PageType: CMSPageType.Menu or CMSPageType.Footer } ? 0 : 1);
+
 }
 

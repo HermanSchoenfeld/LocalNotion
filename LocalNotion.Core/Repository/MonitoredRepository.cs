@@ -62,6 +62,8 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public virtual string DefaultNotionApiKey => InternalRepository.Value.DefaultNotionApiKey;
 
+	public string CMSDatabaseID => InternalRepository.Value.CMSDatabaseID;
+
 	public virtual IEnumerable<string> Objects => InternalRepository.Value.Objects;
 	
 	public virtual IEnumerable<string> Graphs => InternalRepository.Value.Graphs;

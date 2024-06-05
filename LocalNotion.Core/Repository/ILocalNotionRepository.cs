@@ -30,6 +30,8 @@ public interface ILocalNotionRepository  {
 
 	string DefaultNotionApiKey { get; }
 
+	string CMSDatabaseID { get; }
+
 	IEnumerable<string> Objects { get; }
 
 	IEnumerable<string> Graphs { get; }

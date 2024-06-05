@@ -8,8 +8,41 @@ namespace LocalNotion.Core;
 public class HtmlRenderer : RecursiveRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	public HtmlRenderer(RenderMode renderMode, ILocalNotionRepository repository,  HtmlThemeManager themeManager, ILinkGenerator resolver, IBreadCrumbGenerator breadCrumbGenerator, ILogger logger)
-		: base(renderMode, repository, themeManager, resolver, breadCrumbGenerator, logger) {
+	private readonly string _menuRendering;
+	private readonly string _footerRendering;
+
+	public HtmlRenderer(
+		RenderMode renderMode,
+		ILocalNotionRepository repository,
+		HtmlThemeManager themeManager,
+		ILinkGenerator resolver,
+		IBreadCrumbGenerator breadCrumbGenerator,
+		ILogger logger,
+		LocalNotionPage menuPage = null,
+		LocalNotionPage footerPage = null
+	) : base(renderMode, repository, themeManager, resolver, breadCrumbGenerator, logger) {
+		
+		// Fetch menu and footer renders
+		var repoPath = repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
+		if (menuPage is not null && menuPage.TryGetRender(RenderType.HTML, out var htmlRender)) {
+			var menuRenderFile = Path.GetFullPath(
+				htmlRender.LocalPath, 
+				repoPath
+			);
+			_menuRendering = File.ReadAllText(menuRenderFile);
+		} else {
+			_menuRendering = string.Empty;
+		}
+
+		if (footerPage is not null && footerPage.TryGetRender(RenderType.HTML, out var footerRender)) {
+			var footerRenderFile = Path.GetFullPath(
+				footerRender.LocalPath, 
+				repoPath
+			);
+			_footerRendering = File.ReadAllText(footerRenderFile);
+		} else {
+			_footerRendering = string.Empty;
+		}
 	}
 
 	protected new HtmlThemeManager ThemeManager => (HtmlThemeManager)base.ThemeManager;
@@ -525,7 +558,9 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				["id"] = RenderingContext.Resource.ID,
 				["created_time"] = RenderingContext.Resource.CreatedOn,
 				["last_updated_time"] = RenderingContext.Resource.LastEditedOn,
-				["children"] = RenderChildPageItems()
+				["menu"] = _menuRendering,
+				["children"] = RenderChildPageItems(),
+				["footer"] = _footerRendering
 			}
 		);
 

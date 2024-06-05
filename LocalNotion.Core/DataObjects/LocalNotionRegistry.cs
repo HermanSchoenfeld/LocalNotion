@@ -19,6 +19,9 @@ public class LocalNotionRegistry {
 	[JsonProperty("paths")]
 	public LocalNotionPathProfile Paths { get; set; } = LocalNotionPathProfile.Backup;
 
+	[JsonProperty("cms_database")]
+	public string CMSDatabase { get; set; } = null;
+
 	[JsonProperty("log_level")]
 	[JsonConverter(typeof(StringEnumConverter))]
 	public LogLevel LogLevel { get; set; }

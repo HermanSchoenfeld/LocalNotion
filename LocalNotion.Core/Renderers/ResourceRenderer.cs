@@ -4,14 +4,15 @@ using Notion.Client;
 namespace LocalNotion.Core;
 
 public class ResourceRenderer : IResourceRenderer {
-	private readonly ILocalNotionRepository _repository;
 
 	public ResourceRenderer(ILocalNotionRepository repository, ILogger logger = null) {
 		Guard.ArgumentNotNull(repository, nameof(repository));
 
-		_repository = repository;
+		Repository = repository;
 		Logger = logger ?? new NoOpLogger(); ;
 	}
+
+	protected ILocalNotionRepository Repository { get; }
 
 	public ILogger Logger { get; set; }
 
@@ -24,20 +25,19 @@ public class ResourceRenderer : IResourceRenderer {
 	/// <returns>Filename of rendered file</returns>
 	public string RenderLocalResource(string resourceID, RenderType renderType, RenderMode renderMode) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
-		if (!_repository.TryGetObject(resourceID, out var @obj))
+		if (!Repository.TryGetObject(resourceID, out var @obj))
 			throw new ObjectNotFoundException(resourceID);
 		switch (@obj.Object) {
 			case ObjectType.Page:
 			case ObjectType.Database:
-				var resource = (LocalNotionEditableResource)_repository.GetResource(resourceID);
-				var themeManager = new HtmlThemeManager(_repository.Paths, Logger);
-				var renderer = RendererFactory.CreateRenderer(renderType, renderMode, _repository, Logger);
+				var resource = (LocalNotionEditableResource)Repository.GetResource(resourceID);
+				var renderer = CreateRenderer(resource, renderType, renderMode, Repository, Logger);
 				var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
-				var output = string.Empty;
+				string output;
 				try {
 					var html = renderer.Render(resource);
 					File.WriteAllText(tmpFile, html);
-					output = _repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
+					output = Repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
 				} catch (TaskCanceledException) {
 					throw;
 				} catch (Exception error) {
@@ -45,13 +45,14 @@ public class ResourceRenderer : IResourceRenderer {
 					Tools.Exceptions.ExecuteIgnoringException(() => {
 						if (renderType == RenderType.HTML) {
 							File.WriteAllText(tmpFile, error.ToDiagnosticString());
-							_repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
+							Repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
 						}
 					});
 					throw;
 				} finally {
 					File.Delete(tmpFile);
 				}
+
 				return output;
 
 
@@ -60,4 +61,20 @@ public class ResourceRenderer : IResourceRenderer {
 		}
 	}
 
+
+	protected virtual IRenderer<string> CreateRenderer(LocalNotionResource resource, RenderType renderType, RenderMode renderMode, ILocalNotionRepository repository, ILogger logger) {
+		switch (renderType) {
+			case RenderType.HTML:
+				var themeManager = new HtmlThemeManager(repository.Paths, logger);
+				var urlGenerator = LinkGeneratorFactory.Create(repository);
+				var breadcrumbGenerator = new BreadCrumbGenerator(repository, urlGenerator);
+				return new HtmlRenderer(renderMode, repository, themeManager, urlGenerator, breadcrumbGenerator, logger);
+			case RenderType.PDF:
+			case RenderType.File:
+			default:
+				throw new NotImplementedException(renderType.ToString());
+		}
+	}
+
 }
+

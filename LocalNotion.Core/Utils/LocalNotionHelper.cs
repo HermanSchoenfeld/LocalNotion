@@ -4,7 +4,8 @@ using Hydrogen;
 using Notion.Client;
 
 namespace LocalNotion.Core;
-internal class LocalNotionHelper {
+
+public class LocalNotionHelper {
 	
 	public static bool TryCovertObjectIdToGuid(string objectID, out Guid guid)
 		=> Guid.TryParse(objectID, out guid);
@@ -200,9 +201,11 @@ internal class LocalNotionHelper {
 		return result;
 	}
 
-	
 	public static string CalculatePageName(string id, string title) 
 		=> Tools.Url.ToHtml4DOMObjectID($"{Tools.Text.ToCasing(TextCasing.KebabCase, title)}", String.Empty);
+
+	public static IEnumerable<LocalNotionEditableResource> FilterRenderableResources(IEnumerable<LocalNotionResource> resources)
+		=> LocalNotionCMSHelper.RenderFirstOrder( resources.Where(x => x is LocalNotionEditableResource).Cast<LocalNotionEditableResource>().Distinct());
 
 
 }

@@ -5,11 +5,13 @@ namespace LocalNotion.Core;
 public class LocalNotionCMS : ILocalNotionCMS {
 	private readonly ICache<string, CMSContentNode> _contentHierarchy;
 
-	public LocalNotionCMS(string cmsDatabaseID, ILocalNotionRepository repository) {
+	public LocalNotionCMS(ILocalNotionRepository repository) {
+		Guard.ArgumentNotNull(repository, nameof(repository));
+		Guard.Ensure(repository.CMSDatabaseID != null, "Repository must have a CMS database ID");
 		Repository = repository;
 		Repository.Changed += _ => FlushCache();
-		CMSDatabaseID = cmsDatabaseID;
-		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => FetchContentHierarchy(cmsDatabaseID, true), keyComparer: StringComparer.InvariantCultureIgnoreCase);
+		CMSDatabaseID = repository.CMSDatabaseID;
+		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => FetchContentHierarchy(CMSDatabaseID, true), keyComparer: StringComparer.InvariantCultureIgnoreCase);
 	}
 
 	public ILocalNotionRepository Repository { get; }

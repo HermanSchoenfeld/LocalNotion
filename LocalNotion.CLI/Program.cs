@@ -79,6 +79,9 @@ public static partial class Program {
 		[Option('k', "key", HelpText = "Notion API key to use when contacting notion (do not pass in low security environment)")]
 		public string APIKey { get; set; } = null;
 
+		[Option('c', "cms", HelpText = "Specifies that this repo will mirror Notion CMS database")]
+		public string CMSDatabase { get; set; } = null;
+
 		[Option('l', "log-level", Default = LogLevel.Info, HelpText = $"Logging level in log files (Options: debug, info, warning, error)")]
 		public LogLevel LogLevel { get; set; }
 
@@ -154,7 +157,7 @@ public static partial class Program {
 		[Option('o', "objects", HelpText = "Filter by these objects (default lists workspace)")]
 		public IEnumerable<Guid> Objects { get; set; } = null;
 
-		[Option('a', "all", HelpText = "Include child items")]
+		[Option('a', "all", HelpText = "Lists all objects from Notion workspace (or all CMS items only if repo initialized with --cms)")]
 		public bool All { get; set; } = false;
 
 		[Option('f', "filter", HelpText = "Filter by object title")]
@@ -176,7 +179,7 @@ public static partial class Program {
 		[Option('o', "objects", Group = "target", HelpText = "List of Notion objects to pull (i.e. pages, databases)")]
 		public IEnumerable<Guid> Objects { get; set; } = null;
 
-		[Option('a', "all", Group = "target", HelpText = "Pull all objects from Notion workspace into repository")]
+		[Option('a', "all", Group = "target", HelpText = "Pull all objects from Notion workspace into repository (or all CMS items only if repo initialized with --cms)")]
 		public bool PullAll { get; set; }
 		
 		[Option('k', "key", HelpText = "Notion API key to use (overrides repository key if any)")]
@@ -358,6 +361,7 @@ $@"Local Notion Status:
 		await LocalNotionRepository.CreateNew(
 			arguments.Path,
 			arguments.APIKey,
+			arguments.CMSDatabase,
 			arguments.Themes.ToArray(),
 			arguments.LogLevel,
 			pathProfile,
@@ -502,15 +506,19 @@ $@"Local Notion Status:
 
 			// If pulling all, add all objects into list of objects to pull
 			if (arguments.PullAll) {
-				consoleLogger.Info("Querying Notion for objects to pull");
-				var rootItems = await client
-					.Search
-					.EnumerateAsync(new SearchRequest(), cancellationToken: cancellationToken)
-					.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent))
-					.Select(x => Guid.Parse(x.Id))
-					.ToArrayAsync();
-				arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
-
+				if (repo.CMSDatabaseID is null) {
+					consoleLogger.Info("Querying Notion for objects to pull");
+					var rootItems = await client
+						.Search
+						.EnumerateAsync(new SearchRequest(), cancellationToken: cancellationToken)
+						.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent))
+						.Select(x => Guid.Parse(x.Id))
+						.ToArrayAsync();
+					arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
+				} else {
+					consoleLogger.Info($"Pulling from CMS database: {repo.CMSDatabaseID} ");
+					arguments.Objects = arguments.Objects.Union([Guid.Parse (repo.CMSDatabaseID)]).ToArray();
+				}
 			}
 			
 			// Pull explicitly specified objects if applicable
@@ -612,8 +620,8 @@ $@"Local Notion Status:
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		await using (repo.EnterUpdateScope()) {
-			var renderer = new ResourceRenderer(repo, repo.Logger);
-			var toRender = arguments.RenderAll ? repo.Resources.Where(x => x is LocalNotionPage).Select(x => x.ID) : arguments.Objects.Select(x => x.ToString());
+			var renderer = ResourceRendererFactory.Create(repo, repo.Logger);
+			var toRender = arguments.RenderAll ? LocalNotionHelper.FilterRenderableResources(repo.Resources).Select(x => x.ID) : arguments.Objects.Select(x => x.ToString());
 			if (!toRender.Any()) {
 				consoleLogger.Warning("Nothing to render");
 				return Constants.ERRORCODE_OK;
@@ -868,7 +876,7 @@ $@"Local Notion Status:
 
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
-//		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
+		string[] RenderAll3 = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 //		string[] RenderEmbeddedPage = new[] { "render", "-o", "68944996-582b-453f-994f-d5562f4a6730" };
 //		string[] Remove = new[] { "remove", "--all" };
 //		string[] HelpInit = new[] { "help", "init" };
@@ -883,8 +891,8 @@ $@"Local Notion Status:
 //		string[] LicenseLimit25Test = new[] { "pull", "-p", "d:\\temp\\t1", "-o", "83bc6d28-255b-430c-9374-514fe01b91a0" };
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
-//		if (args.Length == 0)
-//			args = PullCmd10;
+		if (args.Length == 0)
+			args = RenderAll3;
 
 //#endif
 

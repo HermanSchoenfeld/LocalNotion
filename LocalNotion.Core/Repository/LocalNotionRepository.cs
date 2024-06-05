@@ -61,6 +61,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public string DefaultNotionApiKey => _registry.NotionApiKey;
 
+	public string CMSDatabaseID => _registry.CMSDatabase;
+
 	public IEnumerable<string> Objects => _objectStore.FileKeys;
 
 	public IEnumerable<string> Graphs => _graphStore.FileKeys;
@@ -76,6 +78,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	public static async Task<LocalNotionRepository> CreateNew(
 		string repoPath,
 		string notionApiKey = null,
+		string cmsDatabaseID = null,
 		string[] themes = null,
 		LogLevel logLevel = LogLevel.Info,
 		LocalNotionPathProfile pathProfile = null,
@@ -83,7 +86,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	) {
 		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
 		Guard.DirectoryExists(repoPath);
-	
+		Guard.Ensure(cmsDatabaseID is null || LocalNotionHelper.IsValidObjectID(cmsDatabaseID), "Invalid CMS Database ID");
+		if (cmsDatabaseID != null)
+			cmsDatabaseID = LocalNotionHelper.SanitizeObjectID(cmsDatabaseID);
+
 		// Backup theme
 		if (themes == null || themes.Length == 0)
 			themes = new [] { Constants.DefaultTheme};
@@ -100,12 +106,12 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		// create registry objects
 		var registry = new LocalNotionRegistry {
 			NotionApiKey = notionApiKey,
+			CMSDatabase = cmsDatabaseID ,
 			DefaultThemes = themes,
 			Paths = pathProfile,
 			LogLevel = logLevel,
 			Resources = Array.Empty<LocalNotionResource>()
 		};
-
 		
 		// Create folders
 		var pathResolver = new PathResolver(repoPath, pathProfile);

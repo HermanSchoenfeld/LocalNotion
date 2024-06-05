@@ -149,8 +149,8 @@ public class NotionSyncOrchestrator {
 
 			// Render
 			if (options.Render) {
-				var renderer = new ResourceRenderer(Repository, Logger);
-				foreach (var resource in downloadedResources.Where(x => x is not LocalNotionFile)) {
+				var renderer = ResourceRendererFactory.Create(Repository, Logger);
+				foreach (var resource in LocalNotionHelper.FilterRenderableResources(downloadedResources)) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(resource.ID, options.RenderType, options.RenderMode);
@@ -462,10 +462,10 @@ public class NotionSyncOrchestrator {
 			#region Render page and child-pages
 
 			if (options.Render) {
-				var renderer = new ResourceRenderer(Repository, Logger);
+				var renderer = ResourceRendererFactory.Create(Repository, Logger);
 
 				// render pages
-				foreach (var renderableResource in downloadedResources.Where(x => x is LocalNotionEditableResource).Distinct().Cast<LocalNotionEditableResource>()) {
+				foreach (var renderableResource in LocalNotionHelper.FilterRenderableResources(downloadedResources)) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(renderableResource.ID, options.RenderType, options.RenderMode);

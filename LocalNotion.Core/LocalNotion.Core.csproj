@@ -285,6 +285,28 @@
 	  <None Remove="Themes\empty\page.online.html" />
 	  <None Remove="Themes\empty\page_database.offline.html" />
 	  <None Remove="Themes\empty\page_database.online.html" />
+	  <None Remove="Themes\footer\.config.json" />
+	  <None Remove="Themes\footer\column_list_4.html" />
+	  <None Remove="Themes\footer\column_list_5.html" />
+	  <None Remove="Themes\footer\heading_1.html" />
+	  <None Remove="Themes\footer\heading_2.html" />
+	  <None Remove="Themes\footer\heading_3.html" />
+	  <None Remove="Themes\footer\image.html" />
+	  <None Remove="Themes\footer\page.online.html" />
+	  <None Remove="Themes\footer\page_link.html" />
+	  <None Remove="Themes\footer\paragraph.html" />
+	  <None Remove="Themes\footer\text_link.html" />
+	  <None Remove="Themes\section\.config.json" />
+	  <None Remove="Themes\section\bulleted_list.html" />
+	  <None Remove="Themes\section\bulleted_list_item.html" />
+	  <None Remove="Themes\section\heading_1.html" />
+	  <None Remove="Themes\section\heading_2.html" />
+	  <None Remove="Themes\section\heading_3.html" />
+	  <None Remove="Themes\section\image.html" />
+	  <None Remove="Themes\section\page.online.html" />
+	  <None Remove="Themes\section\page_link.html" />
+	  <None Remove="Themes\section\paragraph.html" />
+	  <None Remove="Themes\section\text_code.html" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -602,6 +624,28 @@
 	  <EmbeddedResource Include="Themes\embedded\page.online.html" />
 	  <EmbeddedResource Include="Themes\embedded\readonly\page.offline.html" />
 	  <EmbeddedResource Include="Themes\embedded\readonly\page.online.html" />
+	  <EmbeddedResource Include="Themes\footer\.config.json" />
+	  <EmbeddedResource Include="Themes\footer\column_list_4.html" />
+	  <EmbeddedResource Include="Themes\footer\column_list_5.html" />
+	  <EmbeddedResource Include="Themes\footer\heading_1.html" />
+	  <EmbeddedResource Include="Themes\footer\heading_2.html" />
+	  <EmbeddedResource Include="Themes\footer\heading_3.html" />
+	  <EmbeddedResource Include="Themes\footer\image.html" />
+	  <EmbeddedResource Include="Themes\footer\page.online.html" />
+	  <EmbeddedResource Include="Themes\footer\page_link.html" />
+	  <EmbeddedResource Include="Themes\footer\paragraph.html" />
+	  <EmbeddedResource Include="Themes\footer\text_link.html" />
+	  <EmbeddedResource Include="Themes\section\.config.json" />
+	  <EmbeddedResource Include="Themes\section\bulleted_list.html" />
+	  <EmbeddedResource Include="Themes\section\bulleted_list_item.html" />
+	  <EmbeddedResource Include="Themes\section\heading_1.html" />
+	  <EmbeddedResource Include="Themes\section\heading_2.html" />
+	  <EmbeddedResource Include="Themes\section\heading_3.html" />
+	  <EmbeddedResource Include="Themes\section\image.html" />
+	  <EmbeddedResource Include="Themes\section\page.online.html" />
+	  <EmbeddedResource Include="Themes\section\page_link.html" />
+	  <EmbeddedResource Include="Themes\section\paragraph.html" />
+	  <EmbeddedResource Include="Themes\section\text_code.html" />
 	</ItemGroup>
 
 	
