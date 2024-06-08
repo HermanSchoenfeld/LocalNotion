@@ -437,12 +437,12 @@ $@"Local Notion Status:
 		var client = CreateNotionClientWithLicenseCheck(apiKey);
 
 		if (!arguments.Objects.Any()) {
-			// List workspace levelrm
+			// List workspace level
 			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
 			var searchParameters = new SearchRequest { Query = arguments.Filter };
 			var results = client.Search.EnumerateAsync(searchParameters, cancellationToken);
 			if (!arguments.All) 
-				results = results.WhereAwait(async x => x is Database or Page && x.GetParent() is WorkspaceParent);
+				results = results.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent));
 			
 			await foreach(var obj in results.WithCancellation(cancellationToken))
 				PrintObject(obj);
@@ -452,17 +452,17 @@ $@"Local Notion Status:
 			foreach(var @obj in arguments.Objects.Select(x => x.ToString())) {
 				switch(await client.QualifyObjectAsync(@obj, cancellationToken))  {
 					case (LocalNotionResourceType.Database, _): 
-						PrintObject(await client.Databases.RetrieveAsync(@obj));
+						PrintObject(await client.Databases.RetrieveAsync(@obj, cancellationToken));
 						if (arguments.All) {
 							var searchParameters = new DatabasesQueryParameters();
 							var results = client.Databases.EnumerateAsync(@obj, searchParameters, cancellationToken);
-							await foreach(var dbPage in results.WithCancellation(cancellationToken))
+							await foreach(var dbPage in results)
 								PrintObject(dbPage);
 						}
 
 						break;
 					case (LocalNotionResourceType.Page, _): 
-						PrintObject(await client.Pages.RetrieveAsync(@obj));
+						PrintObject(await client.Pages.RetrieveAsync(@obj, cancellationToken));
 							break;
 					default:
 						Console.WriteLine($"Unrecognized object: {@obj}");
@@ -873,6 +873,7 @@ $@"Local Notion Status:
 //		string[] RenderBug24Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "97518a54-62f4-4000-b8ac-4b3569c4f762" };
 //		string[] RenderBug25Page = new[] { "render", "-p", "d:\\Backup\\Notion\\Sphere10", "-o", "5f75eddd-0dfb-4a14-a99c-22d3f26bac7f" };
 //		string[] RenderBug26Page = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "a411e763503b46e79b620e791f7fd99f" };
+		string[] RenderBug27Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "68e75336-7282-4aee-85e6-cdd71155286a" };
 
 //		string[] RenderAll = new[] { "render", "--all" };
 //		string[] RenderAll2 = new[] { "render", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all" };
@@ -892,7 +893,7 @@ $@"Local Notion Status:
 //		string[] LicenseActivate = new[] { "license", "-a", "LCGH-7F2C-2UMZ-UHTC" };
 
 		if (args.Length == 0)
-			args = RenderAll3;
+			args = RenderBug27Page;
 
 //#endif
 

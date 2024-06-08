@@ -214,3 +214,9 @@
 /*.accordion {
     background: inherit !important;
 }*/
+
+/* reduce code blocks font-size 5% */
+:not(pre) > code[class*="language-"],
+pre[class*="language-"] {
+    font-size: 95%;
+}

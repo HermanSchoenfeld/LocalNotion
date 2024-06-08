@@ -163,7 +163,11 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 	}
 
 	protected virtual TOutput Render(EmbedBlock block) {
-		if (block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase)) {
+		var isXCom = 
+			block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase) ||
+			block.Embed.Url.Contains("x.com", StringComparison.InvariantCultureIgnoreCase);
+
+		if (isXCom) {
 			return RenderTwitterEmbed(block, block.Embed.Url);
 		}
 		return RenderUnsupported(block);
@@ -365,8 +369,6 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	#endregion
 
-
-
 	#region Page & Blocks
 
 	protected abstract TOutput Render(Page page);
@@ -490,7 +492,6 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	#endregion
 
-
 	#region Inner classes
 
 	protected class PageRenderingContext {
@@ -515,6 +516,5 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 	}
 
 	#endregion
-
 
 }
