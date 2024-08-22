@@ -1,15 +1,16 @@
 ﻿using Hydrogen;
+using Hydrogen.Data;
 using Notion.Client;
 using System.Runtime.Serialization;
+using System.Text;
 using System.Text.RegularExpressions;
+using AngleSharp.Html.Parser;
 
 namespace LocalNotion.Core;
 
 public class HtmlRenderer : RecursiveRendererBase<string> {
 	private int _toggleCount = 0;
 	private DictionaryChain<string, object> _tokens;
-	private readonly string _menuRendering;
-	private readonly string _footerRendering;
 
 	public HtmlRenderer(
 		RenderMode renderMode,
@@ -17,44 +18,66 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		HtmlThemeManager themeManager,
 		ILinkGenerator resolver,
 		IBreadCrumbGenerator breadCrumbGenerator,
-		ILogger logger,
-		LocalNotionPage menuPage = null,
-		LocalNotionPage footerPage = null
-	) : base(renderMode, repository, themeManager, resolver, breadCrumbGenerator, logger) {
-		
-		// Fetch menu and footer renders
-		var repoPath = repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
-		if (menuPage is not null && menuPage.TryGetRender(RenderType.HTML, out var htmlRender)) {
-			var menuRenderFile = Path.GetFullPath(
-				htmlRender.LocalPath, 
-				repoPath
-			);
-			_menuRendering = File.ReadAllText(menuRenderFile);
-		} else {
-			_menuRendering = string.Empty;
-		}
-
-		if (footerPage is not null && footerPage.TryGetRender(RenderType.HTML, out var footerRender)) {
-			var footerRenderFile = Path.GetFullPath(
-				footerRender.LocalPath, 
-				repoPath
-			);
-			_footerRendering = File.ReadAllText(footerRenderFile);
-		} else {
-			_footerRendering = string.Empty;
-		}
+		ILogger logger
+	) : base(renderMode, logger) {
+		Guard.ArgumentNotNull(repository, nameof(repository));
+		Guard.ArgumentNotNull(themeManager, nameof(themeManager));
+		Guard.ArgumentNotNull(resolver, nameof(resolver));
+		Guard.ArgumentNotNull(breadCrumbGenerator, nameof(breadCrumbGenerator));
+		Repository = repository;
+		ThemeManager = themeManager;
+		Resolver = resolver;
+		BreadCrumbGenerator = breadCrumbGenerator;
 	}
 
-	protected new HtmlThemeManager ThemeManager => (HtmlThemeManager)base.ThemeManager;
+	protected string HeaderHtmlSection { get; set; } = string.Empty;
+
+	protected string NavBarHtmlSection { get; set; } = string.Empty;
+
+	protected string FooterHtmlSection { get; set; } = string.Empty;
 
 	protected bool SuppressFormatting { get; private set; }
 
-	protected override void OnRenderingContextCreated(PageRenderingContext context) {
-		Guard.ArgumentNotNull(context, nameof(context));
-		Guard.ArgumentGT(context.Themes.Length, 0, nameof(context.Themes), "At least 1 theme must be provided to the renderer");
-		Guard.Argument(context.Themes.All(x => x is HtmlThemeInfo), nameof(context.Themes), $"Must all be instances of '{nameof(HtmlThemeInfo)}'");
-		_tokens = ThemeManager.LoadThemeTokens(context.Themes.Cast<HtmlThemeInfo>().ToArray(), context.Resource.ID, Repository.Paths.Mode, Mode, out var suppressFormatting);
-		SuppressFormatting = suppressFormatting; ;
+	protected ILocalNotionRepository Repository { get; }
+
+	protected HtmlThemeManager ThemeManager { get; }
+
+	protected ILinkGenerator Resolver { get; }
+
+	protected IBreadCrumbGenerator BreadCrumbGenerator { get; }
+
+	public static string Format(string html) {
+		var parser = new HtmlParser();
+		var document = parser.ParseDocument(html);
+		var formatter = new CleanHtmlFormatter();
+		var stringBuilder = new StringBuilder();	
+		using var writer =new StringWriter(stringBuilder);
+		document.ToHtml(writer, formatter);
+		return stringBuilder.ToString();
+	}
+
+	protected override void OnRenderingContextCreated() {
+		Guard.Ensure(RenderingContext is not null, "Rendering context was not defined");
+		Guard.Ensure(RenderingContext.RenderOutputPath is not null, "Rendering context did not specify render output path");
+
+		if (RenderingContext.Themes is null || RenderingContext.Themes.Length == 0) 
+			RenderingContext.Themes = Repository.DefaultThemes;
+		
+		var themes = ThemeManager.FilterAvailableThemes(RenderingContext.Themes).Distinct().ToArray();
+		
+		var loadedThemes = themes.Select(ThemeManager.LoadTheme).ToArray();
+
+		Guard.Ensure(loadedThemes.Length > 0, "No valid themes available for rendering (at least 1 is required)");
+		Guard.Ensure(loadedThemes.All(x => x is HtmlThemeInfo), $"Must all be instances of '{nameof(HtmlThemeInfo)}'");
+		
+		_tokens = ThemeManager.LoadThemeTokens(
+			loadedThemes.Cast<HtmlThemeInfo>().ToArray(), 
+			RenderingContext.RenderOutputPath, 
+			Repository.Paths.Mode, Mode, 
+			out var suppressFormatting
+		);
+
+		SuppressFormatting = suppressFormatting;
 	}
 
 	protected override string Merge(IEnumerable<string> outputs)
@@ -95,7 +118,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> !val.HasValue ? string.Empty : $"{val.Value:G}";
 
 	protected override string Render(string val) 
-		=> !string.IsNullOrEmpty(val) ? Encode(val, true, false, true) : string.Empty; 
+		=>  !string.IsNullOrEmpty(val) ? Encode(val, true, false, true) : string.Empty; 
 
 	#endregion
 
@@ -144,41 +167,54 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 		return inline switch {
 			false => RenderTemplate(
-					"page_database",
+					"page",
 					new RenderTokens(database) {
-						["title"] = database.Title.ToPlainText(),   // html title
-						["page_name"] = RenderingContext.Resource.Name,
-						["description"] = Render(database.Description),
-						["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
-						["style"] = "wide",
-						["cover"] = RenderingContext.Resource.Cover switch {
-							null => string.Empty,
-							_ => RenderTemplate(
-								"cover",
-								new RenderTokens {
-									["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
-								}
-							)
-						},
-						["thumbnail"] = RenderingContext.Resource.Thumbnail.Type switch {
-							ThumbnailType.None => string.Empty,
-							ThumbnailType.Emoji => RenderTemplate(
-								RenderingContext.Resource.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
-								new RenderTokens {
-									["thumbnail_emoji"] = RenderingContext.Resource.Thumbnail.Data,
-								}
-							),
-							ThumbnailType.Image => RenderTemplate(
-								RenderingContext.Resource.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
-								new RenderTokens {
-									["thumbnail_url"] = SanitizeUrl(RenderingContext.Resource.Thumbnail.Data)
-								}
-							),
-						},
 						["id"] = RenderingContext.Resource.ID,
-						["created_time"] = RenderingContext.Resource.CreatedOn,
-						["last_updated_time"] = RenderingContext.Resource.LastEditedOn,
-						["contents"] = Render(database, true)
+						["style"] = "wide",
+						["title"] = database.Title.ToPlainText(),   // html title
+						["description"] = database.Description.ToPlainText(),
+						["keywords"] = RenderingContext.Resource.Keywords.ToDelimittedString(", "),
+						["author"] = "Local Notion",
+						["header"] = HeaderHtmlSection,
+						["menu"] = NavBarHtmlSection,
+						["content"] = RenderTemplate(
+							"page_content", 
+							new RenderTokens(database) {
+								["id"] = RenderingContext.Resource.ID,
+								["title"] = database.Title.ToPlainText(),   // html title
+								["page_name"] = RenderingContext.Resource.Name,
+								["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
+								["page_subtitle"] = RenderTemplate("page_subtitle", new() { ["subtitle"]= Render(database.Description) }),
+								["cover"] = RenderingContext.Resource.Cover switch {
+									null => string.Empty,
+									_ => RenderTemplate(
+										"cover",
+										new RenderTokens {
+											["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
+										}
+									)
+								},
+								["thumbnail"] = RenderingContext.Resource.Thumbnail.Type switch {
+									ThumbnailType.None => string.Empty,
+									ThumbnailType.Emoji => RenderTemplate(
+										RenderingContext.Resource.Cover != null ? "thumbnail_emoji_on_cover" : "thumbnail_emoji",
+										new RenderTokens {
+											["thumbnail_emoji"] = RenderingContext.Resource.Thumbnail.Data,
+										}
+									),
+									ThumbnailType.Image => RenderTemplate(
+										RenderingContext.Resource.Cover != null ? "thumbnail_image_on_cover" : "thumbnail_image",
+										new RenderTokens {
+											["thumbnail_url"] = SanitizeUrl(RenderingContext.Resource.Thumbnail.Data)
+										}
+									),
+								},
+								["created_time"] = RenderingContext.Resource.CreatedOn,
+								["last_updated_time"] = RenderingContext.Resource.LastEditedOn,
+								["children"] = Render(database, true)
+							}
+						),
+						["footer"] = FooterHtmlSection
 					}
 				),
 
@@ -523,22 +559,58 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	#endregion
 
 	#region Page
+
 	protected override string Render(Page page)
+		=> RenderPageInternal(
+			RenderingContext.Resource.Title,
+			RenderingContext.Resource.Keywords,
+			RenderPageContent(page),
+			page.CreatedTime,
+			page.LastEditedTime,
+			page.Object.ToString().ToLowerInvariant().Replace("_", "-"),
+			page.Id
+		);
+
+	protected string RenderPageInternal(string title, string[] keyWords, string contents, DateTime createdTime, DateTime updatedTime, string objectType, string objectID) 
 		=> RenderTemplate(
 			"page",
-			new RenderTokens(page) {
-				["title"] = RenderingContext.Resource.Title,   // html title
-				["page_name"] = RenderingContext.Resource.Name,
-				["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
+			new RenderTokens() {
+				["object-id"] = objectID,
+				["object-type"] = objectType,
+				["created_time"] = createdTime,
+				["last_updated_time"] = updatedTime,
+				["type"] = "page",
+				["id"] = objectID,
 				["style"] = "wide",
+				["title"] = title,   
+				["description"] = string.Empty,
+				["keywords"] = keyWords.ToDelimittedString(", "),
+				["author"] = "Local Notion",
+				["header"] = HeaderHtmlSection,
+				["menu"] = NavBarHtmlSection,
+				["content"] = contents,
+				["footer"] = FooterHtmlSection
+			}
+		);
+
+
+	protected virtual string RenderPageContent(Page page)
+		=> RenderTemplate(
+			"page_content",
+			new RenderTokens(page) {
+				["id"] = RenderingContext.Resource.ID,
+				["title"] = RenderingContext.Resource.Title,   
+				["page_name"] = RenderingContext.Resource.Name,
+				["page_title"] =  RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
+				["page_subtitle"] = string.Empty,
 				["cover"] = RenderingContext.Resource.Cover switch {
 					null => string.Empty,
 					_ => RenderTemplate(
-							"cover",
-							new RenderTokens {
-								["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
-							}
-						)
+						"cover",
+						new RenderTokens {
+							["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
+						}
+					)
 				},
 				["thumbnail"] = RenderingContext.Resource.Thumbnail.Type switch {
 					ThumbnailType.None => string.Empty,
@@ -555,14 +627,15 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 						}
 					),
 				},
-				["id"] = RenderingContext.Resource.ID,
+				["children"] = RenderChildPageItems(),
 				["created_time"] = RenderingContext.Resource.CreatedOn,
 				["last_updated_time"] = RenderingContext.Resource.LastEditedOn,
-				["menu"] = _menuRendering,
-				["children"] = RenderChildPageItems(),
-				["footer"] = _footerRendering
+
 			}
 		);
+
+	protected override string Render(BreadcrumbBlock block)
+		=> Render(block, BreadCrumbGenerator.CalculateBreadcrumb(RenderingContext.Resource));
 
 	protected override string Render(TableBlock block)
 		=> RenderTemplate(
@@ -1132,8 +1205,6 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 		omitIndicator |= string.IsNullOrWhiteSpace(icon);
 
-		
-
 		if (isInline) {
 			// TODO: add inline page_link template that matches Notion
 			return RenderText(resource.Title, SanitizeUrl(childResourceUrl), false, false, false, false, false, Color.Default);
@@ -1148,6 +1219,35 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				["indicator"] = !omitIndicator ? RenderTemplate("indicator_link") : string.Empty,
 			}
 		);
+	}
+
+	protected override string Render(IPageIcon pageIcon)
+		=> pageIcon switch {
+			EmojiObject emojiObject => Render(emojiObject),
+			ExternalFile externalFile => (string)(object)GetFileUrl(externalFile, out _),   // WARNING: ugly cast hack here
+			UploadedFile uploadedFile => (string)(object)GetFileUrl(uploadedFile, out _),   // WARNING: ugly cast hack here
+			_ => throw new NotSupportedException()
+		};
+
+	protected override string Render(VideoBlock block) {
+		switch (block.Video) {
+			case ExternalFile externalFile: {
+				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url)) {
+					if (Tools.Url.TryParseYouTubeUrl(externalFile.External.Url, out var videoID))
+						return RenderYouTubeEmbed(block, videoID);
+
+					if (Tools.Url.TryParseVimeoUrl(externalFile.External.Url, out videoID))
+						return RenderVimeoEmbed(block, videoID);
+				}
+				return RenderVideoEmbed(block, externalFile.External.Url);
+			}
+			case UploadedFile uploadedFile: {
+				var url = Resolver.GenerateUploadedFileLink(RenderingContext.Resource, uploadedFile, out _);
+				return RenderVideoEmbed(block, url);
+			}
+			default:
+				throw new ArgumentOutOfRangeException(nameof(block), block, null);
+		}
 	}
 
 	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID)
@@ -1197,6 +1297,38 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	#endregion
 
 	#region Aux
+
+	protected virtual string GetFileUrl(FileObject fileObject, out string filename) {
+		string url;
+		switch (fileObject) {
+			case ExternalFile externalFile:
+				url = externalFile.External.Url;
+				break;
+			case UploadedFile uploadedFile:
+				url = Resolver.GenerateUploadedFileLink(RenderingContext.Resource, uploadedFile, out _);
+				break;
+			default:
+				throw new NotSupportedException(fileObject.GetType().Name);
+		}
+		filename = Path.GetFileName(Tools.Url.TryParse(url, out _, out _, out _, out var path, out _) ? path : url) ?? Constants.DefaultResourceTitle;
+		return url;
+	}
+
+	protected virtual string GetFileUrl(FileObjectWithName fileObject, out string filename) {
+		string url;
+		switch (fileObject) {
+			case ExternalFileWithName externalFileWithName:
+				url = externalFileWithName.External.Url;
+				break;
+			case UploadedFileWithName uploadedFileWithName:
+				url = Resolver.GenerateUploadedFileLink(RenderingContext.Resource, uploadedFileWithName, out _);
+				break;
+			default:
+				throw new NotSupportedException(fileObject.GetType().Name);
+		}
+		filename = fileObject.Name;
+		return url;
+	}
 
 	protected virtual string RenderTemplate(string widgetType)
 		=> RenderTemplate(widgetType, new RenderTokens());

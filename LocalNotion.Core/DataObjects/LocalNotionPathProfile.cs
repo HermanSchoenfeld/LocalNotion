@@ -73,6 +73,12 @@ public class LocalNotionPathProfile {
 	public string WorkspacePathR { get; set; } = Constants.DefaultWorkspacesFolderName;
 
 	/// <summary>
+	/// Path to the rendered cms pages relative to the repository.
+	/// </summary>
+	[JsonProperty("cms_path")]
+	public string CMSPathR { get; set; } = Constants.DefaultCMSFolderName;
+
+	/// <summary>
 	/// Path to the rendered pages relative to the repository.
 	/// </summary>
 	[JsonProperty("pages_path")]

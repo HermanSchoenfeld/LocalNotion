@@ -1,0 +1,27 @@
+﻿<section class="bg-light">
+    <div class="container-xxl">
+        <div class="row justify-content-between">
+            <div class="col-12 col-md-3 mb-6 mb-md-0 pb-md-5 pe-4 bg-light">
+                <div class="pt-6">
+                    <form action="~/@rootNode.Slug">
+                        <div class="input-group shadow-sm">
+                            <span class="input-group-text pe-0 border-end-0">
+                                <i class="fe fe-search" id="searchAddon"></i>
+                            </span>
+                            <input name="search" class="form-control form-control-no-highlight ps-2 border-start-0" type="search" placeholder="Search" aria-label="Search Articles" aria-describedby="searchArticle" onkeypress="DoSearch(event)" value="">
+                        </div>
+                    </form>
+                </div>
+                <!--<h6 class="fw-bold mt-6 mb-1 text-primary">CATEGORIES</h6>-->
+                <nav class="nav flex-column">
+                    {category_root}
+                    <hr />
+                    {categories}
+                </nav>
+            </div>
+            <div class="col-12 col-md-9 mt-5 mt-md-0 ps-4 pt-6">
+                {summaries}
+            </div>
+        </div>
+    </div>
+</section>

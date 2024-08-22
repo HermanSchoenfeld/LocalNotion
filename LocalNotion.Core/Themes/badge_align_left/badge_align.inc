@@ -1,0 +1,1 @@
+﻿text-left replace-parent-alignment

@@ -14,6 +14,9 @@ public abstract class LocalNotionEditableResource : LocalNotionResource {
 	[JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
 	public string Name { get; set; }
 
+	[JsonProperty("keywords", NullValueHandling = NullValueHandling.Ignore)]
+	public string[] Keywords { get; set; }
+
 	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
 	public CMSProperties CMSProperties { get; set; } = null;
 

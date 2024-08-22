@@ -38,6 +38,7 @@ public static class Constants {
 	public const string DefaultFilesFolderName = "files";
 	public const string DefaultDatabasesFolderName = "databases";
 	public const string DefaultWorkspacesFolderName = "workspaces";
+	public const string DefaultCMSFolderName = "cms";
 	public const string DefaultLogsFolderName = "logs";
 	public const string DefaultLogFilename = "localnotion.log";
 	public const bool DefaultUseObjectIDFolders = true;

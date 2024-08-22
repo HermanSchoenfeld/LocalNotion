@@ -1,4 +1,5 @@
 ﻿using Hydrogen;
+using System.IO;
 
 namespace LocalNotion.Core;
 
@@ -67,6 +68,11 @@ public class PathResolver : IPathResolver {
 				FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.WorkspacePathR, RepositoryPath),
 				_ => throw new NotSupportedException($"{pathType}")
 			},
+			LocalNotionResourceType.CMS => pathType switch {
+				FileSystemPathType.Relative => PathProfile.CMSPathR,
+				FileSystemPathType.Absolute => Path.GetFullPath(PathProfile.CMSPathR, RepositoryPath),
+				_ => throw new NotSupportedException($"{pathType}")
+			},
 			_ => throw new ArgumentOutOfRangeException(nameof(resourceType), resourceType, null)
 		};
 
@@ -76,12 +82,14 @@ public class PathResolver : IPathResolver {
 			LocalNotionResourceType.Page => PathProfile.UsePageIDFolders,
 			LocalNotionResourceType.Database => PathProfile.UseDatabaseIDFolders,
 			LocalNotionResourceType.Workspace => PathProfile.UseWorkspaceIDFolders,
+			LocalNotionResourceType.CMS => false,
 			_ => throw new NotSupportedException(resourceType.ToString())
 		};
 
 	public string GetResourceFolderPath(LocalNotionResourceType resourceType, string resourceID, FileSystemPathType pathType) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
-		Guard.Argument(LocalNotionHelper.TryCovertObjectIdToGuid(resourceID, out _), nameof(resourceID), "Invalid format");
+		if (resourceType != LocalNotionResourceType.CMS)
+			Guard.Argument(LocalNotionHelper.TryCovertObjectIdToGuid(resourceID, out _), nameof(resourceID), "Invalid format");
 		var path = GetResourceTypeFolderPath(resourceType, pathType);
 		if (UsesObjectIDSubFolders(resourceType))
 			path = Path.Combine(path, resourceID);
@@ -90,10 +98,14 @@ public class PathResolver : IPathResolver {
 	}
 
 	public string CalculateResourceFilePath(LocalNotionResourceType resourceType, string resourceID, string resourceTitle, RenderType renderType, FileSystemPathType pathType) {
+		if (resourceType == LocalNotionResourceType.CMS && string.IsNullOrWhiteSpace(resourceID) ) {
+			resourceID = "index";
+		}
 		resourceTitle = resourceTitle.ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		var folderPath = Path.Combine(GetResourceFolderPath(resourceType, resourceID, pathType));
 		var title = resourceType switch {
 			LocalNotionResourceType.File => Path.GetFileNameWithoutExtension(resourceTitle),
+			LocalNotionResourceType.CMS =>  resourceID.ToLowerInvariant().ReplaceMany([("/", "_"), ("#", "_"), ("-","_")]),
 			_ => resourceTitle,
 		};
 		var ext = resourceType switch {
@@ -120,6 +132,18 @@ public class PathResolver : IPathResolver {
 				return conflictFree;
 		}
 		throw new InvalidOperationException($"Exhausted all candidates for conflict-free file path: {filepath}");
+	}
+
+	public string RemoveConflictResolutionFromFilePath(string filepath) {
+		if (string.IsNullOrWhiteSpace(filepath))
+			return filepath;
+		Tools.FileSystem.SplitFilePath(filepath, out var folder, out var fileName);
+		if (fileName.StartsWith("[LN ")) {
+			var parts = fileName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+			if (parts.Length >= 2)
+				fileName = string.Join(' ', parts.Skip(2));
+		}
+		return Path.Combine(folder, fileName);
 	}
 
 	public string GetRemoteHostedBaseUrl() => PathProfile.BaseUrl;

@@ -1,5 +1,7 @@
-﻿using Hydrogen;
+﻿using System.Runtime.CompilerServices;
+using Hydrogen;
 using Notion.Client;
+using Tools;
 
 namespace LocalNotion.Core;
 
@@ -37,6 +39,12 @@ public interface ILocalNotionRepository  {
 	IEnumerable<string> Graphs { get; }
 
 	IEnumerable<LocalNotionResource> Resources { get; }
+
+	IEnumerable<CMSItem> CMSItems { get; }
+
+	NGinxSettings NGinxSettings { get; }
+
+	ApacheSettings ApacheSettings { get; }
 
 	bool RequiresLoad { get; }
 
@@ -212,11 +220,4 @@ public static class ILocalNotionRepositoryExtensions {
 		return resource.Renders[render.RenderType];
 	}
 
-	public static string[] CalculateApplicableThemes(this ILocalNotionRepository repository, LocalNotionEditableResource resource) {
-		var pageThemes = Enumerable.Empty<string>();
-		if (resource is { CMSProperties.Themes.Length: > 0 } && resource.CMSProperties.Themes.All(theme => Directory.Exists(repository.Paths.GetThemePath(theme, FileSystemPathType.Absolute)))) {
-			pageThemes = resource.CMSProperties.Themes;
-		}
-		return repository.DefaultThemes.Concat(pageThemes).ToArray();
-	}
 }

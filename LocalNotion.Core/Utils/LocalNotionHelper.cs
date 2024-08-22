@@ -1,5 +1,7 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
+using CommandLine;
 using Hydrogen;
 using Notion.Client;
 
@@ -57,6 +59,7 @@ public class LocalNotionHelper {
 		localNotionPage.Title = notionPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		localNotionPage.Name = CalculatePageName(notionPage.Id, localNotionPage.Title); // note: this is made unique by NotionSyncOrchestrator
 		localNotionPage.Cover = notionPage.Cover != null ? ParseFileUrl(notionPage.Cover, out _) : null;
+		localNotionPage.Keywords = Array.Empty<string>();
 		if (notionPage.Icon != null) {
 			localNotionPage.Thumbnail = new() {
 				Type = notionPage.Icon switch {
@@ -90,6 +93,7 @@ public class LocalNotionHelper {
 		localNotionDatabase.Title = notionDatabase.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		localNotionDatabase.Name = CalculatePageName(notionDatabase.Id, localNotionDatabase.Title); // note: this is made unique by NotionSyncOrchestrator
 		localNotionDatabase.Cover = notionDatabase.Cover != null ? ParseFileUrl(notionDatabase.Cover, out _) : null;
+		localNotionDatabase.Keywords = Array.Empty<string>();
 		if (notionDatabase.Icon != null) {
 			localNotionDatabase.Thumbnail = new() {
 				Type = notionDatabase.Icon switch {
@@ -183,6 +187,13 @@ public class LocalNotionHelper {
 				.ToDelimittedString("/");
 	}
 
+	//public static string SanitizeSlug(string slug) {
+	//	slug ??= string.Empty;
+	//	if (!slug.StartsWith("/"))
+	//		slug = "/" + slug;
+	//	return slug;
+	//}
+
 	/// <summary>
 	/// This calculates a UUID ID of a Page property so that it can be stored in the Local Notion Objects database. This is needed
 	/// because Notion does not use UUID's for Page properties.
@@ -205,8 +216,53 @@ public class LocalNotionHelper {
 		=> Tools.Url.ToHtml4DOMObjectID($"{Tools.Text.ToCasing(TextCasing.KebabCase, title)}", String.Empty);
 
 	public static IEnumerable<LocalNotionEditableResource> FilterRenderableResources(IEnumerable<LocalNotionResource> resources)
-		=> LocalNotionCMSHelper.RenderFirstOrder( resources.Where(x => x is LocalNotionEditableResource).Cast<LocalNotionEditableResource>().Distinct());
+		=> resources.Where(x => x is LocalNotionEditableResource).Cast<LocalNotionEditableResource>().Distinct();
 
+	public static IEnumerable<(string Slug, string RelPath, string MimeType)> EnumerateWebHostableResources(ILocalNotionRepository repo) {
+
+		// All CMS items
+		foreach(var item in repo.CMSItems.Where(x => !string.IsNullOrWhiteSpace(x.RenderFileName))) {
+			yield return (item.Slug, item.RenderFileName, "text/html");
+		}
+
+		// All normally rendered resources if online
+		if (repo.Paths.Mode == LocalNotionMode.Online) {
+			foreach (var resource in repo.Resources) {
+				var slug = string.Empty;
+				RenderEntry render;
+				string mimeType;
+				switch (resource) {
+					case LocalNotionDatabase db:
+						if (!db.TryGetRender(RenderType.HTML, out render))
+							continue;
+						slug = render.Slug;
+						mimeType = "text/html";
+						break;
+					case LocalNotionPage page:
+						if (!page.TryGetRender(RenderType.HTML, out render))
+							continue;
+						slug = render.Slug;
+						mimeType = "text/html";
+						break;
+					case LocalNotionFile file:
+						if (!file.TryGetRender(RenderType.File, out render))
+							continue;
+						slug = render.Slug;
+						mimeType = file.MimeType;
+						break;
+					default:
+						throw new InternalErrorException("387FA12E-6E67-4C06-8ED2-DAFC83CCB161");
+				}
+				var repoPath = repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
+				var fullPath = Path.GetFullPath(render.LocalPath, repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute));
+				yield return (slug, Path.GetRelativePath(repoPath, fullPath), mimeType);
+
+			}
+		}
+	}
+
+	public static IEnumerable<string> CombineMultiPageKeyWords(IEnumerable<IEnumerable<string>> pageKeyWords)
+		=> pageKeyWords.SelectMany(x => x).Distinct(StringComparer.InvariantCultureIgnoreCase).Take(50);
 
 }
 

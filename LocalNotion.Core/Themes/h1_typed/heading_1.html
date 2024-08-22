@@ -1,0 +1,17 @@
+﻿<div id="typed-strings-{object_id}" style="display:none;">
+    <p>{text}</p>
+</div>
+<h1 id="{object_id}" class="{include://h1_align.inc}" style="min-height: 1.185em; margin-top: -0.4em; margin-bottom: 0.3em;">
+    <span class="fs-2 {include://color_text_aux.inc}" data-typed='{"stringsElement": "#typed-strings-{object_id}", "startDelay": 500, "backSpeed": 15, "backDelay":5000}'></span>
+</h1>
+<script>
+    var container = document.getElementById("typed-strings-" + "{object_id}");
+    var text = container.querySelector("p").innerHTML;
+    var textParts = text.split("|");
+    container.removeChild(container.querySelector("p"));
+    textParts.forEach(function(part) {
+        var newP = document.createElement("p");
+        newP.innerHTML = part;
+        container.appendChild(newP);
+    });
+</script>

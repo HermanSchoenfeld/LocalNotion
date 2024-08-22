@@ -13,5 +13,9 @@ public enum LocalNotionResourceType {
 	Database,
 
 	[EnumMember(Value = "workspace")]
-	Workspace
+	Workspace,
+
+	[EnumMember(Value = "cms")]
+	CMS,
+
 }

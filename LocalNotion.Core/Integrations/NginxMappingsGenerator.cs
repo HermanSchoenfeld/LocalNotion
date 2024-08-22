@@ -209,51 +209,30 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		var mappingsFilePath = Path.Combine(CalculateNGinxFolderPath(), "conf", MappingFileName);
 		await using var writer = new FileTextWriter(mappingsFilePath, FileMode.Create);
 		await writer.WriteLineAsync(MappingsFileHeader);
-		var generatedSlugs = new HashSet<string>();
-		foreach (var resource in LocalNotionRepository.Resources) {
-			var slug = string.Empty;
-			RenderEntry render;
-			string mimeType;
-			switch (resource) {
-				case LocalNotionDatabase db:
-					if (!db.TryGetRender(RenderType.HTML, out render))
-						continue;
-					slug = render.Slug;
-					if (db.CMSProperties?.CustomSlug != null)
-						slug = db.CMSProperties.CustomSlug;
-					mimeType = "text/html";
-					break;
-				case LocalNotionPage page:
-					if (!page.TryGetRender(RenderType.HTML, out render))
-						continue;
-					slug = render.Slug;
-					if (page.CMSProperties?.CustomSlug != null)
-						slug = page.CMSProperties.CustomSlug;
-					mimeType = "text/html";
-					break;
-				case LocalNotionFile file:
-					if (!file.TryGetRender(RenderType.File, out render))
-						continue;
-					slug = render.Slug;
-					mimeType = file.MimeType;
-					break;
-				default:
-					throw new InternalErrorException("387FA12E-6E67-4C06-8ED2-DAFC83CCB161");
-			}
-			var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
-			var fullPath = Path.GetFullPath(render.LocalPath, LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute));
-		
-			var sanitizedSlug = SanitizeSlug(slug);
-			if (!generatedSlugs.Add(sanitizedSlug))
-				continue;
+		foreach (var hostableResource in LocalNotionHelper.EnumerateWebHostableResources(LocalNotionRepository)) {
 			var location = LocationTemplate.FormatWithDictionary(
 				new Dictionary<string, string> {
-					["slug"] = sanitizedSlug,
-					["relPath"] = SanitizePath(Path.GetRelativePath(repoPath, fullPath)),
-					["mimeType"] = mimeType
+					["slug"] = "/" + LocalNotionHelper.SanitizeSlug(hostableResource.Slug),
+					["relPath"] = SanitizePath(hostableResource.RelPath),
+					["mimeType"] = hostableResource.MimeType
 				}, true
 			);
 			await writer.WriteLineAsync(location);
+		}
+	}
+
+	public async Task RemoveOldCmsRenders() {
+
+		var cmsPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute);
+		if (!Directory.Exists(cmsPath))
+			return;
+
+		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute); 
+		var allRequiredFiles = LocalNotionRepository.CMSItems.Select(x => x.RenderFileName).Select(x => Path.Join(repoPath, x)).ToArray();
+		var allActualFiles = Directory.EnumerateFiles(cmsPath);
+
+		foreach ( var file in allActualFiles.Except(allRequiredFiles)) {
+			File.Delete(file);
 		}
 	}
 
@@ -263,6 +242,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		if (!Directory.Exists(folderPath))
 			await generator.GenerateNGinxFolder();
 		await generator.GenerateUrlMappingsFile();
+		await generator.RemoveOldCmsRenders();
 		return folderPath;
 	}
 
@@ -274,14 +254,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 	public static string CalculateMappingFile(ILocalNotionRepository localNotionRepository) 
 		=> Path.Combine(CalculateNGinxFolder(localNotionRepository), "conf", MappingFileName);
 
-
-	private static string SanitizeSlug(string slug) {
-		slug ??= string.Empty;
-		if (!slug.StartsWith("/"))
-			slug = "/" + slug;
-		return slug;
-	}
-	private static string SanitizePath(string path) {
+	public static string SanitizePath(string path) {
 		if (string.IsNullOrWhiteSpace(path))
 			return path;
 
@@ -291,4 +264,5 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 		return $"\"{path}\"";
 	}
+
 }

@@ -1,6 +1,7 @@
 ﻿#pragma warning disable CS8618
 
 using System.Text;
+using System.Xml.Schema;
 using Hydrogen;
 using Hydrogen.Application;
 using LocalNotion.Core.DataObjects;
@@ -25,7 +26,7 @@ public class NotionSyncOrchestrator {
 	protected ILocalNotionRepository Repository { get; }
 
 	/// <summary>
-	/// Downloads and renders pages from a LocalNotionCMS Database.
+	/// Downloads and renders pages from a CMSDatabase Database.
 	/// </summary>
 	/// <param name="databaseID">Notion ID of database to download</param>
 	/// <param name="knownNotionLastEditTime">The last edited time of database as currently on notion. Only specify IF KNOWN and leave null otherwise. This can help speed-up sync in many items scenarios.</param>
@@ -149,20 +150,40 @@ public class NotionSyncOrchestrator {
 
 			// Render
 			if (options.Render) {
-				var renderer = ResourceRendererFactory.Create(Repository, Logger);
-				foreach (var resource in LocalNotionHelper.FilterRenderableResources(downloadedResources)) {
+				var renderer = new RenderingManager(Repository, Logger);
+				var renderableResources = LocalNotionHelper.FilterRenderableResources(downloadedResources).ToArray();
+				foreach (var resource in renderableResources) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(resource.ID, options.RenderType, options.RenderMode);
 					} catch (TaskCanceledException) {
 						throw;
 					} catch (Exception error) {
-						Logger.Error($"Failed to render resource '{resource.Title}' ({resource.ID}).");
+						Logger.Error($"Failed to render resource '{resource.Title}' ({resource.ID})");
 						Logger.Exception(error);
 						if (!options.FaultTolerant)
 							throw;
 					}
 				}
+
+				// Render CMS items
+				var renderedResources = renderableResources.Select(x => x.ID).ToHashSet();
+				foreach (var cmsItem in Repository.CMSItems) {
+					if (cmsItem.ReferencesAnyResources(renderedResources)) {
+						try {
+							renderer.RenderCMSItem(cmsItem);
+						} catch (TaskCanceledException) {
+							throw;
+						} catch (Exception error) {
+							Logger.Error($"Failed to render CMS item '{cmsItem.Slug}'");
+							Logger.Exception(error);
+							if (!options.FaultTolerant)
+								throw;
+						}
+
+					}
+				}
+	
 			}
 			return downloadedResources.ToArray();
 		}
@@ -237,6 +258,10 @@ public class NotionSyncOrchestrator {
 				// Determine the parent page
 				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects);
 
+				// Parse keywords using a text renderer
+				var textRenderer = new TextRenderer(Logger);
+				var text = textRenderer.Render(localPage, pageGraph, pageObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, localPage.ID, FileSystemPathType.Absolute));
+				localPage.Keywords = RakeAlgorithm.Run([text], minCharLength: 2).Select(x => x.Key).Take(10).ToArray();
 				// Determine child resources
 				childPages =
 					pageObjects
@@ -255,14 +280,15 @@ public class NotionSyncOrchestrator {
 						.ToList();
 
 				// Hydrate a Notion CMS summaries (and future plugins)
-				if (LocalNotionCMSHelper.IsCMSPage(notionPage)) {
-					// Page is a LocalNotionCMS page
-					var htmlThemeManager = new HtmlThemeManager(Repository.Paths, Logger);
-					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSProperties(localPage.Name, notionPage);
-
-				} else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
-					// Page has a LocalNotionCMS page ancestor, so propagate CMS properties down
-					localPage.CMSProperties = LocalNotionCMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
+				if (Repository.CMSDatabaseID is not null) {
+					if (CMSHelper.IsCMSPage(notionPage)) {
+						// Page is a CMSDatabase page
+						var htmlThemeManager = new HtmlThemeManager(Repository.Paths, Logger);
+						localPage.CMSProperties = CMSHelper.ParseCMSProperties(localPage.Name, notionPage);
+					} else if (localPage.ParentResourceID != null && Repository.TryGetPage(localPage.ParentResourceID, out var parentPage) && parentPage.CMSProperties != null) {
+						// Page has a CMSDatabase page ancestor, so propagate CMS properties down
+						localPage.CMSProperties = CMSHelper.ParseCMSPropertiesAsChildPage(localPage.Name, notionPage, parentPage);
+					}
 				}
 
 				// If no summary was provided, generate one
@@ -462,10 +488,11 @@ public class NotionSyncOrchestrator {
 			#region Render page and child-pages
 
 			if (options.Render) {
-				var renderer = ResourceRendererFactory.Create(Repository, Logger);
+				var renderer = new RenderingManager(Repository, Logger);
+				var renderableResources = LocalNotionHelper.FilterRenderableResources(downloadedResources).ToArray();
 
 				// render pages
-				foreach (var renderableResource in LocalNotionHelper.FilterRenderableResources(downloadedResources)) {
+				foreach (var renderableResource in renderableResources) {
 					cancellationToken.ThrowIfCancellationRequested();
 					try {
 						renderer.RenderLocalResource(renderableResource.ID, options.RenderType, options.RenderMode);
@@ -478,6 +505,24 @@ public class NotionSyncOrchestrator {
 						Logger.Exception(error);
 						if (!options.FaultTolerant)
 							throw;
+					}
+				}
+
+				// Render CMS items
+				var renderedResources = renderableResources.Select(x => x.ID).ToHashSet();
+				foreach (var cmsItem in Repository.CMSItems) {
+					if (cmsItem.ReferencesAnyResources(renderedResources)) {
+						try {
+							renderer.RenderCMSItem(cmsItem);
+						} catch (TaskCanceledException) {
+							throw;
+						} catch (Exception error) {
+							Logger.Error($"Failed to render CMS item '{cmsItem.Slug}'");
+							Logger.Exception(error);
+							if (!options.FaultTolerant)
+								throw;
+						}
+
 					}
 				}
 			}
@@ -499,7 +544,6 @@ public class NotionSyncOrchestrator {
 						filename = "LN_" + Guid.Parse(resourceID).ToStrictAlphaString();
 				} else throw new InvalidOperationException($"Url is not a recognized notion file url and downloading external content is not enabled. Url: '{url}'");
 			}
-
 
 			if (Repository.TryGetFile(resourceID, out var file)) {
 				if (!force && Repository.ContainsResourceRender(resourceID, RenderType.File)) {

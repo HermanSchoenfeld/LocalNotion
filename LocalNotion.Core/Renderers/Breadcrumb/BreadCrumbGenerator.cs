@@ -15,7 +15,11 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 
 	protected ILinkGenerator LinkGenerator { get; }
 
-	public virtual BreadCrumb CalculateBreadcrumb(LocalNotionResource from) {
+
+	public virtual BreadCrumb CalculateBreadcrumb(LocalNotionResource from) 
+		=> CalculateBreadcrumb(from, (from as LocalNotionEditableResource)?.CMSProperties);
+
+	public virtual BreadCrumb CalculateBreadcrumb(LocalNotionResource from, CMSProperties cmsProperties) {
 		const string DefaultUrl = "#";
 
 		var ancestors = Repository.GetResourceAncestry(from.ID).ToArray();
@@ -48,8 +52,9 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			}
 
 			var isCmsPage = item is LocalNotionPage { CMSProperties: not null } itemPage;
-			if (isCmsPage)
+			if (isCmsPage) {
 				traits.SetFlags(BreadCrumbItemTraits.IsCMSPage, true);
+			}
 
 			var isPartialPage = 
 				isCmsPage && ((LocalNotionPage)item).CMSProperties.PageType.IsIn(CMSPageType.Section, CMSPageType.Footer);
@@ -79,7 +84,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			}
 
 			// TODO: when implementing databases, the check is
-			var parentIsCmsDatabase = item.ParentResourceID != null  && Repository.TryGetDatabase(item.ParentResourceID, out var database) && LocalNotionCMSHelper.IsCMSDatabase(database);   // note: properties can be null when only downloading pages
+			var parentIsCmsDatabase = item.ParentResourceID != null  && Repository.TryGetDatabase(item.ParentResourceID, out var database) && CMSHelper.IsCMSDatabase(database);   // note: properties can be null when only downloading pages
 			var repoContainsParentResource = item.ParentResourceID != null && Repository.ContainsResource(item.ParentResourceID);
 			//var parentIsCmsDatabase = item.ParentResourceID != null && !repoContainsParentResource;  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
 			var parentIsPartial = 
@@ -108,9 +113,11 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			// if current item is a CMS item and we're in online mode, the remainder of trail is extracted from the slug
 			if (LinkGenerator.Mode == LocalNotionMode.Online && isCmsPage && parentIsCmsDatabase) {
 				var cmsPage = (LocalNotionPage)item;
-				var slugParts = Tools.Url.StripAnchorTag(cmsPage.CMSProperties.CustomSlug.TrimStart("/")).Split('/');
+				var origSlug = cmsPage.CMSProperties.CustomSlug; // CMSHelper.CalculateSlug(cmsPage.CMSProperties.Categories);
+				var slugParts = Tools.Url.StripAnchorTag(origSlug.TrimStart("/")).Split('/').Reverse().Skip(1).Reverse().ToArray();
 
-				for(var j = slugParts.Length - 2; j >= 0; j--) {     // note: j skips tip because only interested in ancestors
+
+				for(var j = slugParts.Length - 1; j >= 0; j--) {    
 					var slug = slugParts.Take(j+1).ToDelimittedString("/");
 					traits = BreadCrumbItemTraits.HasUrl;
 					var type = LocalNotionResourceType.Page; // what about DB?

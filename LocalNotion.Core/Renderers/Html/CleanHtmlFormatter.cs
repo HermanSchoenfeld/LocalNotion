@@ -1,4 +1,6 @@
-﻿using AngleSharp.Html;
+﻿using System.Text;
+using AngleSharp.Html;
+using AngleSharp.Html.Parser;
 
 namespace LocalNotion.Core;
 
@@ -31,6 +33,8 @@ internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 	}
 
 	#endregion
+
+
 
 	#region Properties
 

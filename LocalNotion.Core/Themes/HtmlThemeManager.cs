@@ -70,7 +70,7 @@ public class HtmlThemeManager : IThemeManager {
 	}
 
 
-	public DictionaryChain<string, object> LoadThemeTokens(HtmlThemeInfo[] themes, string pageID, LocalNotionMode localNotionMode, RenderMode renderMode, out bool suppressFormatting) {
+	public DictionaryChain<string, object> LoadThemeTokens(HtmlThemeInfo[] themes, string renderParentFolder, LocalNotionMode localNotionMode, RenderMode renderMode, out bool suppressFormatting) {
 		Guard.ArgumentNotNull(themes, nameof(themes));
 		DictionaryChain<string, object> tokens = null;
 
@@ -101,7 +101,7 @@ public class HtmlThemeManager : IThemeManager {
 			object ToLocalPathIfApplicable(string key, object value) {
 				if (key.StartsWith("theme://")) {
 					Guard.Ensure(value != null, $"Unexpected null value for key '{key}'");
-					var thisRendersExpectedParentFolder = PathResolver.GetResourceFolderPath(LocalNotionResourceType.Page, pageID, FileSystemPathType.Absolute);
+					var thisRendersExpectedParentFolder = renderParentFolder; 
 					return Path.GetRelativePath(thisRendersExpectedParentFolder, value.ToString()).ToUnixPath();
 				}
 				return value;
@@ -111,6 +111,16 @@ public class HtmlThemeManager : IThemeManager {
 
 	}
 
+	public IEnumerable<string> FilterAvailableThemes(IEnumerable<string> themes) {
+		foreach (var theme in themes) {
+			var themePath = PathResolver.GetThemePath(theme, FileSystemPathType.Absolute);
+			if (Directory.Exists(themePath)) {
+				yield return theme;
+			} else {
+				Logger.Warning($"Theme '{theme}' not found (expected path: '{themePath}'");
+			}
+		}
+	}
 	public static void ExtractEmbeddedThemes(string folder, bool overwrite, ILogger logger) {
 		Guard.ArgumentNotNull(folder, nameof(folder));
 		new ManifestEmbeddedFileProvider(Assembly.GetExecutingAssembly())

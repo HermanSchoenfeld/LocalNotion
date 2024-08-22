@@ -1,0 +1,62 @@
+/**************************************************
+    CMS Related Styles
+***************************************************/
+
+.article-summary {
+    margin-bottom: 40px;
+    padding-bottom: 40px;
+    border-bottom: 2px solid #DFE7FB;
+    transition: all .4s ease;
+}
+
+.article-summary-thumbnail {
+    /*background-color: #fff;*/
+    border: none;
+    box-shadow: none;
+    padding: 0.25rem;
+    max-width: 10em;
+    max-height: 10em;
+}
+
+.article-category-indent-1 {
+    padding-left: calc(1.25rem * 1 + 1rem) !important;
+}
+
+.article-category-indent-2 {
+    padding-left: calc(1.25rem * 2 + 1rem) !important;
+}
+
+.article-category-indent-3 {
+    padding-left: calc(1.25rem * 3 + 1rem) !important;
+}
+
+.article-category-indent-4 {
+    padding-left: calc(1.25rem * 4 + 1rem) !important;
+}
+
+.article-category-indent-4 {
+    padding-left: calc(1.25rem * 5 + 1rem) !important;
+}
+
+.article-category-indent-6 {
+    padding-left: calc(1.25rem * 6 + 1rem) !important;
+}
+
+
+.ln-badge-rounded-circle {
+    height: calc(1em + var(--bs-badge-padding-y) * 2);
+    padding-left: var(--bs-badge-padding-y);
+    padding-right: var(--bs-badge-padding-y);
+    border-radius: var(--bs-border-radius-pill)
+}
+
+.ln-badge-rounded-circle > * {
+    display: block;
+    width: 1em
+}
+
+.ln-badge-rounded-circle.badge-lg {
+    height: calc(1em + var(--bs-badge-padding-y-lg) * 2);
+    padding-left: var(--bs-badge-padding-y-lg);
+    padding-right: var(--bs-badge-padding-y-lg)
+}

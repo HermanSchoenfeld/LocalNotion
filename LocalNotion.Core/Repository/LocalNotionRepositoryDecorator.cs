@@ -44,6 +44,12 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual IEnumerable<LocalNotionResource> Resources => InternalRepository.Resources;
 
+	public virtual IEnumerable<CMSItem> CMSItems => InternalRepository.CMSItems;
+	
+	public virtual NGinxSettings NGinxSettings => InternalRepository.NGinxSettings;
+
+	public virtual ApacheSettings ApacheSettings => InternalRepository.ApacheSettings;
+
 	public virtual bool RequiresLoad => InternalRepository.RequiresLoad;
 
 	public virtual bool RequiresSave => InternalRepository.RequiresSave;
@@ -103,6 +109,5 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual void RemoveResourceRender(string resourceID, RenderType renderType) => InternalRepository.RemoveResourceRender(resourceID, renderType);
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.CalculateRenderSlug(resource, render, renderedFilename);
-
 
 }

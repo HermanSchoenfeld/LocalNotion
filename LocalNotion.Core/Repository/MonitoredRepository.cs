@@ -70,6 +70,12 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public virtual IEnumerable<LocalNotionResource> Resources => InternalRepository.Value.Resources;
 
+	public IEnumerable<CMSItem> CMSItems => InternalRepository.Value.CMSItems;
+	
+	public virtual NGinxSettings NGinxSettings => InternalRepository.Value.NGinxSettings;
+
+	public virtual ApacheSettings ApacheSettings => InternalRepository.Value.ApacheSettings;
+
 	public virtual bool RequiresLoad => InternalRepository.Value.RequiresLoad;
 
 	public virtual bool RequiresSave => InternalRepository.Value.RequiresSave;

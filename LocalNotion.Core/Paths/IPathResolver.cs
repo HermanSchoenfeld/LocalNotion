@@ -75,6 +75,8 @@ public interface IPathResolver {
 
 	string ResolveConflictingFilePath(string filepath);
 
+	string RemoveConflictResolutionFromFilePath(string filepath);
+
 	string GetRemoteHostedBaseUrl();
 
 }

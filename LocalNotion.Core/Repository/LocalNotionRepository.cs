@@ -20,8 +20,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	public event EventHandlerEx<object, LocalNotionResource> ResourceUpdated;
 	public event EventHandlerEx<object, string> ResourceRemoving;
 	public event EventHandlerEx<object, LocalNotionResource> ResourceRemoved;
-
-	private LocalNotionRegistry _registry;
+	
+	protected LocalNotionRegistry Registry;
 	private GuidStringFileStore _objectStore;
 	private GuidStringFileStore _graphStore;
 	
@@ -30,6 +30,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	private ICache<string, LocalNotionEditableResource> _resourceByName;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
+
+	
 
 	public LocalNotionRepository(string registryFile, ILogger logger = null) {
 		Guard.ArgumentNotNull(registryFile, nameof(registryFile));
@@ -42,7 +44,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		// These are set when loaded
 		_registryPath = registryFile;
-		_registry = null;
+		Registry = null;
 		_objectStore = null;
 		_graphStore = null;
 		_resourcesByNID = null;
@@ -51,23 +53,69 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		Paths = null;
 	}
 
-	public int Version => _registry.Version;
+	public int Version {
+		get {
+			CheckLoaded();
+			return Registry.Version;
+		}
+	}
 
 	public ILogger Logger => _logger;
 
-	public string[] DefaultThemes => _registry.DefaultThemes;
+	public string[] DefaultThemes {
+		get {
+			CheckLoaded();
+			return Registry.DefaultThemes;
+		}
+	}
 
 	public IPathResolver Paths { get; private set; }
 
-	public string DefaultNotionApiKey => _registry.NotionApiKey;
+	public string DefaultNotionApiKey {
+		get {
+			CheckLoaded();
+			return Registry.NotionApiKey;
+		}
+	}
 
-	public string CMSDatabaseID => _registry.CMSDatabase;
+	public string CMSDatabaseID {
+		get {
+			CheckLoaded();
+			return Registry.CMSDatabase;
+		}
+	}
 
-	public IEnumerable<string> Objects => _objectStore.FileKeys;
+	public IEnumerable<string> Objects {
+		get {
+			CheckLoaded();
+			return _objectStore.FileKeys;
+		}
+	}
 
-	public IEnumerable<string> Graphs => _graphStore.FileKeys;
+	public IEnumerable<string> Graphs {
+		get {
+			CheckLoaded();
+			return _graphStore.FileKeys;
+		}
+	}
 
-	public IEnumerable<LocalNotionResource> Resources => _registry.Resources;
+	public IEnumerable<LocalNotionResource> Resources {
+		get {
+			CheckLoaded();
+			return Registry.Resources;
+		}
+	}
+
+	public IEnumerable<CMSItem> CMSItems {
+		get {
+			CheckLoaded();
+			return Registry.CMSItemsBySlug.Values;
+		}
+	}
+
+	public NGinxSettings NGinxSettings => Registry.NGinxSettings;
+
+	public ApacheSettings ApacheSettings => Registry.ApacheSettings;
 
 	public bool RequiresLoad { get; private set; }
 
@@ -82,6 +130,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		string[] themes = null,
 		LogLevel logLevel = LogLevel.Info,
 		LocalNotionPathProfile pathProfile = null,
+		NGinxSettings nginxSettings = null,
+		ApacheSettings apacheSettings = null,
 		ILogger logger = null
 	) {
 		Guard.ArgumentNotNull(repoPath, nameof(repoPath));
@@ -110,7 +160,9 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			DefaultThemes = themes,
 			Paths = pathProfile,
 			LogLevel = logLevel,
-			Resources = Array.Empty<LocalNotionResource>()
+			Resources = Array.Empty<LocalNotionResource>(),
+			NGinxSettings = nginxSettings,
+			ApacheSettings = apacheSettings,
 		};
 		
 		// Create folders
@@ -146,7 +198,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		// create registry
 		Tools.Json.WriteToFile(registryFile, registry);
 
-		var repo = new LocalNotionRepository(registryFile, logger);
+		var repo = cmsDatabaseID is not null ? new CMSLocalNotionRepository(registryFile, logger) : new LocalNotionRepository(registryFile, logger);
 		await repo.LoadAsync();
 		return repo;
 	}
@@ -208,7 +260,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		Guard.ArgumentNotNull(registryFile, nameof(registryFile));
 		if (!File.Exists(registryFile))
 			throw new FileNotFoundException(registryFile);
-		var repo = new LocalNotionRepository(registryFile, logger);
+		
+		var repo = LocalNotionRegistry.IsForCms(registryFile) ? new CMSLocalNotionRepository(registryFile, logger) : new LocalNotionRepository(registryFile, logger);
 		await repo.LoadAsync();
 		return repo;
 	}
@@ -221,21 +274,21 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		await SaveInternal_CompleteUnfinishedPhase(_registryPath);
 
 		// load the registry
-		_registry = await Task.Run(() => Tools.Json.ReadFromFile<LocalNotionRegistry>(_registryPath));
+		Registry = await Task.Run(() => Tools.Json.ReadFromFile<LocalNotionRegistry>(_registryPath));
 
 		// create path resolver
-		Paths = new PathResolver(Path.GetFullPath(_registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), _registry.Paths);
+		Paths = new PathResolver(Path.GetFullPath(Registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), Registry.Paths);
 
 		// create the resource lookup table
-		_resourcesByNID = new BulkFetchActionCache<string, LocalNotionResource>( () => _registry.Resources.ToDictionary(x => x.ID));
+		_resourcesByNID = new BulkFetchActionCache<string, LocalNotionResource>( () => Registry.Resources.ToDictionary(x => x.ID));
 
 		// Create the slug lookup table
 		_renderBySlug = new BulkFetchActionCache<string, CachedSlug>( 
-			() => _registry
+			() => Registry
 			      .Resources
 			      .SelectMany(resource => resource.Renders.Select(render => (render.Value.Slug, resource, render)))
 			      .Concat(
-				      _registry
+				      Registry
 					      .Resources
 					      .Where(r => r is LocalNotionPage { CMSProperties.CustomSlug: not null })
 					      .Cast<LocalNotionPage>()
@@ -248,7 +301,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		//// Create name lookup table
 		_resourceByName = new BulkFetchActionCache<string, LocalNotionEditableResource>(
-			() => _registry
+			() => Registry
 			      .Resources
 			      .Where(r => r is LocalNotionEditableResource)
 			      .Cast<LocalNotionEditableResource>()
@@ -258,7 +311,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		// Prepare repository logger
 		_logger.Add(
 			new ThreadIdLogger(new TimestampLogger(new RollingFileLogger(Path.Combine(Paths.GetInternalResourceFolderPath(InternalResourceType.Logs, FileSystemPathType.Absolute), Constants.DefaultLogFilename)))) {
-				Options = _registry.LogLevel.ToLogOptions()
+				Options = Registry.LogLevel.ToLogOptions()
 			}
 		);
 		SystemLog.RegisterLogger(_logger);
@@ -270,7 +323,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		_graphStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Graphs, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
 
 		// Create template manager (will extract missing templates on ctor)
-		HtmlThemeManager.ExtractEmbeddedThemes(Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute), false, _logger);
+		HtmlThemeManager.ExtractEmbeddedThemes(Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute), true, _logger);
 
 		RequiresLoad = false;
 
@@ -317,7 +370,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		var foldersToRemove = new List<string>();
 
 		// Scan through
-		foreach (var resource in _registry.Resources) {
+		foreach (var resource in Registry.Resources) {
 			if (Paths.UsesObjectIDSubFolders(resource.Type)) {
 				var folder = Paths.GetResourceFolderPath(resource.Type, resource.ID, FileSystemPathType.Absolute);
 				if (!Directory.Exists(folder)) {
@@ -347,7 +400,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		foreach (var resource in resourceToRemove) {
 			RequiresSave = true;
-			_registry.Remove(resource);
+			Registry.Remove(resource);
 		}
 
 		foreach (var file in filesToRemove) {
@@ -363,6 +416,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			await SaveAsync();
 		FlushCaches();
 	}
+
+	#region Objects
 
 	public bool ContainsObject(string objectID) {
 		CheckLoaded();
@@ -398,6 +453,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		_objectStore.Delete(objectID);
 	}
 
+	#endregion
+
+	#region Resource Graphs
+
 	public virtual bool ContainsResourceGraph(string resourceID) {
 		CheckLoaded();
 		return _graphStore.ContainsFile(resourceID);
@@ -431,6 +490,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		CheckLoaded();
 		_graphStore.Delete(resourceID);
 	}
+
+	#endregion
+
+	#region Resources
 
 	public virtual bool ContainsResource(string resourceID) => _resourcesByNID.ContainsCachedItem(resourceID);
 
@@ -474,10 +537,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 		var resourceFolder = Paths.GetResourceFolderPath(resource.Type, resource.ID, FileSystemPathType.Absolute);
 		var useObjectIDFolder = resource.Type switch {
-			LocalNotionResourceType.File => _registry.Paths.UseFileIDFolders,
-			LocalNotionResourceType.Page => _registry.Paths.UsePageIDFolders,
-			LocalNotionResourceType.Database => _registry.Paths.UseDatabaseIDFolders,
-			LocalNotionResourceType.Workspace => _registry.Paths.UseWorkspaceIDFolders,
+			LocalNotionResourceType.File => Registry.Paths.UseFileIDFolders,
+			LocalNotionResourceType.Page => Registry.Paths.UsePageIDFolders,
+			LocalNotionResourceType.Database => Registry.Paths.UseDatabaseIDFolders,
+			LocalNotionResourceType.Workspace => Registry.Paths.UseWorkspaceIDFolders,
+			LocalNotionResourceType.CMS => false,
 			_ => throw new NotSupportedException(resource.Type.ToString())
 		};
 
@@ -495,7 +559,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			_renderBySlug[lnp.CMSProperties.CustomSlug] = new(resource.ID, RenderType.HTML, lnp.CMSProperties.CustomSlug);
 		}
 
-		_registry.Add(resource);
+		Registry.Add(resource);
 		FlushCaches();
 		RequiresSave = true;
 		NotifyResourceAdded(resource);
@@ -581,10 +645,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		}
 
 		// Remove from caches
-		_registry.Remove(resource);
+		Registry.Remove(resource);
 		FlushCaches();
 		RequiresSave = true;
-	
+
 		NotifyResourceRemoved(resource);
 	}
 
@@ -603,6 +667,10 @@ public class LocalNotionRepository : ILocalNotionRepository {
 
 	public virtual IEnumerable<LocalNotionResource> GetChildResources(string resourceID) 
 		=> Resources.Where(x => x.ParentResourceID == resourceID).ToArray();  // ToArray ensures enumeration completes as 
+
+	#endregion
+
+	#region Renders
 
 	public virtual bool ContainsResourceRender(string resourceID, RenderType renderType) {
 		Guard.ArgumentNotNull(resourceID, nameof(resourceID));
@@ -695,9 +763,11 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		return slugBuilder.ToDelimittedString("/");
 	}
 
+	#endregion
+
 	protected async Task SaveInternal_PersistPhase(string registryFile) {
 		var persistFile = registryFile + ".persist";
-		await Task.Run(() => Tools.Json.WriteToFile(persistFile, _registry));
+		await Task.Run(() => Tools.Json.WriteToFile(persistFile, Registry));
 		var commitFile = registryFile + ".commit";
 		Tools.FileSystem.RenameFile(persistFile, commitFile);
 	}
@@ -931,12 +1001,12 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		_resourceByName.Purge();
 	}
 
-	private void CheckNotLoaded() {
+	protected void CheckNotLoaded() {
 		if (!RequiresLoad)
 			throw new InvalidOperationException($"{nameof(LocalNotionRepository)} was loaded");
 	}
 
-	private void CheckLoaded() {
+	protected void CheckLoaded() {
 		if (RequiresLoad)
 			throw new InvalidOperationException($"{nameof(LocalNotionRepository)} was not loaded");
 	}
