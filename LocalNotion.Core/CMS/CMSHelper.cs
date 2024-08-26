@@ -180,6 +180,8 @@ public class CMSHelper {
 		var calculatedSlug = cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories);
 		return cmsProperties.PageType switch {
 			CMSPageType.Section => calculatedSlug + (calculatedSlug.Contains("#") == false ? "#{page_name}": string.Empty),
+			CMSPageType.Header => calculatedSlug,
+			CMSPageType.NavBar => calculatedSlug,
 			CMSPageType.Footer => calculatedSlug,
 			_ => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};

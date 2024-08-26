@@ -17,68 +17,63 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 	protected new CMSLocalNotionRepository Repository => (CMSLocalNotionRepository)base.Repository;
 
-	public new string HeaderHtmlSection { get => base.HeaderHtmlSection; set => base.HeaderHtmlSection = value; }
-
-	public new string NavBarHtmlSection { get => base.NavBarHtmlSection; set => base.NavBarHtmlSection = value; }
-
-	public new string FooterHtmlSection { get => base.FooterHtmlSection; set => base.FooterHtmlSection = value; }
-
 	public bool IsPartialRendering { get; set; }
 
 	protected override string Render(Page page)
 		=> IsPartialRendering ? RenderPageContent(page) : base.Render(page);
 
-	public string RenderCMSPageItem(string pageID, CMSPageType type) {
-		if (Tools.Debugger.BreakConditionA && pageID == "957e39ad-3a63-43a0-91f3-8e1e132696a5") {
-			Tools.Debugger.BreakConditionB= true;
-		}
-		var page = Repository.GetPage(pageID);
-		var visualGraph = Repository.GetEditableResourceGraph(page.ID);
-		var visualObjects = Repository.LoadObjects(visualGraph);
-		IsPartialRendering = type switch {
-			CMSPageType.Header => true,
-			CMSPageType.Menu => true,
-			CMSPageType.Page => false,
-			CMSPageType.Section => true,
-			CMSPageType.Gallery => false,
-			CMSPageType.Footer => true,
-			_ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
-		};
-
-		using (EnterRenderingContext(new PageRenderingContext {
-				Themes = new[] { !IsPartialRendering ? "cms" : "cms_section" }.Union(page.CMSProperties.Themes ?? []).ToArray(),
-			       Resource = page,
-			       RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute),
-			       PageGraph = visualGraph,
-			       PageObjects = visualObjects,
-		       })) {
-			return Render(RenderingContext.PageGraph);
+	public string RenderCmsItem(CMSItem cmsItem)  {
+		switch (cmsItem.ItemType) {
+			case CMSItemType.Page:
+				Guard.Argument(cmsItem.Parts.Length == 1, nameof(cmsItem), "Page-based items must have exactly one part");
+				return RenderPage(cmsItem);
+			case CMSItemType.SectionedPage:
+				return RenderSectionedPage(cmsItem);
+			case CMSItemType.ArticleCategory:
+				return RenderArticlesPage(cmsItem);
+			case CMSItemType.GalleryPage:
+				Logger.Warning($"Gallery rendering not implemented: {cmsItem.Title} ({cmsItem.Slug})");
+				return string.Empty;
+			default:
+				throw new ArgumentOutOfRangeException();
 		}
 	}
 
-	public string RenderSectionedPage(string[] pages)  {
-		Tools.Debugger.BreakConditionA = true;
-		var sections = pages.Select(Repository.GetPage).ToArray();
+	protected virtual string RenderPage(CMSItem cmsItem)  {
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+		return RenderCmsItemPart(cmsItem.Parts[0], CMSPageType.Page, ambientTokens);
+	}
+
+	protected virtual string RenderSectionedPage(CMSItem cmsItem)  {
+		Guard.ArgumentNotNull(cmsItem, nameof(cmsItem));
+		var sections = cmsItem.Parts.Select(Repository.GetPage).ToArray();
 		var title = sections.Length > 0 ? sections[0].CMSProperties.Categories.LastOrDefault() ?? sections[0].Title ?? "Untitled" : "Untitled";
 		var id = sections.Select(x => x.ID).ToDelimittedString(", ");
 		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(sections.Select(x => x.Keywords)).ToArray();
 
 		// Render each section in their individual contexts
-		var content = sections.Select(x => RenderCMSPageItem(x.ID, CMSPageType.Section)).ToDelimittedString(Environment.NewLine);
+		var content = sections.Select(x => RenderCmsItemPart(x.ID, CMSPageType.Section)).ToDelimittedString(Environment.NewLine);
 
-		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute)})) {
+		// load framing 
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+
+		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens,  RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute)})) {
 			IsPartialRendering = false;
 			return RenderPageInternal(title, keywords, content, sections.Min(x => x.CreatedOn), sections.Min(x => x.LastEditedOn), "cms-sectioned-page", id);
 		}
 	}
 
-	public string RenderArticlesPage(string slug) {
-		var contentNode = Repository.CMSDatabase.GetContent(slug);
+	protected virtual string RenderArticlesPage(CMSItem cmsItem) {
+		var contentNode = Repository.CMSDatabase.GetContent(cmsItem.Slug);
 		var articles = contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
 		var title = articles.Length > 0 ? articles[0].Title : "Untitled";
 		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(articles.Select(x => x.Keywords)).ToArray();
 
-		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
+		
+		// load framing 
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+
+		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
 			IsPartialRendering = false;
 			var root = contentNode.GetLogicalContentRoot();
 
@@ -160,5 +155,39 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		}
 
 	}
+
+	protected virtual string RenderCmsItemPart(string partID, CMSPageType partType, IDictionary<string, string> ambientTokens = null) {
+		var page = Repository.GetPage(partID);
+		var visualGraph = Repository.GetEditableResourceGraph(page.ID);
+		var visualObjects = Repository.LoadObjects(visualGraph);
+		IsPartialRendering = partType switch {
+			CMSPageType.Header => true,
+			CMSPageType.NavBar => true,
+			CMSPageType.Page => false,
+			CMSPageType.Section => true,
+			CMSPageType.Gallery => false,
+			CMSPageType.Footer => true,
+			_ => throw new ArgumentOutOfRangeException(nameof(partType), partType, null)
+		};
+
+		using (EnterRenderingContext(new PageRenderingContext {
+			       Themes = new[] { !IsPartialRendering ? "cms" : "cms_section" }.Union(page.CMSProperties.Themes ?? []).ToArray(),
+			       AmbientTokens = ambientTokens ?? new Dictionary<string, string>(),
+			       Resource = page,
+			       RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute),
+			       PageGraph = visualGraph,
+			       PageObjects = visualObjects,
+		       })) {
+			return Render(RenderingContext.PageGraph);
+		}
+	}
+
+
+	protected virtual Dictionary<string, string> FetchFramingTokens(string headerID, string menuID, string footerID) 
+		=> new Dictionary<string, string> {
+			["include://page_header.html"] = !headerID.IsNullOrWhiteSpace() ? RenderCmsItemPart(headerID, CMSPageType.Header) : string.Empty,
+			["include://page_navbar.html"] = !menuID.IsNullOrWhiteSpace() ? RenderCmsItemPart(menuID, CMSPageType.NavBar) : string.Empty,
+			["include://page_footer.html"] = !footerID.IsNullOrWhiteSpace() ? RenderCmsItemPart(footerID, CMSPageType.Footer) : string.Empty,
+		}; 
 
 }

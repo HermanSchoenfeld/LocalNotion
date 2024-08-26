@@ -11,11 +11,12 @@
 </head>
 
 <body class="ln-page-{style}">
-    {header}
+    {include://page_header.inc}
+    {include://page_navbar.inc}
     <main>
         {content}
     </main>
-    {footer}
+    {include://page_footer.inc}
     <script src="{theme://resources/jquery/jquery-3.7.1.min}"></script>
     <script src="{theme://resources/bootstrap/bootstrap.bundle.min.js}"></script>
     <script src="{theme://resources/local-notion/js/toc.js}"></script>
@@ -24,9 +25,4 @@
     <script async id="MathJax-script" src="{theme://resources/mathjax/es5/tex-mml-chtml.js}"></script>
     <script async src="{theme://resources/prism/prism.js}"></script>
     <script async src="{theme://resources/x.com/widgets.js}" charset="utf-8"></script>
-    <script language="javascript">
-        $(document).ready(function () {
-            $('.ln-database').DataTable();
-        });
-    </script>
 </body>

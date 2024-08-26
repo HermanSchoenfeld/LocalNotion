@@ -85,34 +85,10 @@ public class RenderingManager  {
 		var breadcrumbGenerator = new BreadCrumbGenerator(Repository, urlGenerator);
 		var cmsRenderer = new CmsHtmlRenderer(RenderMode.ReadOnly, cmsRepo, themeManager, urlGenerator, breadcrumbGenerator, Logger);
 
-		// load framing 
-		cmsRenderer.HeaderHtmlSection = !cmsItem.HeaderID.IsNullOrWhiteSpace() ? cmsRenderer.RenderCMSPageItem(cmsItem.HeaderID, CMSPageType.Header) : string.Empty;
-		cmsRenderer.NavBarHtmlSection = !cmsItem.MenuID.IsNullOrWhiteSpace() ? cmsRenderer.RenderCMSPageItem(cmsItem.MenuID, CMSPageType.Menu) : string.Empty;
-		cmsRenderer.FooterHtmlSection = !cmsItem.FooterID.IsNullOrWhiteSpace() ? cmsRenderer.RenderCMSPageItem(cmsItem.FooterID, CMSPageType.Footer) : string.Empty;
 		// TODO: need to set output path for links to be from /cms not /pages
 		DetermineCMSItemFilename(cmsItem, out var filePath);
 		Logger.Info($"Rendering CMS item '{cmsItem.RenderFileName}'");
-		string htmlContent;
-		switch (cmsItem.ItemType) {
-			case CMSItemType.Page:
-				// render original page with framing
-				Guard.Ensure(cmsItem.Parts.Length == 1, "Page CMSItem must have exactly one part");
-				htmlContent = cmsRenderer.RenderCMSPageItem(cmsItem.Parts[0], CMSPageType.Page);
-				break;
-			case CMSItemType.SectionedPage:
-				// render each section as a partial page
-				htmlContent = cmsRenderer.RenderSectionedPage(cmsItem.Parts);
-				break;
-			case CMSItemType.ArticleCategory:
-				htmlContent = cmsRenderer.RenderArticlesPage(cmsItem.Slug);
-				break;
-			case CMSItemType.GalleryPage:
-				htmlContent = "NOT IMPLEMENTED";
-				break;
-			default:
-				throw new ArgumentOutOfRangeException();
-		}
-		htmlContent = HtmlRenderer.Format(htmlContent);
+		string htmlContent = HtmlRenderer.Format(cmsRenderer.RenderCmsItem(cmsItem));
 		File.WriteAllText(filePath, htmlContent);
 		cmsItem.Dirty = false;
 		

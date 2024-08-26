@@ -30,11 +30,6 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		BreadCrumbGenerator = breadCrumbGenerator;
 	}
 
-	protected string HeaderHtmlSection { get; set; } = string.Empty;
-
-	protected string NavBarHtmlSection { get; set; } = string.Empty;
-
-	protected string FooterHtmlSection { get; set; } = string.Empty;
 
 	protected bool SuppressFormatting { get; private set; }
 
@@ -76,6 +71,9 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			Repository.Paths.Mode, Mode, 
 			out var suppressFormatting
 		);
+
+		if (RenderingContext.AmbientTokens.Count > 0)
+			_tokens = new DictionaryChain<string, object>(RenderingContext.AmbientTokens.WithValueProjection(x => (object)x, x => (string)x), _tokens);
 
 		SuppressFormatting = suppressFormatting;
 	}
@@ -175,9 +173,9 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 						["description"] = database.Description.ToPlainText(),
 						["keywords"] = RenderingContext.Resource.Keywords.ToDelimittedString(", "),
 						["author"] = "Local Notion",
-						["header"] = HeaderHtmlSection,
-						["menu"] = NavBarHtmlSection,
-						["content"] = RenderTemplate(
+						["page_header"] = RenderTemplate("page_header", new RenderTokens(database)),
+						["page_navbar"] = RenderTemplate("page_navbar", new RenderTokens(database)),
+						["page_content"] = RenderTemplate(
 							"page_content", 
 							new RenderTokens(database) {
 								["id"] = RenderingContext.Resource.ID,
@@ -185,10 +183,10 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 								["page_name"] = RenderingContext.Resource.Name,
 								["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
 								["page_subtitle"] = RenderTemplate("page_subtitle", new() { ["subtitle"]= Render(database.Description) }),
-								["cover"] = RenderingContext.Resource.Cover switch {
+								["page_cover"] = RenderingContext.Resource.Cover switch {
 									null => string.Empty,
 									_ => RenderTemplate(
-										"cover",
+										"page_cover",
 										new RenderTokens {
 											["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
 										}
@@ -214,7 +212,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 								["children"] = Render(database, true)
 							}
 						),
-						["footer"] = FooterHtmlSection
+						["page_footer"] = RenderTemplate("page_footer", new RenderTokens(database)),
 					}
 				),
 
@@ -571,10 +569,8 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			page.Id
 		);
 
-	protected string RenderPageInternal(string title, string[] keyWords, string contents, DateTime createdTime, DateTime updatedTime, string objectType, string objectID) 
-		=> RenderTemplate(
-			"page",
-			new RenderTokens() {
+	protected string RenderPageInternal(string title, string[] keyWords, string contents, DateTime createdTime, DateTime updatedTime, string objectType, string objectID) {
+		var framingTokens = new RenderTokens() {
 				["object-id"] = objectID,
 				["object-type"] = objectType,
 				["created_time"] = createdTime,
@@ -585,13 +581,18 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				["title"] = title,   
 				["description"] = string.Empty,
 				["keywords"] = keyWords.ToDelimittedString(", "),
-				["author"] = "Local Notion",
-				["header"] = HeaderHtmlSection,
-				["menu"] = NavBarHtmlSection,
-				["content"] = contents,
-				["footer"] = FooterHtmlSection
+				["author"] = "Local Notion"
+		};
+		return RenderTemplate(
+			"page",
+			new RenderTokens(framingTokens) {
+				["page_header"] = RenderTemplate("page_header", framingTokens),
+				["page_navbar"] = RenderTemplate("page_navbar", framingTokens),
+				["page_content"] = contents,
+				["page_footer"] = RenderTemplate("page_footer", framingTokens),
 			}
 		);
+	}
 
 
 	protected virtual string RenderPageContent(Page page)
@@ -603,10 +604,10 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				["page_name"] = RenderingContext.Resource.Name,
 				["page_title"] =  RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
 				["page_subtitle"] = string.Empty,
-				["cover"] = RenderingContext.Resource.Cover switch {
+				["page_cover"] = RenderingContext.Resource.Cover switch {
 					null => string.Empty,
 					_ => RenderTemplate(
-						"cover",
+						"page_cover",
 						new RenderTokens {
 							["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
 						}
@@ -1465,7 +1466,10 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			if (@object == null)
 				yield break;
 
-			if (@object is LocalNotionResource lnr) {
+			if (@object is RenderTokens rt) {
+				foreach (var item in rt)
+					yield return item;
+			} else if (@object is LocalNotionResource lnr) {
 				yield return new KeyValuePair<string, object>("object_id", lnr.ID.Replace("-", string.Empty));
 
 			} else if (@object is IObject notionObject) {

@@ -83,10 +83,10 @@ public class TextRenderer : RecursiveRendererBase<string> {
 		//				["description"] = Render(database.Description),
 		//				["page_title"] = RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
 		//				["style"] = "wide",
-		//				["cover"] = RenderingContext.Resource.Cover switch {
+		//				["page_cover"] = RenderingContext.Resource.Cover switch {
 		//					null => string.Empty,
 		//					_ => RenderTemplate(
-		//						"cover",
+		//						"page_cover",
 		//						new RenderTokens {
 		//							["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
 		//						}

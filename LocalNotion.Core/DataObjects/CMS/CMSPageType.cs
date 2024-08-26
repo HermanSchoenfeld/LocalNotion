@@ -7,8 +7,8 @@ public enum CMSPageType {
 	[EnumMember(Value = "header")]
 	Header,
 
-	[EnumMember(Value = "menu")]
-	Menu,
+	[EnumMember(Value = "navbar")]
+	NavBar,
 
 	[EnumMember(Value = "page")]
 	Page,

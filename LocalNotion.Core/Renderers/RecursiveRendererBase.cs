@@ -424,6 +424,8 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 		public string [] Themes { get; set; } = [];
 
+		public IDictionary<string, string> AmbientTokens { get; set; } = new Dictionary<string, string>();
+
 		public string RenderOutputPath { get; set; }
 
 		public NotionObjectGraph PageGraph { get; set; }

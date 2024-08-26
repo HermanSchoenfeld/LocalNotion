@@ -1,11 +1,19 @@
-$(document).ready(function() {
+//////////////////////////
+// Initialization
+/////////////////////////
 
+// Apply feather icons
+feather.replace();
+
+// Apply some cosmetic fixes
+$(document).ready(function () {
     // remove empty block children
     $(".ln-block-children:not(:has(*))").remove();
     $(".ln-callout-children:not(:has(*))").remove();
+});
 
-
-
+// Render database frames (ensure async loaded script is loaded first)
+$(document).ready(function () {
     // Initialize the datatables (after lazy loaded datatables script loads)
     var maxRetries = 50; // Maximum number of polling attempts
     var interval = 100; // Polling interval in milliseconds
@@ -26,10 +34,13 @@ $(document).ready(function() {
     }
     // Start polling with the maximum number of retries
     SetDataTables(maxRetries);
-
 });
 
-// Used to search articles
+////////////////////////////////////
+// Global Functions
+////////////////////////////////////
+
+// Used to search articles on website, just redirects to google
 function DoSearch(event) {
     if (event.key === 'Enter') {
         event.preventDefault();
@@ -41,6 +52,3 @@ function DoSearch(event) {
         }
     }
 }
-
-// Feather icons
-feather.replace();

@@ -80,7 +80,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		if (resource is LocalNotionPage { CMSProperties: not null } page) {
 			switch (page.CMSProperties.PageType) {
 				case CMSPageType.Header:
-				case CMSPageType.Menu:
+				case CMSPageType.NavBar:
 				case CMSPageType.Footer:
 					RecalculateAllFraming();
 					break;
@@ -104,7 +104,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		if (resource is LocalNotionPage { CMSProperties: not null } page) {
 			switch (page.CMSProperties.PageType) {
 				case CMSPageType.Header:
-				case CMSPageType.Menu:
+				case CMSPageType.NavBar:
 				case CMSPageType.Footer:
 					RecalculateAllFraming();
 					break;
@@ -136,7 +136,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		if (resource is LocalNotionPage { CMSProperties: not null } page) {
 			switch (page.CMSProperties.PageType) {
 				case CMSPageType.Header:
-				case CMSPageType.Menu:
+				case CMSPageType.NavBar:
 				case CMSPageType.Footer:
 					if (_preUpdateCmsProperties.PageType != page.CMSProperties.PageType) {
 						RecalculateAllFraming();
@@ -185,7 +185,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 				case CMSPageType.Footer:
 					// Doesn't need to do anything
 					break;
-				case CMSPageType.Menu:
+				case CMSPageType.NavBar:
 					// Doesn't need to do anything
 					break;
 				case CMSPageType.Page:
@@ -370,9 +370,9 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 			Image =  image ?? string.Empty,
 			Author = string.Empty,
 			HeaderID = CMSDatabase.FindComponentPage(slug, CMSPageType.Header, out var headerPage) ? headerPage.ID : null ,
-			MenuID = CMSDatabase.FindComponentPage(slug, CMSPageType.Menu, out var menuPage) ? menuPage.ID : null,
-			Parts = parts ?? Array.Empty<string>(),
+			MenuID = CMSDatabase.FindComponentPage(slug, CMSPageType.NavBar, out var menuPage) ? menuPage.ID : null,
 			FooterID = CMSDatabase.FindComponentPage(slug, CMSPageType.Footer, out var footerPage) ? footerPage.ID : null,
+			Parts = parts ?? Array.Empty<string>(),
 			Dirty = true,
 			RenderFileName = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderFileName : null
 		});
@@ -389,7 +389,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 	private void RecalculateAllFraming() {
 		foreach (var render in CMSItems) {
 			var headerPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.Header, out var headerPage) ? headerPage.ID : null;
-			var menuPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.Menu, out var menuPage) ? menuPage.ID : null;
+			var menuPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.NavBar, out var menuPage) ? menuPage.ID : null;
 			var footerPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.Footer, out var footerPage) ? footerPage.ID : null;
 
 			if (render.HeaderID != headerPageID || render.MenuID != menuPageID || render.FooterID != footerPageID) {
