@@ -1,0 +1,18 @@
+﻿<li id="{object_id}" onclick="location.href='{text}'" style="cursor: pointer" class="nav-item ln-behaviour-hover-highlight">
+    <div class="row p-2">
+        <div class="col-4 align-content-center">
+            <figure>
+                {icon}
+                <script>
+                    if (document.currentScript.previousElementSibling && document.currentScript.previousElementSibling.tagName.toLowerCase() === 'img') {
+                        document.currentScript.previousElementSibling.className = 'img-fluid d-block mx-auto';
+                    }
+                    document.currentScript.parentNode.removeChild(document.currentScript);
+                </script>
+            </figure>
+        </div>
+        <div class="col-8">
+            {children}
+        </div>
+    </div>
+</li>

@@ -41,8 +41,29 @@
 	  <None Remove="Themes\cms\heading_2.html" />
 	  <None Remove="Themes\cms\heading_3.html" />
 	  <None Remove="Themes\cms\page.offline.html" />
+	  <None Remove="Themes\cms\page_navbar.inc" />
 	  <None Remove="Themes\cms\resources\js\cms_post.js" />
 	  <None Remove="Themes\cms\resources\js\cms_pre.js" />
+	  <None Remove="Themes\cms_navbar\.config.json" />
+	  <None Remove="Themes\cms_navbar\callout.html" />
+	  <None Remove="Themes\cms_navbar\color_text_aux.inc" />
+	  <None Remove="Themes\cms_navbar\column_list_2.html" />
+	  <None Remove="Themes\cms_navbar\divider.html" />
+	  <None Remove="Themes\cms_navbar\heading_1.html" />
+	  <None Remove="Themes\cms_navbar\heading_2.html" />
+	  <None Remove="Themes\cms_navbar\heading_3.html" />
+	  <None Remove="Themes\cms_navbar\icon_image_2.html" />
+	  <None Remove="Themes\cms_navbar\page_content.html" />
+	  <None Remove="Themes\cms_navbar\paragraph.html" />
+	  <None Remove="Themes\cms_navbar\quote.html" />
+	  <None Remove="Themes\cms_navbar\text_link.html" />
+	  <None Remove="Themes\cms_navbar\thumbnail_emoji.html" />
+	  <None Remove="Themes\cms_navbar\thumbnail_emoji_on_cover.html" />
+	  <None Remove="Themes\cms_navbar\thumbnail_image.html" />
+	  <None Remove="Themes\cms_navbar\thumbnail_image_on_cover.html" />
+	  <None Remove="Themes\cms_navbar\toggle_closed.html" />
+	  <None Remove="Themes\cms_navbar\toggle_open.html" />
+	  <None Remove="Themes\cms_footer\.config.json" />
 	  <None Remove="Themes\color_bg_body_tertiary\.config.json" />
 	  <None Remove="Themes\color_bg_body_tertiary\color_bg.inc" />
 	  <None Remove="Themes\color_bg_body_secondary\.config.json" />
@@ -179,9 +200,9 @@
 	  <None Remove="Themes\columns_md\column_list_8.html" />
 	  <None Remove="Themes\columns_md\column_list_9.html" />
 	  <None Remove="Themes\default\page_cover.html" />
-	  <None Remove="Themes\default\page_footer.html" />
-	  <None Remove="Themes\default\page_header.html" />
-	  <None Remove="Themes\default\page_navbar.html" />
+	  <None Remove="Themes\default\page_footer.inc" />
+	  <None Remove="Themes\default\page_header.inc" />
+	  <None Remove="Themes\default\page_navbar.inc" />
 	  <None Remove="Themes\default\text_block_attrs.inc" />
 	  <None Remove="Themes\h1_align_center - Copy (2)\.config.json" />
 	  <None Remove="Themes\h1_align_center - Copy (2)\h1_align.inc" />
@@ -225,9 +246,12 @@
 	  <None Remove="Themes\image_maxheight_15em\image.html" />
 	  <None Remove="Themes\image_maxwidth_25em\.config.json" />
 	  <None Remove="Themes\image_maxwidth_25em\image.html" />
+	  <None Remove="Themes\link_arrow\text_link.html" />
 	  <None Remove="Themes\link_muted\.config.json" />
 	  <None Remove="Themes\link_muted\page_link.html" />
 	  <None Remove="Themes\link_muted\text_link.html" />
+	  <None Remove="Themes\navbar_callout_productlink\.config.json" />
+	  <None Remove="Themes\navbar_callout_productlink\callout.html" />
 	  <None Remove="Themes\text_small\.config.json" />
 	  <None Remove="Themes\text_muted\.config.json" />
 	  <None Remove="Themes\text_muted\color_text.inc" />
@@ -406,7 +430,6 @@
 	  <None Remove="Themes\default\page.offline.html" />
 	  <None Remove="Themes\default\page.online.html" />
 	  <None Remove="Themes\default\page_content.html" />
-	  <None Remove="Themes\default\page_link.html" />
 	  <None Remove="Themes\default\page_subtitle.html" />
 	  <None Remove="Themes\default\page_title.html" />
 	  <None Remove="Themes\default\paragraph.html" />
@@ -513,7 +536,6 @@
 	  <None Remove="Themes\.root\editable\numbered_list_item.html" />
 	  <None Remove="Themes\.root\editable\page.offline.html" />
 	  <None Remove="Themes\.root\editable\page.online.html" />
-	  <None Remove="Themes\.root\editable\page_link.html" />
 	  <None Remove="Themes\.root\editable\paragraph.html" />
 	  <None Remove="Themes\.root\editable\pdf.html" />
 	  <None Remove="Themes\.root\editable\quote.html" />
@@ -562,7 +584,6 @@
 	  <None Remove="Themes\.root\readonly\numbered_list_item.html" />
 	  <None Remove="Themes\.root\readonly\page.offline.html" />
 	  <None Remove="Themes\.root\readonly\page.online.html" />
-	  <None Remove="Themes\.root\readonly\page_link.html" />
 	  <None Remove="Themes\.root\readonly\paragraph.html" />
 	  <None Remove="Themes\.root\readonly\pdf.html" />
 	  <None Remove="Themes\.root\readonly\quote.html" />
@@ -601,7 +622,6 @@
 	  <None Remove="Themes\empty\page_database.offline.html" />
 	  <None Remove="Themes\empty\page_database.online.html" />
 	  <None Remove="Themes\bullet_check\.config.json" />
-	  <None Remove="Themes\link_arrow\page_link.html" />
 	  <None Remove="Themes\image_maxheight_25em\image.html" />
 	  <None Remove="Themes\cms_section\.config.json" />
 	  <None Remove="Themes\cms_section\page_content.html" />
@@ -640,8 +660,29 @@
 	  <EmbeddedResource Include="Themes\cms\heading_2.html" />
 	  <EmbeddedResource Include="Themes\cms\heading_3.html" />
 	  <EmbeddedResource Include="Themes\cms\page.offline.html" />
+	  <EmbeddedResource Include="Themes\cms\page_navbar.inc" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\cms_post.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\cms_pre.js" />
+	  <EmbeddedResource Include="Themes\cms_navbar\.config.json" />
+	  <EmbeddedResource Include="Themes\cms_navbar\callout.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\color_text_aux.inc" />
+	  <EmbeddedResource Include="Themes\cms_navbar\column_list_2.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\divider.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\heading_1.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\heading_2.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\heading_3.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\icon_image_2.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\page_content.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\paragraph.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\quote.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\text_link.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\thumbnail_emoji.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\thumbnail_emoji_on_cover.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\thumbnail_image.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\thumbnail_image_on_cover.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\toggle_closed.html" />
+	  <EmbeddedResource Include="Themes\cms_navbar\toggle_open.html" />
+	  <EmbeddedResource Include="Themes\cms_footer\.config.json" />
 	  <EmbeddedResource Include="Themes\color_bg_body_tertiary\.config.json" />
 	  <EmbeddedResource Include="Themes\color_bg_body_tertiary\color_bg.inc" />
 	  <EmbeddedResource Include="Themes\color_bg_body_secondary\.config.json" />
@@ -780,9 +821,9 @@
 	  <EmbeddedResource Include="Themes\columns_md\column_list_7.html" />
 	  <EmbeddedResource Include="Themes\columns_md\column_list_8.html" />
 	  <EmbeddedResource Include="Themes\columns_md\column_list_9.html" />
-	  <EmbeddedResource Include="Themes\default\page_footer.html" />
-	  <EmbeddedResource Include="Themes\default\page_navbar.html" />
-	  <EmbeddedResource Include="Themes\default\page_header.html" />
+	  <EmbeddedResource Include="Themes\default\page_footer.inc" />
+	  <EmbeddedResource Include="Themes\default\page_navbar.inc" />
+	  <EmbeddedResource Include="Themes\default\page_header.inc" />
 	  <EmbeddedResource Include="Themes\default\text_block_attrs.inc" />
 	  <EmbeddedResource Include="Themes\h3_as_h6\.config.json" />
 	  <EmbeddedResource Include="Themes\h2_as_h5\.config.json" />
@@ -823,6 +864,8 @@
 	  <EmbeddedResource Include="Themes\link_muted\.config.json" />
 	  <EmbeddedResource Include="Themes\link_muted\page_link.html" />
 	  <EmbeddedResource Include="Themes\link_muted\text_link.html" />
+	  <EmbeddedResource Include="Themes\navbar_callout_productlink\.config.json" />
+	  <EmbeddedResource Include="Themes\navbar_callout_productlink\callout.html" />
 	  <EmbeddedResource Include="Themes\text_small\.config.json" />
 	  <EmbeddedResource Include="Themes\text_muted\.config.json" />
 	  <EmbeddedResource Include="Themes\text_muted\color_text.inc" />
@@ -1054,7 +1097,6 @@
 	  <EmbeddedResource Include="Themes\.root\readonly\numbered_list_item.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\page.offline.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\page.online.html" />
-	  <EmbeddedResource Include="Themes\.root\readonly\page_link.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\paragraph.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\pdf.html" />
 	  <EmbeddedResource Include="Themes\.root\readonly\quote.html" />
@@ -1110,7 +1152,6 @@
 	  <EmbeddedResource Include="Themes\.root\editable\numbered_list_item.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\page.offline.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\page.online.html" />
-	  <EmbeddedResource Include="Themes\.root\editable\page_link.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\paragraph.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\pdf.html" />
 	  <EmbeddedResource Include="Themes\.root\editable\quote.html" />
@@ -1184,7 +1225,6 @@
 	  <EmbeddedResource Include="Themes\default\page.online.html" />
 	  <EmbeddedResource Include="Themes\default\indicator_link.html" />
 	  <EmbeddedResource Include="Themes\default\page_title.html" />
-	  <EmbeddedResource Include="Themes\default\page_link.html" />
 	  <EmbeddedResource Include="Themes\default\paragraph.html" />
 	  <EmbeddedResource Include="Themes\default\pdf.html" />
 	  <EmbeddedResource Include="Themes\default\property.html" />
@@ -1239,7 +1279,7 @@
 	  <EmbeddedResource Include="Themes\embedded\readonly\page.offline.html" />
 	  <EmbeddedResource Include="Themes\embedded\readonly\page.online.html" />
 	  <EmbeddedResource Include="Themes\bullet_check\.config.json" />
-	  <EmbeddedResource Include="Themes\link_arrow\page_link.html" />
+	  <EmbeddedResource Include="Themes\link_arrow\text_link.html" />
 	  <EmbeddedResource Include="Themes\image_maxheight_25em\image.html" />
 	  <EmbeddedResource Include="Themes\cms_section\.config.json" />
 	  <EmbeddedResource Include="Themes\cms_section\page_content.html" />
@@ -1251,8 +1291,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="AngleSharp" Version="1.1.2" />
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.61" />
-		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.6" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.11.65" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
 		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
 	</ItemGroup>
 

@@ -156,23 +156,23 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 	}
 
-	protected virtual string RenderCmsItemPart(string partID, CMSPageType partType, IDictionary<string, string> ambientTokens = null) {
+	protected virtual string RenderCmsItemPart(string partID, CMSPageType partType, IDictionary<string, object> ambientTokens = null) {
 		var page = Repository.GetPage(partID);
 		var visualGraph = Repository.GetEditableResourceGraph(page.ID);
 		var visualObjects = Repository.LoadObjects(visualGraph);
-		IsPartialRendering = partType switch {
-			CMSPageType.Header => true,
-			CMSPageType.NavBar => true,
-			CMSPageType.Page => false,
-			CMSPageType.Section => true,
-			CMSPageType.Gallery => false,
-			CMSPageType.Footer => true,
+		(IsPartialRendering, var theme) = partType switch {
+			CMSPageType.Header => (true, "cms_section"),
+			CMSPageType.NavBar => (true, "cms_navbar"),
+			CMSPageType.Page => (false, "cms"),
+			CMSPageType.Section => (true, "cms_section"),
+			CMSPageType.Gallery => (false, "cms"),
+			CMSPageType.Footer => (true, "cms_footer"),
 			_ => throw new ArgumentOutOfRangeException(nameof(partType), partType, null)
 		};
 
 		using (EnterRenderingContext(new PageRenderingContext {
-			       Themes = new[] { !IsPartialRendering ? "cms" : "cms_section" }.Union(page.CMSProperties.Themes ?? []).ToArray(),
-			       AmbientTokens = ambientTokens ?? new Dictionary<string, string>(),
+			       Themes = new[] { theme }.Union(page.CMSProperties.Themes ?? []).ToArray(),
+			       AmbientTokens = ambientTokens ?? new Dictionary<string, object>(),
 			       Resource = page,
 			       RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute),
 			       PageGraph = visualGraph,
@@ -183,11 +183,28 @@ public class CmsHtmlRenderer : HtmlRenderer {
 	}
 
 
-	protected virtual Dictionary<string, string> FetchFramingTokens(string headerID, string menuID, string footerID) 
-		=> new Dictionary<string, string> {
-			["include://page_header.html"] = !headerID.IsNullOrWhiteSpace() ? RenderCmsItemPart(headerID, CMSPageType.Header) : string.Empty,
-			["include://page_navbar.html"] = !menuID.IsNullOrWhiteSpace() ? RenderCmsItemPart(menuID, CMSPageType.NavBar) : string.Empty,
-			["include://page_footer.html"] = !footerID.IsNullOrWhiteSpace() ? RenderCmsItemPart(footerID, CMSPageType.Footer) : string.Empty,
-		}; 
+	protected virtual Dictionary<string, object> FetchFramingTokens(string headerID, string navBarID, string footerID) {
+		var tokens = new Dictionary<string, object>();
+		if (!headerID.IsNullOrWhiteSpace()) {
+			tokens["include://page_header.inc"] = RenderCmsItemPart(headerID, CMSPageType.Header);
+		} else {
+			tokens["include://page_header.inc"] = string.Empty;
+		}
+
+		if (!navBarID.IsNullOrWhiteSpace()) {
+			Tools.Debugger.BreakConditionA = true;
+			tokens["include://page_navbar.inc"] = RenderCmsItemPart(navBarID, CMSPageType.NavBar);
+		} else {
+			tokens["include://page_navbar.inc"] = string.Empty;
+		}
+		
+		if (!footerID.IsNullOrWhiteSpace()) {
+			tokens["include://page_footer.inc"] = RenderCmsItemPart(footerID, CMSPageType.Footer);
+		} else {
+			tokens["include://page_footer.inc"] = string.Empty;
+		}
+
+		return tokens;
+	}
 
 }

@@ -400,7 +400,7 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	protected abstract TOutput Render(ToggleBlock block);
 
-	protected abstract TOutput RenderText(string content, string url, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color);
+	protected abstract TOutput RenderText(string content, bool isUrl, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, (string Url, TOutput Icon, TOutput Indicator) urlInfo = default);
 
 	protected abstract TOutput RenderReference(string objectID, bool isInline, bool omitIndicator = false);
 
@@ -424,7 +424,7 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 		public string [] Themes { get; set; } = [];
 
-		public IDictionary<string, string> AmbientTokens { get; set; } = new Dictionary<string, string>();
+		public IDictionary<string, object> AmbientTokens { get; set; } = new Dictionary<string, object>();
 
 		public string RenderOutputPath { get; set; }
 

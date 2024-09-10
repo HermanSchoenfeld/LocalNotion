@@ -279,8 +279,12 @@ public class TextRenderer : RecursiveRendererBase<string> {
 			_ => throw new InvalidOperationException($"Unrecognized mention type '{text.Mention.Type}'")
 		};
 
-	protected override string Render(RichTextText text)
-		=> RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value);
+	protected override string Render(RichTextText text) {
+		var isUrl =  text.Text?.Link?.Url is not null;
+		var urlInfo = isUrl ? (Url: text.Text.Link.Url, Icon: string.Empty, Indicator: string.Empty ) : default;
+
+		return RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, isUrl, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, urlInfo);
+	}
 
 	protected override string RenderBadge(string text, Color color)
 		=> Render(text) + Environment.NewLine;
@@ -392,8 +396,8 @@ public class TextRenderer : RecursiveRendererBase<string> {
 	protected override string Render(ToggleBlock block)
 		=> Render(block.Toggle.RichText) + Environment.NewLine + (block.HasChildren ? RenderChildPageItems() : string.Empty);
 
-	protected override string RenderText(string content, string url, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color)
-		=> (!string.IsNullOrWhiteSpace(url) ? url : content) ?? string.Empty + Environment.NewLine + Environment.NewLine;
+	protected override string RenderText(string content, bool isUrl, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, (string Url, string Icon, string Indicator) urlInfo = default)
+		=> (isUrl ? urlInfo.Url : content) ?? string.Empty + Environment.NewLine + Environment.NewLine;
 
 	protected override string RenderReference(string objectID, bool isInline, bool omitIndicator = false) => string.Empty + Environment.NewLine;
 

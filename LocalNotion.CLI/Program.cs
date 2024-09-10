@@ -100,7 +100,7 @@ public static partial class Program {
 		[Option("nginx-reload-cmd", Default = null, HelpText = "Command line used to reload NGINX web server (executed from the \".localnotion/nginx\" dir)")]
 		public string NginxReloadCommand { get; set; }
 
-		[Option("apache", Default = (bool)false, HelpText = "Generate .htaccess file for Apache hosting")]
+		[Option("apache", Default = false, HelpText = "Generate .htaccess file for Apache hosting")]
 		public bool EnableApache { get; set; }
 
 		[Option("override-objects-path", HelpText = $"Override path where notion objects are stored")]
@@ -895,9 +895,9 @@ $@"Local Notion Status:
 		//		string[] PullBug19Page = new[] { "pull", "-p", "d:\\Backup\\Notion\\Sphere10", "-o", "c649e6d6-754d-4d68-bea0-cb44c08be1fe" };
 		//		string[] PullBug20Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "a411e763503b46e79b620e791f7fd99f", "--force" };
 		//		string[] PullBug21Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3881a16e-288a-4907-a021-acc21e7c0a0a", "--force" };
-		//       string[] PullBug22Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f96258439e6c489e8fae843ae779c63d", "--force" };
+		       string[] PullBug22Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f96258439e6c489e8fae843ae779c63d", "--force" };
 
-		 string[] PullBug23Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
+		 //string[] PullBug23Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
 		
 		//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 		//		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391" };
@@ -942,6 +942,7 @@ $@"Local Notion Status:
 		//      string[] RenderBug32Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "957e39ad-3a63-43a0-91f3-8e1e132696a5" };
 		//     string[] RenderBug33Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "af040357-f2ec-45ca-931b-a3757f3d66a0" };
 		// string[] RenderBug34Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
+		 string[] RenderBug35Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f9625843-9e6c-489e-8fae-843ae779c63d" };
 		
 	
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
@@ -967,7 +968,7 @@ $@"Local Notion Status:
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
 		if (args.Length == 0)
-			args = PullBug23Page;
+			args = RenderBug35Page;
 
 		//#endif
 
