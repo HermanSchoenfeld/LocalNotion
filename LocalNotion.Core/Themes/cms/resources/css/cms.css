@@ -2,6 +2,28 @@
     CMS Related Styles
 ***************************************************/
 
+.nav-link {
+    border-bottom: 2px solid transparent;
+    border-radius: var(--bs-border-radius);
+    transition: border-color .1s ease-in-out, border-radius .1s ease-in-out;
+}
+
+    .nav-link:hover {
+        border-bottom-color: currentColor;
+        border-radius: 0;
+    }
+
+    .nav-link.active {
+        border-bottom-color: currentColor;
+        border-radius: var(--bs-border-radius);
+        pointer-events: none;
+    }
+
+.dropdown-menu {
+    min-width: 22rem;
+}
+
+
 .article-summary {
     margin-bottom: 40px;
     padding-bottom: 40px;
