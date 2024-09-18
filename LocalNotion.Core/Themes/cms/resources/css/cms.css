@@ -82,3 +82,180 @@
     padding-left: var(--bs-badge-padding-y-lg);
     padding-right: var(--bs-badge-padding-y-lg)
 }
+
+
+.shape {
+    pointer-events: none;
+    position: absolute
+}
+
+    .shape > * {
+        display: block
+    }
+
+    .shape:not([class*=shape-blur]) {
+        overflow: hidden
+    }
+
+        .shape:not([class*=shape-blur]) > * {
+            transform: scale(2)
+        }
+
+@media (-ms-high-contrast:active), (-ms-high-contrast:none) {
+    .shape > svg {
+        display: none
+    }
+}
+
+.shape-top {
+    left: 0;
+    right: 0;
+    top: 0
+}
+
+    .shape-top > * {
+        transform-origin: bottom center
+    }
+
+.shape-end {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0
+}
+
+    .shape-end > * {
+        bottom: inherit;
+        position: inherit;
+        right: inherit;
+        top: inherit;
+        transform-origin: center left
+    }
+
+.shape-bottom {
+    bottom: 0;
+    left: 0;
+    right: 0
+}
+
+    .shape-bottom > * {
+        transform-origin: top center
+    }
+
+.shape-bottom-100 {
+    bottom: 100%;
+    left: 0;
+    right: 0
+}
+
+    .shape-bottom-100 > * {
+        transform-origin: top center
+    }
+
+.shape-start {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0
+}
+
+    .shape-start > * {
+        bottom: inherit;
+        left: inherit;
+        position: inherit;
+        top: inherit;
+        transform-origin: center right
+    }
+
+.shape-fluid-x > * {
+    height: auto;
+    width: 100%
+}
+
+.shape-fluid-y > * {
+    height: 100%;
+    width: auto
+}
+
+.shape-flip-x {
+    transform: scaleX(-1)
+}
+
+.shape-blur-1 {
+    left: 0;
+    right: 0;
+    top: 0
+}
+
+@media(min-width:992px) {
+    .shape-blur-1 {
+        bottom: 0;
+        left: 50%;
+        right: auto
+    }
+}
+
+.shape-blur-1 > * {
+    height: auto;
+    width: 100%
+}
+
+@media(min-width:992px) {
+    .shape-blur-1 > * {
+        height: 100%;
+        width: auto
+    }
+}
+
+.shape-blur-2 {
+    left: 0;
+    right: 0;
+    top: 0
+}
+
+@media(min-width:992px) {
+    .shape-blur-2 {
+        bottom: 0;
+        left: auto;
+        right: 50%
+    }
+}
+
+.shape-blur-2 > * {
+    height: auto;
+    width: 100%
+}
+
+@media(min-width:992px) {
+    .shape-blur-2 > * {
+        float: right;
+        height: 100%;
+        width: auto
+    }
+}
+
+.shape-blur-3 {
+    left: 0;
+    right: 0;
+    top: 0
+}
+
+    .shape-blur-3 > * {
+        height: auto;
+        width: 100%
+    }
+
+.shape-blur-4 {
+    bottom: 0;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%) scale(1.3);
+    width: 100%
+}
+
+    .shape-blur-4 > * {
+        height: 100%;
+        margin-left: auto;
+        margin-right: auto;
+        width: auto
+    }

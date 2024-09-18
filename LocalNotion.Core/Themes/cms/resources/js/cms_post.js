@@ -53,6 +53,47 @@ function InitializeNestedDropdowns() {
     }
 }
 
+function ColorSectionShapeSeparators() {
+    function GetEffectiveBackgroundColor(element) {
+        let color = window.getComputedStyle(element).backgroundColor;
+
+        // Loop through parent elements to find the first non-transparent, non-translucent color
+        while (IsTranslucent(color) && element.parentElement) {
+            element = element.parentElement;
+            color = window.getComputedStyle(element).backgroundColor;
+        }
+
+        return color;
+    }
+
+    function IsTranslucent(color) {
+        const rgbaMatch = color.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d.]+)?\)$/);
+        if (rgbaMatch && rgbaMatch[4] !== undefined) {
+            const alpha = parseFloat(rgbaMatch[4]);
+            return alpha < 1 && alpha >= 0; // Include fully opaque and translucent colors
+        }
+        return false;
+    }
+
+    document.querySelectorAll('.shape').forEach(function (shape) {
+        const parentDiv = shape.closest('.position-relative'); // Get the parent container
+        let nextSection = parentDiv.nextElementSibling; // Get the next sibling
+
+        // If no next sibling exists, get the parent's next sibling
+        if (!nextSection) {
+            nextSection = parentDiv.parentElement.nextElementSibling;
+        }
+
+        if (nextSection) {
+            const sectionColor = GetEffectiveBackgroundColor(nextSection); // Get effective background color
+            const svgPath = shape.querySelector('svg path'); // Find the path inside the SVG
+            if (svgPath) {
+                // Apply the computed background color as fill, including any alpha
+                svgPath.setAttribute('fill', sectionColor); // Set the fill attribute to the background color
+            }
+        }
+    });
+}
 
 
 /************************************************ MAIN **********************************************************************/
@@ -60,6 +101,10 @@ function InitializeNestedDropdowns() {
 // Navbar init
 SetActiveNavbarItems();
 InitializeNestedDropdowns();
+
+// Section separators
+ColorSectionShapeSeparators();
+
 
 // Toggles
 const toggles = document.querySelectorAll('[data-typed]');

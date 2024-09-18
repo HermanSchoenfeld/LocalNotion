@@ -8,14 +8,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Compile Remove="Themes\cms\resources\img\**" />
 	  <Compile Remove="Themes\default\resources\datatables\css\**" />
 	  <Compile Remove="Themes\default\resources\datatables\images\**" />
 	  <Compile Remove="Themes\default\resources\datatables\js\**" />
 	  <Compile Remove="Themes\default\resources\mathjax\output\**" />
+	  <EmbeddedResource Remove="Themes\cms\resources\img\**" />
 	  <EmbeddedResource Remove="Themes\default\resources\datatables\css\**" />
 	  <EmbeddedResource Remove="Themes\default\resources\datatables\images\**" />
 	  <EmbeddedResource Remove="Themes\default\resources\datatables\js\**" />
 	  <EmbeddedResource Remove="Themes\default\resources\mathjax\output\**" />
+	  <None Remove="Themes\cms\resources\img\**" />
 	  <None Remove="Themes\default\resources\datatables\css\**" />
 	  <None Remove="Themes\default\resources\datatables\images\**" />
 	  <None Remove="Themes\default\resources\datatables\js\**" />
@@ -64,6 +67,14 @@
 	  <None Remove="Themes\cms_navbar\toggle_closed.html" />
 	  <None Remove="Themes\cms_navbar\toggle_open.html" />
 	  <None Remove="Themes\cms_footer\.config.json" />
+	  <None Remove="Themes\cms_section\shape.inc" />
+	  <None Remove="Themes\shape_line_up\.config.json" />
+	  <None Remove="Themes\shape_line_up\shape.inc" />
+	  <None Remove="Themes\shape_curve_down\shape.inc" />
+	  <None Remove="Themes\shape_curve_up_right\.config.json" />
+	  <None Remove="Themes\shape_curve_up_right\shape.inc" />
+	  <None Remove="Themes\shape_curve_up\.config.json" />
+	  <None Remove="Themes\shape_curve_down\.config.json" />
 	  <None Remove="Themes\color_bg_body_tertiary\.config.json" />
 	  <None Remove="Themes\color_bg_body_tertiary\color_bg.inc" />
 	  <None Remove="Themes\color_bg_body_secondary\.config.json" />
@@ -252,6 +263,7 @@
 	  <None Remove="Themes\link_muted\text_link.html" />
 	  <None Remove="Themes\navbar_callout_productlink\.config.json" />
 	  <None Remove="Themes\navbar_callout_productlink\callout.html" />
+	  <None Remove="Themes\shape_curve_up\shape.inc" />
 	  <None Remove="Themes\text_small\.config.json" />
 	  <None Remove="Themes\text_muted\.config.json" />
 	  <None Remove="Themes\text_muted\color_text.inc" />
@@ -683,6 +695,15 @@
 	  <EmbeddedResource Include="Themes\cms_navbar\toggle_closed.html" />
 	  <EmbeddedResource Include="Themes\cms_navbar\toggle_open.html" />
 	  <EmbeddedResource Include="Themes\cms_footer\.config.json" />
+	  <EmbeddedResource Include="Themes\cms_section\shape.inc" />
+	  <EmbeddedResource Include="Themes\shape_line_up\.config.json" />
+	  <EmbeddedResource Include="Themes\shape_line_up\shape.inc" />
+	  <EmbeddedResource Include="Themes\shape_curve_up_right\.config.json" />
+	  <EmbeddedResource Include="Themes\shape_curve_up_right\shape.inc" />
+	  <EmbeddedResource Include="Themes\shape_curve_up\.config.json" />
+	  <EmbeddedResource Include="Themes\shape_curve_up\shape.inc" />
+	  <EmbeddedResource Include="Themes\shape_curve_down\.config.json" />
+	  <EmbeddedResource Include="Themes\shape_curve_down\shape.inc" />
 	  <EmbeddedResource Include="Themes\color_bg_body_tertiary\.config.json" />
 	  <EmbeddedResource Include="Themes\color_bg_body_tertiary\color_bg.inc" />
 	  <EmbeddedResource Include="Themes\color_bg_body_secondary\.config.json" />
