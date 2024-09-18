@@ -125,3 +125,6 @@ toggles.forEach((toggle) => {
 
     new Typed(toggle, options);
 });
+
+// Animate on-scroll initializations
+AOS.init();
