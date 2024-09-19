@@ -1,1 +1,1 @@
-﻿data-aos="fade-down" data-aos-delay="10"
+﻿data-aos="fade-down"

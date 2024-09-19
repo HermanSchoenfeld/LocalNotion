@@ -1,1 +1,1 @@
-﻿data-aos="flip-down" data-aos-delay="10"
+﻿data-aos="flip-down"

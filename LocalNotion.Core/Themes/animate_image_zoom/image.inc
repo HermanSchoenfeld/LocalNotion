@@ -1,1 +1,1 @@
-﻿data-aos="zoom-in" data-aos-delay="10" data-aos-duration="1000"
+﻿data-aos="zoom-in" data-aos-duration="1000"

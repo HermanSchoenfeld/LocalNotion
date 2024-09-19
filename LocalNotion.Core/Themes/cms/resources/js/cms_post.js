@@ -127,4 +127,13 @@ toggles.forEach((toggle) => {
 });
 
 // Animate on-scroll initializations
-AOS.init();
+const options = {
+    duration: 700,
+    easing: 'ease-out-quad',
+    once: true,
+    delay: 10,
+    startEvent: 'load',
+};
+AOS.init(options);
+window.AOS = AOS; // Make available globally
+
