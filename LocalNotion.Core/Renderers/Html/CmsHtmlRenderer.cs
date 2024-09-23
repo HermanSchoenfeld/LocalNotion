@@ -40,7 +40,8 @@ public class CmsHtmlRenderer : HtmlRenderer {
 	}
 
 	protected virtual string RenderPage(CMSItem cmsItem)  {
-		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+		// load framing (no cms header for normal pages, rely on page header)
+		var ambientTokens = FetchFramingTokens(string.Empty, cmsItem.MenuID, cmsItem.FooterID);
 		return RenderCmsItemPart(cmsItem.Parts[0], CMSPageType.Page, ambientTokens);
 	}
 
@@ -70,7 +71,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(articles.Select(x => x.Keywords)).ToArray();
 
 		
-		// load framing 
+		// load framing
 		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
 
 		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
