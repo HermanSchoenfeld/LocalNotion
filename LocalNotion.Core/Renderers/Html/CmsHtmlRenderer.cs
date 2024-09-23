@@ -74,7 +74,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		// load framing
 		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
 
-		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
+		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms_articles"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
 			IsPartialRendering = false;
 			var root = contentNode.GetLogicalContentRoot();
 

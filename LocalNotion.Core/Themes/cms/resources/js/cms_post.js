@@ -77,15 +77,18 @@ function ColorSectionShapeSeparators() {
 
     document.querySelectorAll('.shape').forEach(function (shape) {
         const parentDiv = shape.closest('.position-relative'); // Get the parent container
-        let nextSection = parentDiv.nextElementSibling; // Get the next sibling
+        let nextLogicalSibling = parentDiv.nextElementSibling; // Get the next sibling
 
         // If no next sibling exists, get the parent's next sibling
-        if (!nextSection) {
-            nextSection = parentDiv.parentElement.nextElementSibling;
+        if (!nextLogicalSibling) {
+            nextLogicalSibling = parentDiv.parentElement.nextElementSibling;
+        } else if (nextLogicalSibling.tagName.toLowerCase() === 'main') {
+            // If the nextLogicalSibling is a <main>, get its first child
+            nextLogicalSibling = nextLogicalSibling.firstElementChild;
         }
 
-        if (nextSection) {
-            const sectionColor = GetEffectiveBackgroundColor(nextSection); // Get effective background color
+        if (nextLogicalSibling) {
+            const sectionColor = GetEffectiveBackgroundColor(nextLogicalSibling); // Get effective background color
             const svgPath = shape.querySelector('svg path'); // Find the path inside the SVG
             if (svgPath) {
                 // Apply the computed background color as fill, including any alpha

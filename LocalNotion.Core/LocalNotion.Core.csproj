@@ -70,6 +70,7 @@
 	  <None Remove="Themes\badge_color_light - Copy (2)\.config.json" />
 	  <None Remove="Themes\badge_color_light - Copy (2)\badge_color.html" />
 	  <None Remove="Themes\card\color_card.inc" />
+	  <None Remove="Themes\cms_articles\.config.json" />
 	  <None Remove="Themes\cms_header\carousel_post_end.inc" />
 	  <None Remove="Themes\cms_header\carousel_post_start.inc" />
 	  <None Remove="Themes\cms_header\carousel_pre_end.inc" />
@@ -778,6 +779,7 @@
 	  <EmbeddedResource Include="Themes\animate_image_zoom\image.inc" />
 	  <EmbeddedResource Include="Themes\badge\.config.json" />
 	  <EmbeddedResource Include="Themes\card\color_card.inc" />
+	  <EmbeddedResource Include="Themes\cms_articles\.config.json" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_post_end.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_post_start.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pre_end.inc" />
@@ -1178,13 +1180,13 @@
 	  <EmbeddedResource Include="Themes\link_arrow\.config.json" />
 	  <EmbeddedResource Include="Themes\bullet_check\bulleted_list_item.html" />
 	  <EmbeddedResource Include="Themes\cms\.config.json" />
-	  <EmbeddedResource Include="Themes\cms\articles_category_active.html" />
-	  <EmbeddedResource Include="Themes\cms\articles_category.html" />
-	  <EmbeddedResource Include="Themes\cms\articles_summary_thumbnail.html" />
-	  <EmbeddedResource Include="Themes\cms\articles_summary_emoji.html" />
-	  <EmbeddedResource Include="Themes\cms\articles_summary.html" />
-	  <EmbeddedResource Include="Themes\cms\articles_summary_alt.html" />
-	  <EmbeddedResource Include="Themes\cms\articles.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_category_active.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_category.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_thumbnail.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_emoji.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_alt.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles.html" />
 	  <EmbeddedResource Include="Themes\default\page_subtitle.html" />
 	  <EmbeddedResource Include="Themes\default\page_content.html" />
 	  <EmbeddedResource Include="Themes\default\resources\datatables\datatables.css" />
