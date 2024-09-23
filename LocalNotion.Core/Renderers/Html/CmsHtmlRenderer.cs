@@ -161,7 +161,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		var visualGraph = Repository.GetEditableResourceGraph(page.ID);
 		var visualObjects = Repository.LoadObjects(visualGraph);
 		(IsPartialRendering, var theme) = partType switch {
-			CMSPageType.Header => (true, "cms_section"),
+			CMSPageType.Header => (true, "cms_header"),
 			CMSPageType.NavBar => (true, "cms_navbar"),
 			CMSPageType.Page => (false, "cms"),
 			CMSPageType.Section => (true, "cms_section"),
@@ -192,7 +192,6 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		}
 
 		if (!navBarID.IsNullOrWhiteSpace()) {
-			Tools.Debugger.BreakConditionA = true;
 			tokens["include://page_navbar.inc"] = RenderCmsItemPart(navBarID, CMSPageType.NavBar);
 		} else {
 			tokens["include://page_navbar.inc"] = string.Empty;
