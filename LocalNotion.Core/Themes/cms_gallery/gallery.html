@@ -1,0 +1,11 @@
+﻿<section class="container-xxl ln-gallery py-5 {include://color_bg.inc} {include://color_text.inc}" data-aos="fade-in" data-aos-delay="80">
+    <nav class="nav justify-content-center mb-5">
+        <a class="badge rounded-pill px-3 my-1 filter-all active" href="#" data-bs-toggle="pill" data-filter="*" data-bs-target="#{gallery_id}">
+            <span class="h6 text-uppercase">All</span>
+        </a>
+        {badges}
+    </nav>    
+    <div id="{gallery_id}" class="row" data-isotope='{"layoutMode": "masonry"}'>
+        {cards}
+    </div>
+</section>

@@ -20,7 +20,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 	
 	#region CMS Items
 
-	public bool ContainsCMSItem(string slug) {
+	public bool ContainsCmsItem(string slug) {
 		CheckLoaded();
 		return Registry.CMSItemsBySlug.ContainsKey(slug);
 	}
@@ -53,7 +53,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		Registry.CMSItemsBySlug[cmsItem.Slug] = cmsItem;
 	}
 
-	public void RemoveCMSItem(string slug) {
+	public void RemoveCmsItem(string slug) {
 		CheckLoaded();
 		var cmsItem = GetCMSItem(slug);
 		if (!string.IsNullOrWhiteSpace(cmsItem.RenderFileName)) {
@@ -141,7 +141,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 					if (_preUpdateCmsProperties.PageType != page.CMSProperties.PageType) {
 						RecalculateAllFraming();
 					} else {
-						MarkAnyRenderWhichReferencesPageAsDirty(page);
+						MarkAnyCmsItemWhichReferencesPageAsDirty(page);
 					}
 					break;
 				case CMSPageType.Page:
@@ -201,31 +201,43 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 	#region Page Logic
 
 	protected virtual void OnAddedPage(LocalNotionPage page) {
-		CreateOrUpdatePageRender(page);
-		var pageCategoryUrls = GetAllCategoryUrls(page.CMSProperties);
-		if (page.CMSProperties.PageType == CMSPageType.Section)
-			pageCategoryUrls = pageCategoryUrls.Skip(1); // skip head since head it's the page name (for section'ed items)
+		Guard.Ensure(page.CMSProperties.PageType == CMSPageType.Page, $"Not a {CMSPageType.Page}");
 
-		foreach (var url in pageCategoryUrls)
-			CreateOrUpdateArticleCategoryPage(url);
+		// Create/update page render
+		TouchSingularCmsItem(page);
+
+		// Update any Categories pages which contain this page
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(page.CMSProperties.CustomSlug);
+		breadCrumb = breadCrumb.Skip(1);   // skip head since: /category1/category2/article-name -> /category1/category2, /category1
+		foreach (var url in breadCrumb)
+			TouchContainerCmsItem(url);
+		
 	}
 
 	protected virtual void OnUpdatedPage(LocalNotionPage page) {
-		CreateOrUpdatePageRender(page);
-		MarkAnyRenderWhichReferencesPageAsDirty(page);
-		foreach(var url in GetAllCategoryUrls(page.CMSProperties))
-			CreateOrUpdateArticleCategoryPage(url);
+		Guard.Ensure(page.CMSProperties.PageType == CMSPageType.Page, $"Not a {CMSPageType.Page}");
+
+		TouchSingularCmsItem(page);
+		MarkAnyCmsItemWhichReferencesPageAsDirty(page);
+
+		var slug = page.CMSProperties.CustomSlug;
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(slug);
+		breadCrumb = breadCrumb.Skip(1);   // skip head since: /category1/category2/article-name -> /category1/category2, /category1
+		foreach(var url in breadCrumb)
+			TouchContainerCmsItem(url);
 	}
 	
 	protected virtual void OnRemovedPage(LocalNotionPage page, CMSProperties cmsProperties) {
-		RemoveCMSItemReferencesTo(page.ID);
-		var renderSlug = cmsProperties.CustomSlug;
-		if (ContainsCMSItem(renderSlug)) {
-			RemoveCMSItem(renderSlug);
+		Guard.Ensure(cmsProperties.PageType == CMSPageType.Page, $"Not a {CMSPageType.Page}");
 
-			foreach(var url in GetAllCategoryUrls(page.CMSProperties))
-				RemoveArticleCategoryPageIfEmpty(cmsProperties);
+		// Remove the CMS Item for the page
+		var renderSlug = cmsProperties.CustomSlug;
+		if (ContainsCmsItem(renderSlug)) {
+			RemoveCmsItem(renderSlug);
 		}
+
+		// Update/collect other CMS Items which reference this item
+		RemoveCmsItemReferencesTo(page.ID);
 	}
 
 	#endregion
@@ -233,24 +245,38 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 	#region Section Page Logic
 
 	protected virtual void OnAddedSectionPage(LocalNotionPage sectionPage) {
-		CreateOrUpdateSectionedPageRender(sectionPage);
+		TouchSingularCmsItem(sectionPage);
+
+		// Update any Categories pages which contain this page
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(sectionPage.CMSProperties.CustomSlug);
+		breadCrumb = breadCrumb.Skip(1);   // skip head since: /category1/category2/page-name#section-name -> /category1/category2, /category1
+		foreach (var url in breadCrumb)
+			TouchContainerCmsItem(url);
 	}
 	protected virtual void OnUpdatedSectionPage(LocalNotionPage sectionPage) {
-		CreateOrUpdateSectionedPageRender(sectionPage);
-		MarkAnyRenderWhichReferencesPageAsDirty(sectionPage);
-		foreach(var url in GetAllCategoryUrls(sectionPage.CMSProperties).Skip(1))  // skip head since head it's the page name (for section'ed items)
-			CreateOrUpdateArticleCategoryPage(url);
+		TouchSingularCmsItem(sectionPage);
+		MarkAnyCmsItemWhichReferencesPageAsDirty(sectionPage);
 
+		// Update any Categories pages which contain this page
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(sectionPage.CMSProperties.CustomSlug);
+		breadCrumb = breadCrumb.Skip(1);   // skip head since: /category1/category2/page-name#section-name -> /category1/category2, /category1
+		foreach (var url in breadCrumb)
+			TouchContainerCmsItem(url);
 	}
 
 	protected virtual void OnRemovedSectionPage(LocalNotionPage page, CMSProperties cmsProperties) {
-		RemoveCMSItemReferencesTo(page.ID);
-		var renderSlug = cmsProperties.CustomSlug;
-		if (TryGetCMSItem(renderSlug, out var cmsItem) && cmsItem.Parts.Length == 0) {
-			RemoveCMSItem(renderSlug);
+		RemoveCmsItemReferencesTo(page.ID);
 
-			foreach(var url in GetAllCategoryUrls(page.CMSProperties).Skip(1))  // skip head since head it's the page name (for section'ed items)
-				RemoveArticleCategoryPageIfEmpty(page.CMSProperties);
+		// Remove entire sectioned page if no sections left
+		var cmsItemSlug = cmsProperties.CustomSlug;
+		if (TryGetCMSItem(cmsItemSlug, out var cmsItem) && cmsItem.Parts.Length == 0) {
+			RemoveCmsItem(cmsItemSlug);
+
+			// Update any Categories pages which contain this page
+			var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(cmsItemSlug);
+			breadCrumb = breadCrumb.Skip(1);   // skip head since: /category1/category2/page-name#section-name -> /category1/category2, /category1
+			foreach (var url in breadCrumb)
+				TouchContainerCmsItem(url);
 		}
 	}
 
@@ -259,108 +285,86 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 	#region Gallery Page Logic
 
 	protected virtual void OnAddedGalleryPage(LocalNotionPage galleryPage) {
-		// Page is added, render with footer and menu
-		// Add gallery page (or mark as dirty)
-		// Update component pages with reference to gallery page
+		var galleryPageUrl = galleryPage.CMSProperties.CustomSlug;
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(galleryPageUrl).ToArray();
+		var galleryUrl = breadCrumb.Skip(1).First();
+
+		TouchSingularCmsItem(galleryPage); // article page
+		TouchContainerCmsItem(galleryUrl); // gallery card which links to article page
+
+		// Update any Categories pages which contain this page
+		breadCrumb = breadCrumb.Skip(2).ToArray();   // skip head since: /category1/category2/gallery/card-page -> /category1/category2, /category1
+		foreach (var url in breadCrumb)
+			TouchContainerCmsItem(url);
 	}
 
 	protected virtual void OnUpdatedGalleryPage(LocalNotionPage galleryPage) {
+		var galleryPageUrl = galleryPage.CMSProperties.CustomSlug;
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(galleryPageUrl).ToArray();
+		var galleryUrl = breadCrumb.Skip(1).First();
+		TouchSingularCmsItem(galleryPage);
+		TouchContainerCmsItem(galleryUrl);
+		MarkAnyCmsItemWhichReferencesPageAsDirty(galleryPage);
+
+		// Update any Categories pages which contain this page
+		breadCrumb = breadCrumb.Skip(2).ToArray();   // skip head since: /category1/category2/gallery/card-page -> /category1/category2, /category1
+		foreach (var url in breadCrumb)
+			TouchContainerCmsItem(url);
 	}
 
 	protected virtual void OnRemovedGalleryPage(LocalNotionPage galleryPage, CMSProperties cmsProperties) {
-		RemoveCMSItemReferencesTo(galleryPage.ID);
-		var renderSlug = cmsProperties.CustomSlug;
-		RemoveCMSItem(renderSlug);
-		if (TryGetCMSItem(renderSlug, out var cmsItem) && cmsItem.Parts.Length == 0) {
-			RemoveCMSItem(renderSlug);
+		var galleryPageUrl = galleryPage.CMSProperties.CustomSlug;
+		var breadCrumb = Tools.Url.CalculateBreadcrumbFromPath(galleryPageUrl).ToArray();
+		var galleryUrl = breadCrumb.Skip(1).First();
 
-			foreach(var url in GetAllCategoryUrls(galleryPage.CMSProperties))
-				RemoveArticleCategoryPageIfEmpty(galleryPage.CMSProperties);
+		RemoveCmsItemReferencesTo(galleryPage.ID);
+		RemoveCmsItem(galleryUrl);
+		if (TryGetCMSItem(galleryUrl, out var cmsItem) && cmsItem.Parts.Length == 0) {
+			RemoveCmsItem(galleryUrl);
 
+			// Update any Categories pages which contain this page
+			breadCrumb = breadCrumb.Skip(2).ToArray();   // skip head since: /category1/category2/gallery/card-page -> /category1/category2, /category1
+			foreach (var url in breadCrumb)
+				TouchContainerCmsItem(url);
 		}
 	}
 
 	#endregion 
 
 	#region Aux Methods
-	
-	private IEnumerable<string> GetAllCategoryUrls(CMSProperties cmsProperties) {
-		var origSlug = cmsProperties.CustomSlug; // CMSHelper.CalculateSlug(cmsPage.CMSProperties.Categories);
-		var slugParts = Tools.Url.StripAnchorTag(origSlug.TrimStart("/")).Split('/').Reverse().Skip(1).Reverse().ToArray();
-		for (var i = slugParts.Length; i > 0; i--) {
-			yield return Tools.Url.Combine(slugParts.Take(i));
-		}
 
 
-		//contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent)
-		//var slug = cmsProperties.CustomSlug;
-		//var contentNode = this.CMSDatabase.GetContent(slug);
-		//return contentNode.Parent is null ? [] : contentNode.Parent.Visit(x => x.Parent, x => x.IsCategoryNode).Select(x => x.Slug);
-
-		//var categories = cmsProperties.Categories.ToArray();
-		//for(var i = categories.Length; i > 0; i--) {
-		//	yield return Tools.Url.Combine(cmsProperties.Categories.Select(Tools.Url.ToUrlSlug).Take(i));
-		//}
-	}
-
-	public void RemoveCMSItemReferencesTo(string pageID) {
+	public void RemoveCmsItemReferencesTo(string pageID) {
 		foreach(var render in CMSItems.ToArray()) {
 			if (render.ReferencesResource(pageID)) {
 				render.RemovePageReference(pageID);
 				if (render.Parts.Length > 0)
 					render.Dirty = true;
 				else
-					RemoveCMSItem(render.Slug);
+					RemoveCmsItem(render.Slug);
 			}
 		}
 	}
 	
-	private void CreateOrUpdatePageRender(LocalNotionPage page) 
-		=> CreateOrUpdateRender(CMSItemType.Page, 
-			page.CMSProperties.CustomSlug, 
-			page.Title ?? string.Empty, 
-			page.CMSProperties?.Summary ?? page.Title,
-			page is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? page.Thumbnail.Data : string.Empty,
-			[page.ID], 
-			page.Keywords
-		);
-
-	private void CreateOrUpdateSectionedPageRender(LocalNotionPage page) {
-		// entire sectioned render is updated whenever an individual section is updated
-		var slug = Tools.Url.StripAnchorTag(page.CMSProperties.CustomSlug);
-		var parts = GetPageSectionsForSlug(slug).ToArray();
-		Guard.Ensure(parts.Length > 0, "Sectioned page should have had at least one section (current argument)");
-		var primaryPage = this.GetResource(parts[0].ID) as LocalNotionPage;
-		Guard.Ensure(primaryPage != null, $"Section {parts[0].ID} was not a page");
-		CreateOrUpdateRender(CMSItemType.SectionedPage, 
-			slug, 
-			primaryPage.Title, 
-			primaryPage.CMSProperties?.Summary ?? primaryPage.Title,
-			primaryPage is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? primaryPage.Thumbnail.Data : string.Empty,
-			parts.Select(x => x.ID).ToArray(), 
-			LocalNotionHelper.CombineMultiPageKeyWords(parts.Select(x => x.Keywords)).ToArray()
-		);
+	private void TouchSingularCmsItem(LocalNotionPage page) {
+		if (!CalculateCmsItem(page.CMSProperties.CustomSlug, out var slug, out var type, out var title, out var description, out var image, out var parts, out var keywords))
+			throw new InvalidOperationException($"Not a valid CMS Item: {page.Title} ({page.ID})");
+		AddOrUpdateCmsItem(type, slug, title, description, image, parts, keywords);
 	}
 
-	private void CreateOrUpdateArticleCategoryPage(string slug) {
-		var articles = GetArticlesForSlug(slug, out var title).ToArray();
-		if (articles.Length > 0) {
-			CreateOrUpdateRender(
-				CMSItemType.ArticleCategory,
-				slug,
-				title,
-				string.Empty,
-				articles[0] is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? articles[0].Thumbnail.Data : string.Empty,
-				articles.Select(x => x.ID).ToArray(),
-				LocalNotionHelper.CombineMultiPageKeyWords(articles.Select(x => x.Keywords)).ToArray()
-			);
+	private void TouchContainerCmsItem(string containerItemSlug) {
+		if (!CalculateCmsItem(containerItemSlug, out var slug, out var type, out var title, out var description, out var image, out var parts, out var keywords))
+			throw new InvalidOperationException($"Not a valid container CMS Item: {containerItemSlug}");
+
+		if (parts.Length > 0) {
+			AddOrUpdateCmsItem(type, slug, title, description, image, parts, keywords);
 		} else {
-			if (ContainsCMSItem(slug))
-				RemoveCMSItem(slug);
+			if (ContainsCmsItem(slug))
+				RemoveCmsItem(slug);
 		}
 	}
-
-	private void CreateOrUpdateRender(CMSItemType itemType, string slug, string title, string description, string image, string[] parts, string[] keywords) 
+	
+	private void AddOrUpdateCmsItem(CMSItemType itemType, string slug, string title, string description, string image, string[] parts, string[] keywords) 
 		=> AddOrUpdateCMSItem(new CMSItem {
 			Slug = slug,
 			ItemType = itemType,
@@ -377,11 +381,11 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 			RenderFileName = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderFileName : null
 		});
 	
-	private void MarkAnyRenderWhichReferencesPageAsDirty(LocalNotionPage page) {
+	private void MarkAnyCmsItemWhichReferencesPageAsDirty(LocalNotionPage page) {
 		// Mark any cms render that references this page as dirty
-		foreach (var render in CMSItems) {
-			if (render.ReferencesResource(page.ID)) {
-				render.Dirty = true;
+		foreach (var cmsItem in CMSItems) {
+			if (cmsItem.ReferencesResource(page.ID)) {
+				cmsItem.Dirty = true;
 			}
 		}
 	}
@@ -401,26 +405,113 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		}
 	}
 
-	private void RemoveArticleCategoryPageIfEmpty(CMSProperties cmsProperties) {
-		foreach(var url in GetAllCategoryUrls(cmsProperties)) {
-			if (GetArticlesForSlug(url, out _).ToArray() is { Length: 0 }) {
-				RemoveCMSItem(url);
-			}
-		}
-	}
+	//private void RemoveArticleCategoryPageIfEmpty(CMSProperties cmsProperties) {
+	//	foreach(var url in GetAllParentUrls(cmsProperties)) {
+	//		if (GetArticlesForSlug(url, out _).ToArray() is { Length: 0 }) {
+	//			RemoveCmsItem(url);
+	//		}
+	//	}
+	//}
 
-	private IEnumerable<LocalNotionPage> GetArticlesForSlug(string slug, out string title) {
+
+	private bool CalculateCmsItem(string cmsDatabaseSlug, out string slug, out CMSItemType type, out string title, out string description, out string image, out string[] parts, out string[] keywords) {
+		// Ensure slug has no anchor tag
+		slug = Tools.Url.StripAnchorTag(cmsDatabaseSlug);
+
+		// Get the CMS content code for slug
 		if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType)) {
+			type = 0;
 			title = string.Empty;
-			return Enumerable.Empty<LocalNotionPage>();
+			description = string.Empty;
+			image = string.Empty;
+			parts = [];
+			keywords = [];
+			return false;
 		}
 
-		if (contentType != CMSContentType.Book)
-			throw new InvalidOperationException($"Slug '{slug}' was not a category");
-
-		title = contentNode.Title;
-		return contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent);
+		title = contentNode.Title ?? string.Empty;
+		description = string.Empty;
+		image = string.Empty;
+		parts = [];
+		keywords = [];
+		LocalNotionPage[] pageParts;
+		switch (contentType) {
+			case CMSContentType.Book:
+				type = CMSItemType.CategoryPage;
+				pageParts = contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
+				if (pageParts.Any()) {
+					image = pageParts[0] is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? pageParts[0].Thumbnail.Data : string.Empty;
+					keywords = LocalNotionHelper.CombineMultiPageKeyWords(pageParts.Select(x => x.Keywords)).ToArray();
+				} 
+				break;
+			case CMSContentType.Gallery:
+				type = CMSItemType.GalleryPage;
+				pageParts = contentNode.Children.SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
+				if (pageParts.Any()) {
+					keywords = pageParts.Select(x => x.Title.ToLowerInvariant()).ToArray();
+				}
+				break;
+			case CMSContentType.Page:
+				type = CMSItemType.Page;
+				pageParts = contentNode.Content.Where(CMSHelper.IsPublicContent).ToArray();
+				if (pageParts.Any()) {
+					var page = pageParts.First();
+					description = page.CMSProperties?.Summary ?? page.Title;
+					image = page is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? page.Thumbnail.Data : string.Empty;
+					keywords = page.Keywords;
+				}
+				break;
+			case CMSContentType.SectionedPage:
+				type = CMSItemType.SectionedPage;
+				pageParts = contentNode.Content.Where(CMSHelper.IsPublicContent).ToArray();
+				if (pageParts.Any()) {
+					var primaryPage = this.GetResource(pageParts[0].ID) as LocalNotionPage;
+					title = primaryPage.Title;
+					description = primaryPage.CMSProperties?.Summary ?? primaryPage.Title;
+					image = primaryPage is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? primaryPage.Thumbnail.Data : string.Empty;
+					keywords = LocalNotionHelper.CombineMultiPageKeyWords(pageParts.Select(x => x.Keywords)).ToArray();
+				}
+				break;
+			case CMSContentType.File:
+			case CMSContentType.None:
+			default:
+				throw new NotImplementedException(contentType.ToString());
+		}
+		parts = pageParts.Select(x => x.ID).ToArray();
+		return true;
 	}
+
+	// REMOVE
+	//private IEnumerable<LocalNotionPage> GetArticlesForSlug(string slug, out string title) {
+	//	if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType)) {
+	//		title = string.Empty;
+	//		return Enumerable.Empty<LocalNotionPage>();
+	//	}
+
+	//	if (contentType != CMSContentType.Book)
+	//		throw new InvalidOperationException($"Slug '{slug}' was not a book");
+
+	//	title = contentNode.Title;
+	//	return contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent);
+	//}
+
+	// REMOVE
+	//private IEnumerable<LocalNotionPage> GetGalleryCardsForSlug(string slug, out string title) {
+	//	if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType)) {
+	//		title = string.Empty;
+	//		return Enumerable.Empty<LocalNotionPage>();
+	//	}
+
+	//	if (contentType != CMSContentType.Gallery)
+	//		throw new InvalidOperationException($"Slug '{slug}' was not a gallery");
+
+	//	title = contentNode.Title;
+	//	return contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent);
+	//}
+
+	//private string GetGalleryUrlFromCardProperties(CMSProperties cardProperties) 
+	//	=> GetAllParentUrls(cardProperties).First();
+		
 
 	private IEnumerable<LocalNotionPage> GetPageSectionsForSlug(string slug) {
 		if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType))

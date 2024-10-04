@@ -1,5 +1,6 @@
 ﻿using Hydrogen;
 using Notion.Client;
+using System.Linq;
 
 namespace LocalNotion.Core;
 
@@ -29,11 +30,10 @@ public class CmsHtmlRenderer : HtmlRenderer {
 				return RenderPage(cmsItem);
 			case CMSItemType.SectionedPage:
 				return RenderSectionedPage(cmsItem);
-			case CMSItemType.ArticleCategory:
+			case CMSItemType.CategoryPage:
 				return RenderArticlesPage(cmsItem);
 			case CMSItemType.GalleryPage:
-				Logger.Warning($"Gallery rendering not implemented: {cmsItem.Title} ({cmsItem.Slug})");
-				return string.Empty;
+				return RenderGalleryPage(cmsItem);
 			default:
 				throw new ArgumentOutOfRangeException();
 		}
@@ -67,7 +67,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 	protected virtual string RenderArticlesPage(CMSItem cmsItem) {
 		var contentNode = Repository.CMSDatabase.GetContent(cmsItem.Slug);
 		var articles = contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
-		var title = articles.Length > 0 ? articles[0].Title : "Untitled";
+		var title = articles.Length > 0 ? articles[0].Title : Constants.DefaultResourceTitle;
 		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(articles.Select(x => x.Keywords)).ToArray();
 
 		
@@ -157,6 +157,117 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 	}
 
+	protected virtual string RenderGalleryPage(CMSItem cmsItem) {
+		var contentNode = Repository.CMSDatabase.GetContent(cmsItem.Slug);
+		var galleryPages = contentNode.Children.SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
+		string galleryTitle;
+		if (galleryPages.Any()) {
+			var samplePage = galleryPages.First();
+			galleryTitle = samplePage.CMSProperties.Root ?? samplePage.Title ?? Constants.DefaultResourceTitle;
+		} else {
+			galleryTitle = Constants.DefaultResourceTitle;
+		}
+
+		var galleryID = Tools.Text.ToCasing(TextCasing.KebabCase, galleryTitle, FirstCharacterPolicy.HtmlDomObj);
+
+		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(galleryPages.Select(x => x.Keywords)).ToArray();
+		
+		// load framing
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+
+		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms_gallery"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
+			IsPartialRendering = false;
+			return RenderPageInternal(
+				galleryTitle,
+				keywords,
+				RenderTemplate(
+					"gallery",
+					new RenderTokens {
+						["gallery_id"] = galleryID,
+						["badges"] = galleryPages
+										.SelectMany(GetPageBadges)
+										.DistinctBy(x => x.BadgeName)
+										.Select(x => RenderBadges(x.BadgeTitle, x.BadgeName))
+										.ToDelimittedString(Environment.NewLine),
+
+						["cards"] = galleryPages
+										.Select(RenderCard)
+										.ToDelimittedString(Environment.NewLine)
+					}
+				),
+				galleryPages.Min(x => x.CreatedOn), 
+				galleryPages.Min(x => x.LastEditedOn),
+				"cms-gallery",
+				string.Empty
+			);
+		}
+
+		string RenderBadges(string badgeTitle, string badgeName) {
+			return RenderTemplate(
+				"gallery_badge",
+				new RenderTokens {
+					["gallery_id"] = galleryID,
+					["badge_name"] = badgeName,
+					["badge_title"] = badgeTitle,
+				}
+			);
+		}
+
+		string RenderCard(LocalNotionPage card) {
+			return RenderTemplate(
+				"gallery_card",
+				new RenderTokens {
+					["gallery_id"] = galleryID,
+					["badges"] = GetPageBadges(card).Select(x => x.BadgeName).ToDelimittedString(" "),
+					["cover"] = TryGetGalleryCover(card, out var url) ? 
+								RenderTemplate("gallery_card_cover", new RenderTokens { ["title"] = card.Title, ["url"] = url } ) : 
+								string.Empty,
+					["url"] =  LocalNotionHelper.SanitizeSlug(card.CMSProperties?.CustomSlug ?? (card.Renders.TryGetValue(RenderType.HTML, out var renderEntry) ? renderEntry.Slug : "/")),
+					["title"] = card.Title,
+					["summary"] =  card.CMSProperties?.Summary ?? string.Empty,
+				}
+			);
+		}
+
+		IEnumerable<(string BadgeTitle, string BadgeName)> GetPageBadges(LocalNotionPage page) {
+
+			if (page.CMSProperties is null) {
+				yield break;
+			}
+
+			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category1)) {
+				yield return (BadgeTitle: page.CMSProperties.Category1, BadgeName: galleryID + "-" + Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category1, FirstCharacterPolicy.HtmlDomObj));
+			}
+
+			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category2)) {
+				yield return (BadgeTitle: page.CMSProperties.Category2, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category2, FirstCharacterPolicy.HtmlDomObj));
+			}
+
+			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category3)) {
+				yield return (BadgeTitle: page.CMSProperties.Category3, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category3, FirstCharacterPolicy.HtmlDomObj));
+			}
+
+			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category4)) {
+				yield return (BadgeTitle: page.CMSProperties.Category4, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category4, FirstCharacterPolicy.HtmlDomObj));
+			}
+
+			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category5)) {
+				yield return (BadgeTitle: page.CMSProperties.Category5, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category5, FirstCharacterPolicy.HtmlDomObj));
+			}
+
+		}
+		
+
+		bool TryGetGalleryCover(LocalNotionPage page, out string url) {
+			if (string.IsNullOrWhiteSpace(page.Cover)) {
+				url = string.Empty;
+				return false;
+			}
+			url = page.Cover;
+			return true;
+		}
+	}
+
 	protected virtual string RenderCmsItemPart(string partID, CMSPageType partType, IDictionary<string, object> ambientTokens = null) {
 		var page = Repository.GetPage(partID);
 		var visualGraph = Repository.GetEditableResourceGraph(page.ID);
@@ -166,7 +277,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			CMSPageType.NavBar => (true, "cms_navbar"),
 			CMSPageType.Page => (false, "cms"),
 			CMSPageType.Section => (true, "cms_section"),
-			CMSPageType.Gallery => (false, "cms"),
+			CMSPageType.Gallery => (false, "cms_gallery"),
 			CMSPageType.Footer => (true, "cms_footer"),
 			_ => throw new ArgumentOutOfRangeException(nameof(partType), partType, null)
 		};
@@ -182,7 +293,6 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			return Render(RenderingContext.PageGraph);
 		}
 	}
-
 
 	protected virtual Dictionary<string, object> FetchFramingTokens(string headerID, string navBarID, string footerID) {
 		var tokens = new Dictionary<string, object>();

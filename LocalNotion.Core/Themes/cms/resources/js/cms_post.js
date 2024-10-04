@@ -38,7 +38,6 @@
     }
 }
 
-
 function InitializeNestedDropdowns() {
     const nestedDropdowns = document.querySelectorAll('.dropdown-menu .dropdown');
 
@@ -77,6 +76,9 @@ function ColorSectionShapeSeparators() {
 
     document.querySelectorAll('.shape').forEach(function (shape) {
         const parentDiv = shape.closest('.position-relative'); // Get the parent container
+        if (!parentDiv)
+            return; // some other shape (not a page separating shape)
+
         let nextLogicalSibling = parentDiv.nextElementSibling; // Get the next sibling
 
         // If no next sibling exists, get the parent's next sibling
@@ -98,45 +100,76 @@ function ColorSectionShapeSeparators() {
     });
 }
 
+function InitializeTypedText() {
+    const toggles = document.querySelectorAll('[data-typed]');
+    toggles.forEach((toggle) => {
+        const elementOptions = toggle.dataset.typed ? JSON.parse(toggle.dataset.typed) : {};
+
+        const defaultOptions = {
+            typeSpeed: 40,
+            backSpeed: 40,
+            backDelay: 1000,
+            loop: true,
+        };
+
+        const options = {
+            ...defaultOptions,
+            ...elementOptions,
+        };
+
+        new Typed(toggle, options);
+    });
+
+}
+
+function InitializeAnimateOnScroll() {
+    const options = {
+        duration: 700,
+        easing: 'ease-out-quad',
+        once: true,
+        delay: 10,
+        startEvent: 'load',
+    };
+    AOS.init(options);
+    window.AOS = AOS; // Make available globally
+}
+
+function InitializeGalleries() {
+    const toggles = document.querySelectorAll('[data-isotope]');
+    const filters = document.querySelectorAll('[data-filter]');
+
+    toggles.forEach(function (toggle) {
+        imagesLoaded(toggle, function () {
+            const options = JSON.parse(toggle.dataset.isotope);
+
+            new Isotope(toggle, options);
+        });
+    });
+
+    filters.forEach(function (filter) {
+        filter.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const cat = filter.dataset.filter;
+            const target = filter.dataset.bsTarget;
+            const instance = Isotope.data(target);
+
+            instance.arrange({
+                filter: cat,
+            });
+        });
+    });
+
+    // Make available globally
+    window.Isotope = Isotope;
+    window.imagesLoaded = imagesLoaded;
+}
 
 /************************************************ MAIN **********************************************************************/
 
-// Navbar init
 SetActiveNavbarItems();
 InitializeNestedDropdowns();
-
-// Section separators
 ColorSectionShapeSeparators();
-
-
-// Toggles
-const toggles = document.querySelectorAll('[data-typed]');
-toggles.forEach((toggle) => {
-    const elementOptions = toggle.dataset.typed ? JSON.parse(toggle.dataset.typed) : {};
-
-    const defaultOptions = {
-        typeSpeed: 40,
-        backSpeed: 40,
-        backDelay: 1000,
-        loop: true,
-    };
-
-    const options = {
-        ...defaultOptions,
-        ...elementOptions,
-    };
-
-    new Typed(toggle, options);
-});
-
-// Animate on-scroll initializations
-const options = {
-    duration: 700,
-    easing: 'ease-out-quad',
-    once: true,
-    delay: 10,
-    startEvent: 'load',
-};
-AOS.init(options);
-window.AOS = AOS; // Make available globally
-
+InitializeTypedText();
+InitializeAnimateOnScroll();
+InitializeGalleries();

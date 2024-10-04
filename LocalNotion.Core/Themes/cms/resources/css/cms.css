@@ -340,3 +340,18 @@
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     }
 }
+
+/* GALLERY */
+
+.ln-gallery > nav > a {
+    background-color: transparent;
+    color: var(--bs-body-color);
+    font-weight: lighter;
+    align-content: center;
+    text-decoration: none;
+}
+
+    .ln-gallery > nav > a.active {
+        background-color: var(--bs-primary);
+        color: var(--bs-white);
+    }

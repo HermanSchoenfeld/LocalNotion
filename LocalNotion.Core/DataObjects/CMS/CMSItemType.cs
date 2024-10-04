@@ -11,7 +11,7 @@ public enum CMSItemType {
 	SectionedPage,
 
 	[EnumMember(Value = "category_page")]
-	ArticleCategory,
+	CategoryPage,
 
 	[EnumMember(Value = "gallery_page")]
 	GalleryPage
