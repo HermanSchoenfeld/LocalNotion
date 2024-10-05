@@ -113,6 +113,8 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		}
 	}
 
+	public GitSettings GitSettings => Registry.GitSettings;
+
 	public NGinxSettings NGinxSettings => Registry.NGinxSettings;
 
 	public ApacheSettings ApacheSettings => Registry.ApacheSettings;
@@ -130,6 +132,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 		string[] themes = null,
 		LogLevel logLevel = LogLevel.Info,
 		LocalNotionPathProfile pathProfile = null,
+		GitSettings gitSettings = null,
 		NGinxSettings nginxSettings = null,
 		ApacheSettings apacheSettings = null,
 		ILogger logger = null
@@ -161,6 +164,7 @@ public class LocalNotionRepository : ILocalNotionRepository {
 			Paths = pathProfile,
 			LogLevel = logLevel,
 			Resources = Array.Empty<LocalNotionResource>(),
+			GitSettings = gitSettings,
 			NGinxSettings = nginxSettings,
 			ApacheSettings = apacheSettings,
 		};

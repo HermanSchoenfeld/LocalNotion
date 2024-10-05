@@ -45,7 +45,8 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual IEnumerable<LocalNotionResource> Resources => InternalRepository.Resources;
 
 	public virtual IEnumerable<CMSItem> CMSItems => InternalRepository.CMSItems;
-	
+	public virtual GitSettings GitSettings => InternalRepository.GitSettings;
+
 	public virtual NGinxSettings NGinxSettings => InternalRepository.NGinxSettings;
 
 	public virtual ApacheSettings ApacheSettings => InternalRepository.ApacheSettings;

@@ -42,6 +42,8 @@ public interface ILocalNotionRepository  {
 
 	IEnumerable<CMSItem> CMSItems { get; }
 
+	GitSettings GitSettings { get; }
+
 	NGinxSettings NGinxSettings { get; }
 
 	ApacheSettings ApacheSettings { get; }

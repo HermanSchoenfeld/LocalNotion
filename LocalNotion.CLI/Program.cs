@@ -7,8 +7,52 @@ using LocalNotion.Core;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace LocalNotion.CLI;
+
+public class GitSentry : ProcessSentry {
+	private const string GitExecutable = "git";
+	private readonly StringBuilder _stringBuilder;
+	public GitSentry(string rootDir) : base(GitExecutable) {
+		_stringBuilder = new StringBuilder();
+		WorkingDirectory = rootDir;
+		OutputWriter = new StringWriter(_stringBuilder);
+	}
+
+	public string Output => _stringBuilder.ToString().Trim();
+
+	public async Task<bool> Init(CancellationToken cancellationToken = default) {
+		return (await base.RunAsync("init", cancellationToken)) == 0;
+	}
+
+	public async Task<bool> AddAll(CancellationToken cancellationToken = default) {
+		_stringBuilder.Clear();
+		return (await base.RunAsync("add --all", cancellationToken)) == 0;
+	}
+
+	public async Task<bool> Commit(string message, CancellationToken cancellationToken = default) {
+		_stringBuilder.Clear();
+		return (await base.RunAsync($"commit -m \"{message}\"", cancellationToken)) == 0;
+	}
+
+	public async Task<bool> Push(CancellationToken cancellationToken = default) {
+		_stringBuilder.Clear();
+		return (await base.RunAsync("push", cancellationToken)) == 0;
+	}
+
+	public async Task<bool> TestGitInstalled(CancellationToken cancellationToken = default) {
+		_stringBuilder.Clear();
+		try {
+			return (await base.RunAsync("help", cancellationToken)) == 0;
+		} catch {
+			return false;
+		}
+	}
+
+
+
+}
 
 public static partial class Program {
 
@@ -93,6 +137,12 @@ public static partial class Program {
 		
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
+
+		[Option("git", Default = (bool)false, HelpText = "Enable change tracking via git")]
+		public bool EnableGit { get; set; }
+
+		[Option("git-push", Default = (bool)false,  HelpText = "Push changes to default git remote/branch when committed")]
+		public bool PushRemote { get; set; }
 
 		[Option("nginx", Default = (bool)false, HelpText = "Enable NGINX hosting")]
 		public bool EnableNginx { get; set; }
@@ -366,6 +416,14 @@ $@"Local Notion Status:
 		if (!string.IsNullOrWhiteSpace(arguments.CMSPathOverride))
 			pathProfile.CMSPathR = GetInputPathRelativeToRepo(arguments.Path, arguments.CMSPathOverride);
 
+		var gitSettings = 
+			arguments.EnableGit ?
+			new GitSettings {
+				Enabled = true,
+				Push = arguments.PushRemote
+			} :
+			GitSettings.Default;
+
 		var nginxSettings = 
 			arguments.EnableNginx ?
 			new NGinxSettings {
@@ -381,17 +439,32 @@ $@"Local Notion Status:
 			} :
 			ApacheSettings.Default;
 
-		await LocalNotionRepository.CreateNew(
+		// Create git repo if required
+		if (gitSettings.Enabled) {
+			var gitSentry = new GitSentry(arguments.Path);
+			if (!await gitSentry.Init(cancellationToken)) {
+				consoleLogger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+				throw new InvalidOperationException("Unable to create git repository");
+			}
+		}
+
+
+		var repo = await LocalNotionRepository.CreateNew(
 			arguments.Path,
 			arguments.APIKey,
 			arguments.CMSDatabase,
 			arguments.Themes.ToArray(),
 			arguments.LogLevel,
 			pathProfile,
+			gitSettings,
 			nginxSettings,
 			apacheSettings,
 			logger: consoleLogger
 		);
+
+		if (gitSettings.Enabled) 
+			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+
 		consoleLogger.Info("Location Notion repository has been created");
 		return Constants.ERRORCODE_OK;
 	}
@@ -406,6 +479,12 @@ $@"Local Notion Status:
 	
 		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		await repo.CleanAsync();
+
+		// Do git processing if available
+		if (repo.GitSettings.Enabled) {
+			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+		}
+
 
 		consoleLogger.Info("Location Notion repository has been cleaned");
 		return Constants.ERRORCODE_OK;
@@ -444,6 +523,12 @@ $@"Local Notion Status:
 
 			if (repo.RequiresSave)
 				await repo.SaveAsync();
+
+			// Do git processing if available
+			if (repo.GitSettings.Enabled) {
+				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+			}
+
 		} else {
 			if (await LocalNotionRepository.Remove(arguments.Path, consoleLogger)) {
 				consoleLogger.Info("Local Notion repository has been removed");
@@ -634,6 +719,11 @@ $@"Local Notion Status:
 					consoleLogger.Exception(error);
 				}
 			}
+
+			// Do git processing if available
+			if (repo.GitSettings.Enabled) {
+				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+			}
 		}
 		return 0;
 	}
@@ -693,6 +783,13 @@ $@"Local Notion Status:
 				}
 			}
 		}
+
+		
+		// Do git processing if available
+		if (repo.GitSettings.Enabled) {
+			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+		}
+
 		return Constants.ERRORCODE_OK;
 	}
 
@@ -764,6 +861,35 @@ $@"Local Notion Status:
 			SystemLog.Exception(error);
 			Console.WriteLine(error.ToDisplayString());
 			return Constants.ERRORCODE_FAIL;
+		}
+	}
+
+	private static async Task ProcessChangeControl(ILocalNotionRepository repo, ILogger logger, CancellationToken cancellationToken = default) {
+		Guard.Ensure(repo.GitSettings.Enabled, "Git tracking is not enabled on this repository");
+		var gitSentry = new GitSentry(repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute));
+		if (!await gitSentry.TestGitInstalled(cancellationToken)) {
+			logger.Error("Unable to track changes as git is not installed");
+			return;
+		}
+
+		logger.Info("Adding changes to git");
+		if (!await gitSentry.AddAll(cancellationToken)) {
+			logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+			return;
+		}
+
+		logger.Info("Committing changes to git");
+		if (!await gitSentry.Commit($"Content updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}", cancellationToken)) {
+			logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+			return;
+		}
+		
+		if (repo.GitSettings.Push) {
+			logger.Info("Pushing git changes to default remote");
+			if (!await gitSentry.Push()) {
+				logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+				return;			
+			}
 		}
 	}
 
@@ -896,8 +1022,8 @@ $@"Local Notion Status:
 		//		string[] PullBug20Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "a411e763503b46e79b620e791f7fd99f", "--force" };
 		//		string[] PullBug21Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3881a16e-288a-4907-a021-acc21e7c0a0a", "--force" };
 		       //string[] PullBug22Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f96258439e6c489e8fae843ae779c63d", "--force" };
-		       string[] PullBug23Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
-		       string[] PullBug24Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",   "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46", "--force" };
+		       //string[] PullBug23Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
+		       //string[] PullBug24Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",   "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46", "--force" };
 
 		
 		//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
@@ -944,8 +1070,8 @@ $@"Local Notion Status:
 		//     string[] RenderBug33Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "af040357-f2ec-45ca-931b-a3757f3d66a0" };
 		// string[] RenderBug34Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
 		// string[] RenderBug35Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f9625843-9e6c-489e-8fae-843ae779c63d" };
-		   string[] RenderBug36Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46" };
-	
+		//  string[] RenderBug36Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46" };
+
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
 		//		string[] RemoveBug2 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80", "47476668-4850-4290-a15a-a03e5e1f701d", "aa633dda-e13d-4a1e-8727-577051cd43b3", "0a932935-51c7-4ae8-ae5a-690a85c918b0", "7fd61738-3b6c-4df5-9eee-b257f1e13e20", "957e39ad-3a63-43a0-91f3-8e1e132696a5", "41c1973e-228e-46d1-9ece-ef0dc9ee913e", "64615900-e2b3-4cdf-9a5d-03a6f1d1744f" };
 		//		string[] RenderAll = new[] { "render", "--all" };
@@ -968,8 +1094,8 @@ $@"Local Notion Status:
 		// localnotion init -k YOUR_NOTION_API_KEY_HERE --cms 2dcb720f5ed6415091f6e83f42d6a44c -v
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
-		if (args.Length == 0)
-			args = RenderBug36Page;  // PullBug23Page   RenderBug36Page
+		//if (args.Length == 0)
+		//	args = RenderBug36Page;  // PullBug23Page   RenderBug36Page
 
 		//#endif
 

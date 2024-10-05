@@ -72,6 +72,8 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public IEnumerable<CMSItem> CMSItems => InternalRepository.Value.CMSItems;
 	
+	public virtual GitSettings GitSettings => InternalRepository.Value.GitSettings;
+
 	public virtual NGinxSettings NGinxSettings => InternalRepository.Value.NGinxSettings;
 
 	public virtual ApacheSettings ApacheSettings => InternalRepository.Value.ApacheSettings;
