@@ -1,6 +1,5 @@
 ﻿using Hydrogen;
 using Notion.Client;
-using System.Linq;
 
 namespace LocalNotion.Core;
 
@@ -58,7 +57,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		// load framing 
 		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
 
-		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens,  RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute)})) {
+		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens, RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute)})) {
 			IsPartialRendering = false;
 			return RenderPageInternal(title, keywords, content, sections.Min(x => x.CreatedOn), sections.Min(x => x.LastEditedOn), "cms-sectioned-page", id);
 		}
@@ -313,6 +312,9 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		} else {
 			tokens["include://page_footer.inc"] = string.Empty;
 		}
+
+		var cmsDatabase = Repository.GetDatabase(Repository.CMSDatabaseID);
+		tokens["site_icon_url"] = cmsDatabase.Thumbnail.Type == ThumbnailType.Image ? cmsDatabase.Thumbnail.Data : string.Empty;
 
 		return tokens;
 	}

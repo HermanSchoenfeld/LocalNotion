@@ -116,6 +116,36 @@ public class NotionSyncOrchestrator {
 				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Database))
 					Repository.ImportBlankResourceRender(notionDatabase.Id, options.RenderType);
 
+
+				var linkGenerator = LinkGeneratorFactory.Create(Repository);
+				// Download cover
+				if (localDatabase.Cover != null && ShouldDownloadFile(localDatabase.Cover)) {
+					// Cover is a Notion file
+					var file = await DownloadFileAsync(localDatabase.Cover, notionDatabase.Id, options.ForceRefresh, cancellationToken);
+					if (file != null) {
+						localDatabase.Cover = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
+						// update notion object with url (this is a component object and saved with page)
+						notionDatabase.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
+
+						// track new file
+						downloadedResources.Add(file);
+					}
+				}
+
+				// Download thumbnail
+				if (localDatabase.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localDatabase.Thumbnail.Data)) {
+					// Thumbnail is a Notion file
+					var file = await DownloadFileAsync(localDatabase.Thumbnail.Data, notionDatabase.Id, options.ForceRefresh, cancellationToken);
+					if (file != null) {
+						localDatabase.Thumbnail.Data = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
+						// update notion object with url (this is a component object and saved with page)
+						((FileObject)notionDatabase.Icon).SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
+
+						// track new file
+						downloadedResources.Add(file);
+					}
+				}
+
 			}
 
 			// Fetch updated database pages

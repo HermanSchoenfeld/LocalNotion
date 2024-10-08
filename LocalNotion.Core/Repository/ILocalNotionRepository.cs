@@ -176,8 +176,8 @@ public static class ILocalNotionRepositoryExtensions {
 		return true;
 	}
 
-	public static LocalNotionPage GetDatabase(this ILocalNotionRepository repository, string databaseID)
-		=> repository.TryGetPage(databaseID, out var resource) ? resource : throw new InvalidOperationException($"Database '{databaseID}' not found");
+	public static LocalNotionDatabase GetDatabase(this ILocalNotionRepository repository, string databaseID)
+		=> repository.TryGetDatabase(databaseID, out var resource) ? resource : throw new InvalidOperationException($"Database '{databaseID}' not found");
 
 	public static bool TryGetFile(this ILocalNotionRepository repository, string fileID, out LocalNotionFile file) {
 		file = null;

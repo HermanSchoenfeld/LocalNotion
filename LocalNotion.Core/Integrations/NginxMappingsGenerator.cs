@@ -3,6 +3,9 @@ using Notion.Client;
 
 namespace LocalNotion.Core;
 public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository) {
+
+	public const string MappingFileName = "ln-urls.conf";
+
 	private const string NGinxConf = 
 		"""
 		worker_processes  1;
@@ -163,8 +166,8 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 		""";
 
+	private static readonly string[] ExemptFiles = ["sitemap.xml"];
 
-	public const string MappingFileName = "ln-urls.conf";
 
 	public ILocalNotionRepository LocalNotionRepository { get; } = localNotionRepository;
 
@@ -219,16 +222,44 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 			);
 			await writer.WriteLineAsync(location);
 		}
+
+		// Generate sitemap.xml entry
+		var siteMapPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Relative);
+		var sitemapEntry = LocationTemplate.FormatWithDictionary(
+			new Dictionary<string, string> {
+				["slug"] = "/sitemap.xml",
+				["relPath"] = SanitizePath(Path.Combine(siteMapPath, "sitemap.xml")),
+				["mimeType"] = "application/xml"
+			}, true
+		);
+		await writer.WriteLineAsync(sitemapEntry);
+
+
 	}
 
-	public async Task RemoveOldCmsRenders() {
+	public async Task GenerateSiteMap() {
+		var cmsRepo = LocalNotionRepository as CMSLocalNotionRepository;
+		if (cmsRepo is null)
+			return;
 
+		var cmsPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute);
+		if (!Directory.Exists(cmsPath))
+			return;
+		var siteMapGenerator = new SitemapGenerator();
+		var siteMapXml = siteMapGenerator.Generate(cmsRepo);
+		var siteMapPath = Path.Combine(cmsPath, "sitemap.xml");
+		Tools.Xml.WriteToFile(siteMapPath, siteMapXml);
+	}
+	
+	public async Task RemoveOldCmsRenders() {
 		var cmsPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute);
 		if (!Directory.Exists(cmsPath))
 			return;
 
 		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute); 
-		var allRequiredFiles = LocalNotionRepository.CMSItems.Select(x => x.RenderFileName).Select(x => Path.Join(repoPath, x)).ToArray();
+		var allRequiredFiles = LocalNotionRepository.CMSItems.Select(x => x.RenderFileName).Select(x => Path.Join(repoPath, x));
+		allRequiredFiles = allRequiredFiles.Union(ExemptFiles.Select(x => Path.Combine(cmsPath, x)));
+
 		var allActualFiles = Directory.EnumerateFiles(cmsPath);
 
 		foreach ( var file in allActualFiles.Except(allRequiredFiles)) {
@@ -242,6 +273,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		if (!Directory.Exists(folderPath))
 			await generator.GenerateNGinxFolder();
 		await generator.GenerateUrlMappingsFile();
+		await generator.GenerateSiteMap();
 		await generator.RemoveOldCmsRenders();
 		return folderPath;
 	}
