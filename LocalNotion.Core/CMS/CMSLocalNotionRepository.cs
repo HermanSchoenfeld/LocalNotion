@@ -373,10 +373,10 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 			Keywords = keywords,
 			Image =  image ?? string.Empty,
 			Author = string.Empty,
-			HeaderID = CMSDatabase.FindComponentPage(slug, CMSPageType.Header, out var headerPage) ? headerPage.ID : null ,
-			MenuID = CMSDatabase.FindComponentPage(slug, CMSPageType.NavBar, out var menuPage) ? menuPage.ID : null,
-			FooterID = CMSDatabase.FindComponentPage(slug, CMSPageType.Footer, out var footerPage) ? footerPage.ID : null,
-			Parts = parts ?? Array.Empty<string>(),
+			HeaderID = CMSDatabase.GetContent(slug).Header?.ID,
+			MenuID = CMSDatabase.GetContent(slug).NavBar?.ID,
+			FooterID = CMSDatabase.GetContent(slug).Footer?.ID,
+			Parts = parts ?? [],
 			Dirty = true,
 			RenderFileName = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderFileName : null
 		});
@@ -392,9 +392,9 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 
 	private void RecalculateAllFraming() {
 		foreach (var render in CMSItems) {
-			var headerPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.Header, out var headerPage) ? headerPage.ID : null;
-			var menuPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.NavBar, out var menuPage) ? menuPage.ID : null;
-			var footerPageID = CMSDatabase.FindComponentPage(render.Slug, CMSPageType.Footer, out var footerPage) ? footerPage.ID : null;
+			var headerPageID = CMSDatabase.GetContent(render.Slug).Header?.ID;
+			var menuPageID = CMSDatabase.GetContent(render.Slug).NavBar?.ID;
+			var footerPageID = CMSDatabase.GetContent(render.Slug).Footer?.ID;
 
 			if (render.HeaderID != headerPageID || render.MenuID != menuPageID || render.FooterID != footerPageID) {
 				render.HeaderID = headerPageID;
@@ -405,21 +405,12 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		}
 	}
 
-	//private void RemoveArticleCategoryPageIfEmpty(CMSProperties cmsProperties) {
-	//	foreach(var url in GetAllParentUrls(cmsProperties)) {
-	//		if (GetArticlesForSlug(url, out _).ToArray() is { Length: 0 }) {
-	//			RemoveCmsItem(url);
-	//		}
-	//	}
-	//}
-
-
-	private bool CalculateCmsItem(string cmsDatabaseSlug, out string slug, out CMSItemType type, out string title, out string description, out string image, out string[] parts, out string[] keywords) {
+	private bool CalculateCmsItem(string cmsItemSlug, out string slug, out CMSItemType type, out string title, out string description, out string image, out string[] parts, out string[] keywords) {
 		// Ensure slug has no anchor tag
-		slug = Tools.Url.StripAnchorTag(cmsDatabaseSlug);
+		slug =  Tools.Url.StripAnchorTag(cmsItemSlug);
 
 		// Get the CMS content code for slug
-		if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType)) {
+		if (!CMSDatabase.TryGetContent(slug, out var contentNode)) {
 			type = 0;
 			title = string.Empty;
 			description = string.Empty;
@@ -435,10 +426,12 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		parts = [];
 		keywords = [];
 		LocalNotionPage[] pageParts;
-		switch (contentType) {
+		switch (contentNode.Type) {
 			case CMSContentType.Book:
 				type = CMSItemType.CategoryPage;
-				pageParts = contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
+				var contentNodes = contentNode.Visit(x => x.Children, x => x.Type == CMSContentType.Book || x.Parent?.Type == CMSContentType.Book).ToArray();
+				var contentParts = contentNodes.SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
+				pageParts = contentParts.Where(CMSHelper.IsPublicContent).ToArray();
 				if (pageParts.Any()) {
 					image = pageParts[0] is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? pageParts[0].Thumbnail.Data : string.Empty;
 					keywords = LocalNotionHelper.CombineMultiPageKeyWords(pageParts.Select(x => x.Keywords)).ToArray();
@@ -463,7 +456,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 				break;
 			case CMSContentType.SectionedPage:
 				type = CMSItemType.SectionedPage;
-				pageParts = contentNode.Content.Where(CMSHelper.IsPublicContent).ToArray();
+				pageParts = contentNode.Content.Where(x => x.CMSProperties.PageType == CMSPageType.Section).Where(CMSHelper.IsPublicContent).ToArray();
 				if (pageParts.Any()) {
 					var primaryPage = this.GetResource(pageParts[0].ID) as LocalNotionPage;
 					title = primaryPage.Title;
@@ -475,49 +468,13 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 			case CMSContentType.File:
 			case CMSContentType.None:
 			default:
-				throw new NotImplementedException(contentType.ToString());
+				throw new NotImplementedException(contentNode.Type.ToString());
 		}
 		parts = pageParts.Select(x => x.ID).ToArray();
 		return true;
+
 	}
-
-	// REMOVE
-	//private IEnumerable<LocalNotionPage> GetArticlesForSlug(string slug, out string title) {
-	//	if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType)) {
-	//		title = string.Empty;
-	//		return Enumerable.Empty<LocalNotionPage>();
-	//	}
-
-	//	if (contentType != CMSContentType.Book)
-	//		throw new InvalidOperationException($"Slug '{slug}' was not a book");
-
-	//	title = contentNode.Title;
-	//	return contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent);
-	//}
-
-	// REMOVE
-	//private IEnumerable<LocalNotionPage> GetGalleryCardsForSlug(string slug, out string title) {
-	//	if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType)) {
-	//		title = string.Empty;
-	//		return Enumerable.Empty<LocalNotionPage>();
-	//	}
-
-	//	if (contentType != CMSContentType.Gallery)
-	//		throw new InvalidOperationException($"Slug '{slug}' was not a gallery");
-
-	//	title = contentNode.Title;
-	//	return contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent);
-	//}
-
-	//private string GetGalleryUrlFromCardProperties(CMSProperties cardProperties) 
-	//	=> GetAllParentUrls(cardProperties).First();
-		
-
-	private IEnumerable<LocalNotionPage> GetPageSectionsForSlug(string slug) {
-		if (!CMSDatabase.TryGetContent(slug, out var contentNode, out var contentType))
-			throw new InvalidOperationException($"Slug '{slug}' had no articles");
-		return contentNode.Content.Where(x => x.CMSProperties.PageType == CMSPageType.Section).Where(CMSHelper.IsPublicContent);
-	}
+	
 
 	#endregion
 }

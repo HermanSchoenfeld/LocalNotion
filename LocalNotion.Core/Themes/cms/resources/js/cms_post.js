@@ -1,4 +1,28 @@
-﻿function SetActiveNavbarItems() {
+﻿function PageLoader_Init() {
+    var isBot = /bot|googlebot|bingbot|baiduspider|yandexbot|slurp|duckduckbot|applebot|sogou|seznambot|naverbot|exabot|rogerbot|ahrefsbot/i.test(navigator.userAgent);
+    if (isBot) {
+        return;
+    }
+    $("body").prepend('<div id="preloader"><div id="preloader_status"></div></div>');
+    window.addEventListener('load', function () {
+        var preloader = document.getElementById('preloader');
+        var status = document.getElementById('preloader_status').style;
+        status.opacity = 1;
+        let fadeOutAmount = 0.1;
+
+        (function fade() {
+            if ((status.opacity -= fadeOutAmount) <= 0) {
+                preloader.style.display = "none";
+                preloader.remove(); // Remove the preloader from the DOM
+            } else {
+                fadeOutAmount *= 1.1; // Increase fade speed slightly
+                setTimeout(fade, 40);
+            }
+        })(); // Start fade-out immediately
+    });
+}
+
+function SetActiveNavbarItems() {
     // Define the classes to add/remove
     const activeClasses = ['active', 'text-bg-primary'];
 
@@ -167,6 +191,7 @@ function InitializeGalleries() {
 
 /************************************************ MAIN **********************************************************************/
 
+PageLoader_Init();
 SetActiveNavbarItems();
 InitializeNestedDropdowns();
 ColorSectionShapeSeparators();

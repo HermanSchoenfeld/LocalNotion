@@ -22,7 +22,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 	public virtual BreadCrumb CalculateBreadcrumb(LocalNotionResource from, CMSProperties cmsProperties) {
 		const string DefaultUrl = "#";
 
-		var ancestors = Repository.GetResourceAncestry(from.ID).ToArray();
+		var ancestors = Repository.GetResourceAncestry(from).ToArray();
 		if (ancestors.Length == 0)
 			return BreadCrumb.Empty;
 

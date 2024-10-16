@@ -65,10 +65,13 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 	protected virtual string RenderArticlesPage(CMSItem cmsItem) {
 		var contentNode = Repository.CMSDatabase.GetContent(cmsItem.Slug);
-		var articles = contentNode.Visit(x => x.Children).SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
-		var title = articles.Length > 0 ? articles[0].Title : Constants.DefaultResourceTitle;
-		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(articles.Select(x => x.Keywords)).ToArray();
-
+		var articleNodes = 
+			cmsItem
+				.Parts
+				.Select(Repository.GetPage)
+				.GroupBy(x => Tools.Url.StripAnchorTag(x.CMSProperties.CustomSlug))
+				.Select(g => Repository.CMSDatabase.GetContent(g.Key))
+				.ToArray();
 		
 		// load framing
 		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
@@ -80,22 +83,22 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			var allNode = new CMSContentNode {
 				Parent = null,
 				Slug = root.Slug,
-				Title = root.Title.ToUpperInvariant(),
+				TitleOverride = root.Title.ToUpperInvariant(),
 			};
 
 			return RenderPageInternal(
-				title,
-				keywords,
+				contentNode.Title,
+				contentNode.Keywords.ToArray(),
 				RenderTemplate(
 					"articles",
 					new RenderTokens() {
 						["category_root"] = RenderCategoryTree(allNode, 1),
 						["categories"] = root.Children.Select(x => RenderCategoryTree(x, 1)).ToDelimittedString(Environment.NewLine),
-						["summaries"] = articles.Select((x, i) => RenderSummary(x, i % 2 == 1)).ToDelimittedString(Environment.NewLine)
+						["summaries"] = articleNodes.Select((x, i) => RenderSummary(x, i % 2 == 1)).ToDelimittedString(Environment.NewLine)
 					}
 				),
-				articles.Min(x => x.CreatedOn), 
-				articles.Min(x => x.LastEditedOn),
+				articleNodes.Min(x => x.CreatedOn), 
+				articleNodes.Min(x => x.LastEditedOn),
 				"cms-articles",
 				string.Empty
 			);
@@ -110,29 +113,29 @@ public class CmsHtmlRenderer : HtmlRenderer {
 					["title"] = category.Title,
 					["children"] = category
 									.Children
-									.Where(x => x.IsCategoryNode)
+									.Where(x => x.Type == CMSContentType.Book)
 									.Select(x => RenderCategoryTree(x, indentLevel + 1))
 									.ToDelimittedString(Environment.NewLine)
 				}
 			);
 		}
 
-		string RenderSummary(LocalNotionPage article, bool alternateRow)  {
-
+		string RenderSummary(CMSContentNode articleNode, bool alternateRow)  {
+			// Get all the info from node (TODO: can refactor this out and remove CMSItem altogether)
 			return RenderTemplate(
 				!alternateRow ? "articles_summary" : "articles_summary_alt",
 				new RenderTokens {
-					["image"] = article.Thumbnail.Type switch {
-						ThumbnailType.Emoji => RenderEmoji(article.Thumbnail.Data),
-						ThumbnailType.Image => RenderThumbnail(article.Thumbnail.Data),
+					["image"] = articleNode.Thumbnail.Type switch {
+						ThumbnailType.Emoji => RenderEmoji(articleNode.Thumbnail.Data),
+						ThumbnailType.Image => RenderThumbnail(articleNode.Thumbnail.Data),
 						ThumbnailType.None => string.Empty,
 						_ => string.Empty
 					},
-					["title"] = article.Title.ToNullWhenWhitespace() ?? string.Empty,
-					["created_on"] = article.CreatedOn.ToString("yyyy-MM-dd"),
-					["created_on_formatted"] = article.CreatedOn.ToString("D"),
-					["summary"] = article.CMSProperties.Summary ?? string.Empty,
-					["slug"] = LocalNotionHelper.SanitizeSlug(article.CMSProperties.CustomSlug),
+					["title"] = articleNode.Title.ToNullWhenWhitespace() ?? string.Empty,
+					["created_on"] = articleNode.CreatedOn.ToString("yyyy-MM-dd"),
+					["created_on_formatted"] = articleNode.CreatedOn.ToString("D"),
+					["summary"] = articleNode.Summary ?? string.Empty,
+					["slug"] = LocalNotionHelper.SanitizeSlug(articleNode.Slug),
 				}
 			);
 

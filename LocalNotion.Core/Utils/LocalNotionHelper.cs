@@ -160,12 +160,12 @@ public class LocalNotionHelper {
 
 	public static string ExtractDefaultPageSummary(NotionObjectGraph pageGraph, IDictionary<string, IObject> pageObjects) {
 		string summary = null;
-		// simply extract first 4 sentences from first text block
+		// simply extract first 4 sentences from first text block`
 		var firstParagraph =
 			pageGraph
 				.VisitAll()
 				.Select(x => pageObjects[x.ObjectID])
-				.Where(x => x is ParagraphBlock)
+				.Where(x => x is ParagraphBlock paragraph && paragraph.GetTextContents().Any(x => !string.IsNullOrWhiteSpace(x)))
 				.Cast<ParagraphBlock>()
 				.FirstOrDefault();
 		if (firstParagraph != null) {

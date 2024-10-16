@@ -540,12 +540,9 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		};
 
 	protected override string Render(RichTextText text) {
-
 		var isUrl =  text.Text?.Link?.Url is not null;
 		var urlInfo = isUrl ? (Url: text.Text.Link.Url, Icon: string.Empty, Indicator: string.Empty ) : default;
-
 		return RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, isUrl, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, urlInfo);
-		//=> RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, text.Text?.Link?.Url ?? text.Href, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value);
 	}
 
 	protected override string RenderBadge(string text, Color color) 
@@ -764,6 +761,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 														 ["url"] = Render(fileObject)
 													 }
 												),
+						null => string.Empty,
 						_ => throw new ArgumentOutOfRangeException()
 					},
 					["text"] = Render(block.Callout.RichText),

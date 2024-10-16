@@ -208,10 +208,9 @@ public static class ILocalNotionRepositoryExtensions {
 		repository.ImportResourceRender(resourceID, renderType, tmpFile);
 	}
 
-	public static IEnumerable<LocalNotionResource> GetResourceAncestry(this ILocalNotionRepository repository, string resourceID) {
-		var resource = repository.GetResource(resourceID);;
+	public static IEnumerable<LocalNotionResource> GetResourceAncestry(this ILocalNotionRepository repository, LocalNotionResource resource) {
 		do {
-			yield return resource;;
+			yield return resource;
 		} while (repository.TryGetResource(resource.ParentResourceID, out resource));
 	}
 

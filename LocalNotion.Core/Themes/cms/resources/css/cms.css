@@ -2,6 +2,33 @@
     CMS Related Styles
 ***************************************************/
 
+/** Global **/
+html {
+    scroll-padding-top: 5em;
+}
+
+#preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #fff;
+    z-index: 9999;
+}
+
+    #preloader #preloader_status {
+        width: 200px;
+        height: 200px;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        background-image: url(https://cdn.jsdelivr.net/gh/sphere10/cdn/local-notion/themes/cms/resources/img/bx_loader.gif);
+        background-repeat: no-repeat;
+        background-position: center;
+        margin: -100px 0 0 -100px;
+    }
+
 /** NAVBAR **/
 .nav-link {
     border-bottom: 2px solid transparent;
@@ -38,9 +65,12 @@
     border: none;
     box-shadow: none;
     padding: 0.25rem;
-    max-width: 10em;
-    max-height: 10em;
+    max-width: 8em;
+    max-height: 8em;
+    min-width: 8em;
+    min-height: 8em;
 }
+
 
 .article-category-indent-1 {
     padding-left: calc(1.25rem * 1 + 1rem) !important;

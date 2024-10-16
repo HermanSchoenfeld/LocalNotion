@@ -6,6 +6,8 @@ namespace LocalNotion.Core;
 
 public class CMSHelper {
 
+
+
 	public static bool IsCMSDatabase(LocalNotionDatabase database)
 		=> database.Properties != null &&
 		   database.Properties.ContainsKey(Constants.PageTypePropertyName) &&
@@ -79,10 +81,7 @@ public class CMSHelper {
 		   page.Properties[Constants.SequencePropertyName] is NumberPropertyValue;
 
 	public static bool IsPublicContent(LocalNotionPage page) 
-		=> page.CMSProperties == null || IsContent(page) &&  page.CMSProperties.Status == CMSPageStatus.Published && (page.CMSProperties.PublishOn == null || page.CMSProperties.PublishOn <= DateTime.UtcNow);
-
-	public static bool IsContent(LocalNotionPage page) 
-		=> page.CMSProperties == null || page.CMSProperties.PageType.IsIn(CMSPageType.Page, CMSPageType.Section, CMSPageType.Gallery);
+		=> page.CMSProperties is { Status: CMSPageStatus.Published } && (page.CMSProperties.PublishOn == null || page.CMSProperties.PublishOn <= DateTime.UtcNow);
 
 	public static CMSProperties ParseCMSProperties(string pageName, Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
@@ -128,7 +127,9 @@ public class CMSHelper {
 		result.PublishOn = page.GetPropertyDate(Constants.PublishOnPropertyName);
 		result.Status = Tools.Parser.SafeParse(page.GetPropertyDisplayValue(Constants.StatusPropertyName), CMSPageStatus.Hidden);
 		result.Themes = ((MultiSelectPropertyValue)page.Properties[Constants.ThemesPropertyName]).ToPlainTextValues().ToArray();
-		result.CustomSlug = page.GetPropertyDisplayValue(Constants.SlugPropertyName).ToNullWhenWhitespace();
+	
+		var userCustomSlug= page.GetPropertyDisplayValue(Constants.SlugPropertyName);
+		result.CustomSlug = !string.IsNullOrWhiteSpace(userCustomSlug) ? LocalNotionHelper.SanitizeSlug(userCustomSlug).TrimStart('/') : null;
 		result.Sequence = (int?)((NumberPropertyValue)page.Properties[Constants.SequencePropertyName]).Number;
 		result.Root = page.GetPropertyDisplayValue(Constants.RootCategoryPropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Category1 = page.GetPropertyDisplayValue(Constants.Category1PropertyName)?.Trim().ToNullWhenWhitespace();

@@ -46,6 +46,17 @@ public static class Constants {
 
 	public const string NotionCMSCategoryWildcard = "all";
 
+
+	// LocalNotion CMS Tags
+	public const string TagContactForm = "@ContactForm";
+	public const string TagShowChildPageTitleOnBanner = "@ShowChildPageTitleOnBanner";
+	public const string TagShowTitleOnBanner = "@ShowTitleOnBanner";
+	public const string TagContactFormNoAnimate = "@ContactFormNoAnimate";
+	public const string TagHideHeader = "@HideHeader";
+	public const string TagHideNavBar = "@HideNavBar";
+	public const string TagHideFooter = "@HideFooter";
+
+
 	// if a file is synchronized too soon after it is edited, it is premature and resynced again later
 	// Notion API only keeps minute-level accuracy
 	public const int PrematureSyncThreshholdSec = 60;   

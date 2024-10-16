@@ -375,7 +375,6 @@ public class NotionSyncOrchestrator {
 								.SelectMany(y => y.Files)
 								.Select(y => new WrappedNotionFile(y))
 						).ToArray();
-
 				foreach (var file in uploadedFiles) {
 					var url = file.GetUrl();
 					if (ShouldDownloadFile(url)) {
