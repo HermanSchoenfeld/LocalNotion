@@ -56,8 +56,8 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 	public void RemoveCmsItem(string slug) {
 		CheckLoaded();
 		var cmsItem = GetCMSItem(slug);
-		if (!string.IsNullOrWhiteSpace(cmsItem.RenderFileName)) {
-			var renderFile = GetCMSItemRenderPath(cmsItem.RenderFileName);
+		if (!string.IsNullOrWhiteSpace(cmsItem.RenderPath)) {
+			var renderFile = Path.Join(Paths.GetRepositoryPath(FileSystemPathType.Absolute), cmsItem.RenderPath);
 			if (File.Exists(renderFile)) {
 				Logger.Info($"Deleting CMS render '{renderFile}'");
 				Tools.FileSystem.DeleteFile(renderFile);
@@ -66,9 +66,6 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		Registry.CMSItemsBySlug.Remove(slug);
 	}
 
-	private string GetCMSItemRenderPath(string renderFilename) {
-		return Path.Join(this.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute), renderFilename);
-	}
 
 	#endregion
 
@@ -378,7 +375,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 			FooterID = CMSDatabase.GetContent(slug).Footer?.ID,
 			Parts = parts ?? [],
 			Dirty = true,
-			RenderFileName = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderFileName : null
+			RenderPath = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderPath : null
 		});
 	
 	private void MarkAnyCmsItemWhichReferencesPageAsDirty(LocalNotionPage page) {

@@ -46,8 +46,8 @@ public class CMSItem {
 	[JsonProperty("footer", NullValueHandling = NullValueHandling.Ignore)]
 	public string FooterID { get; set; }
 
-	[JsonProperty("render_filename", NullValueHandling = NullValueHandling.Ignore)]
-	public string RenderFileName { get; set; } = null;
+	[JsonProperty("render_path", NullValueHandling = NullValueHandling.Ignore)]
+	public string RenderPath { get; set; } = null;
 
 	public bool ReferencesResource(string resourceID) 
 		=> ReferencesAnyResources([resourceID]);

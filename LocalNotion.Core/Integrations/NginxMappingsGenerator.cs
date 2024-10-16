@@ -215,7 +215,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		foreach (var hostableResource in LocalNotionHelper.EnumerateWebHostableResources(LocalNotionRepository)) {
 			var location = LocationTemplate.FormatWithDictionary(
 				new Dictionary<string, string> {
-					["slug"] = "/" + LocalNotionHelper.SanitizeSlug(hostableResource.Slug),
+					["slug"] = "/" + hostableResource.Slug,
 					["relPath"] = SanitizePath(hostableResource.RelPath),
 					["mimeType"] = hostableResource.MimeType
 				}, true
@@ -257,7 +257,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 			return;
 
 		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute); 
-		var allRequiredFiles = LocalNotionRepository.CMSItems.Select(x => x.RenderFileName).Select(x => Path.Join(repoPath, x));
+		var allRequiredFiles = LocalNotionRepository.CMSItems.Select(x => x.RenderPath).Select(x => Path.Join(repoPath, x));
 		allRequiredFiles = allRequiredFiles.Union(ExemptFiles.Select(x => Path.Combine(cmsPath, x)));
 
 		var allActualFiles = Directory.EnumerateFiles(cmsPath);

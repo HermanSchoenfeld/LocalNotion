@@ -69,6 +69,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			cmsItem
 				.Parts
 				.Select(Repository.GetPage)
+				.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer))
 				.GroupBy(x => Tools.Url.StripAnchorTag(x.CMSProperties.CustomSlug))
 				.Select(g => Repository.CMSDatabase.GetContent(g.Key))
 				.ToArray();
@@ -284,8 +285,16 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			_ => throw new ArgumentOutOfRangeException(nameof(partType), partType, null)
 		};
 
+		// Ugly hack: move empty theme up-front if exists
+		var pageThemes = new[] { theme }.Union(page.CMSProperties.Themes ?? []).ToList();
+		var indexOfEmpty = pageThemes.IndexOf("empty");
+		if (indexOfEmpty > 0) {
+			pageThemes.RemoveAt(indexOfEmpty);
+			pageThemes.Insert(0, "empty");
+		}
+
 		using (EnterRenderingContext(new PageRenderingContext {
-			       Themes = new[] { theme }.Union(page.CMSProperties.Themes ?? []).ToArray(),
+			       Themes = pageThemes.ToArray(),
 			       AmbientTokens = ambientTokens ?? new Dictionary<string, object>(),
 			       Resource = page,
 			       RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute),

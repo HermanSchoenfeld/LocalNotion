@@ -87,7 +87,7 @@ public class RenderingManager  {
 
 		// TODO: need to set output path for links to be from /cms not /pages
 		DetermineCMSItemFilename(cmsItem, out var filePath);
-		Logger.Info($"Rendering CMS item '{cmsItem.RenderFileName}'");
+		Logger.Info($"Rendering CMS item '{cmsItem.RenderPath}'");
 		string htmlContent = HtmlRenderer.Format(cmsRenderer.RenderCmsItem(cmsItem));
 		File.WriteAllText(filePath, htmlContent);
 		cmsItem.Dirty = false;
@@ -95,19 +95,19 @@ public class RenderingManager  {
 		void DetermineCMSItemFilename(CMSItem cmsItem, out string absoluteFilePath) {
 			var desiredFilePath = Repository.Paths.CalculateResourceFilePath(LocalNotionResourceType.CMS, cmsItem.Slug, cmsItem.Title, RenderType.HTML, FileSystemPathType.Absolute);
 			var desiredRelativeFilePath = Tools.FileSystem.GetRelativePath(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), desiredFilePath);
-			var currentIdealRelativeFilePath = Repository.Paths.RemoveConflictResolutionFromFilePath(cmsItem.RenderFileName ?? string.Empty);
+			var currentIdealRelativeFilePath = Repository.Paths.RemoveConflictResolutionFromFilePath(cmsItem.RenderPath ?? string.Empty);
 			if (currentIdealRelativeFilePath == desiredRelativeFilePath) {
-				absoluteFilePath = Path.Join(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), cmsItem.RenderFileName);
+				absoluteFilePath = Path.Join(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), desiredRelativeFilePath);
 			} else {
 				absoluteFilePath = Repository.Paths.ResolveConflictingFilePath(desiredFilePath);
-				var currentRenderFilePath = Path.Join(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), cmsItem.RenderFileName);
+				var currentRenderFilePath = Path.Join(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), cmsItem.RenderPath);
 				if (File.Exists(currentRenderFilePath)) {
-					Logger.Info($"Deleting CMS item '{cmsItem.RenderFileName}'");
+					Logger.Info($"Deleting CMS item '{cmsItem.RenderPath}'");
 					File.Delete(currentRenderFilePath);
 				}
 			}
 			var renderFileName = Tools.FileSystem.GetRelativePath(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), absoluteFilePath);
-			cmsItem.RenderFileName = renderFileName;	
+			cmsItem.RenderPath = renderFileName;	
 		}
 	}
 

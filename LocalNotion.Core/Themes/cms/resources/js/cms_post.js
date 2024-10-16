@@ -1,24 +1,51 @@
 ﻿function PageLoader_Init() {
+    // Inject preloader into the body if necessary
+    //$("body").prepend('<div id="preloader"><div id="preloader_status"></div></div>');
+
     var isBot = /bot|googlebot|bingbot|baiduspider|yandexbot|slurp|duckduckbot|applebot|sogou|seznambot|naverbot|exabot|rogerbot|ahrefsbot/i.test(navigator.userAgent);
-    if (isBot) {
+
+    var preloader = document.getElementById('preloader');
+
+    if (isBot || !preloader) {
+        preloader?.remove();  // Remove if bot or preloader is not found
         return;
     }
-    $("body").prepend('<div id="preloader"><div id="preloader_status"></div></div>');
+
+    // Select status element as a child of preloader
+    var status = preloader.querySelector('#preloader_status');
+    if (!status) {
+        preloader.remove();  // Clean up if no status found
+        return;
+    }
+
+    preloader.style.opacity = 1;
+    status.style.opacity = 1;
+
     window.addEventListener('load', function () {
-        var preloader = document.getElementById('preloader');
-        var status = document.getElementById('preloader_status').style;
-        status.opacity = 1;
         let fadeOutAmount = 0.1;
 
-        (function fade() {
-            if ((status.opacity -= fadeOutAmount) <= 0) {
-                preloader.style.display = "none";
-                preloader.remove(); // Remove the preloader from the DOM
+        // Fade out status element
+        (function fadeStatus() {
+            status.style.opacity -= fadeOutAmount;
+            if (status.style.opacity <= 0) {
+                status.style.display = "none";
             } else {
-                fadeOutAmount *= 1.1; // Increase fade speed slightly
-                setTimeout(fade, 40);
+                setTimeout(fadeStatus, 50);
             }
-        })(); // Start fade-out immediately
+        })();
+
+        // After 400ms, start fading out the preloader
+        setTimeout(() => {
+            (function fadePreloader() {
+                preloader.style.opacity -= fadeOutAmount;
+                if (preloader.style.opacity <= 0) {
+                    preloader.style.display = "none";
+                    preloader.remove();  // Remove preloader from the DOM
+                } else {
+                    setTimeout(fadePreloader, 40);
+                }
+            })();
+        }, 400);
     });
 }
 

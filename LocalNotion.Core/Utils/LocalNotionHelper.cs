@@ -221,8 +221,8 @@ public class LocalNotionHelper {
 	public static IEnumerable<(string Slug, string RelPath, string MimeType)> EnumerateWebHostableResources(ILocalNotionRepository repo) {
 
 		// All CMS items
-		foreach(var item in repo.CMSItems.Where(x => !string.IsNullOrWhiteSpace(x.RenderFileName))) {
-			yield return (item.Slug, item.RenderFileName, "text/html");
+		foreach(var item in repo.CMSItems.Where(x => !string.IsNullOrWhiteSpace(x.RenderPath))) {
+			yield return (item.Slug, item.RenderPath, "text/html");
 		}
 
 		// All normally rendered resources if online

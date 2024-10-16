@@ -68,6 +68,8 @@
 	  <None Remove="Themes\badge_color_light - Copy (2)\badge_color.html" />
 	  <None Remove="Themes\card\color_card.inc" />
 	  <None Remove="Themes\cms\resources\img\bx_loader.gif" />
+	  <None Remove="Themes\cms\resources\js\cms_post2.js" />
+	  <None Remove="Themes\cms\resources\js\cms_post3.js" />
 	  <None Remove="Themes\cms\resources\js\imagesloaded.pkgd.min.js" />
 	  <None Remove="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <None Remove="Themes\cms\resources\js\particles.min.js" />
@@ -786,6 +788,7 @@
 	  <EmbeddedResource Include="Themes\badge\.config.json" />
 	  <EmbeddedResource Include="Themes\card\color_card.inc" />
 	  <EmbeddedResource Include="Themes\cms\resources\img\bx_loader.gif" />
+	  <EmbeddedResource Include="Themes\cms\resources\js\cms_post3.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\imagesloaded.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\particles.min.js" />
