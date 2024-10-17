@@ -788,7 +788,6 @@
 	  <EmbeddedResource Include="Themes\badge\.config.json" />
 	  <EmbeddedResource Include="Themes\card\color_card.inc" />
 	  <EmbeddedResource Include="Themes\cms\resources\img\bx_loader.gif" />
-	  <EmbeddedResource Include="Themes\cms\resources\js\cms_post3.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\imagesloaded.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\particles.min.js" />
