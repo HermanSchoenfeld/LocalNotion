@@ -23,6 +23,12 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		    #keepalive_timeout  0;
 		    keepalive_timeout  65;
 
+			# Map the incoming URL to a lowercase version
+			map $uri $lowercase_uri {
+				default $uri;
+				"~[A-Z]" $uri; # Keep the original case if lowercase is not needed
+			}
+
 		    server {
 		        listen       80;
 		        server_name  localhost;
@@ -154,6 +160,11 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		#   ...
 		#
 		# NOTE: ensure that the server root is configured to point to the folder containing this file
+
+		# Catch-all rule to remove trailing slash
+		location ~ (.+)/$ {
+		    return 301 $1;
+		}
 
 		""";
 
