@@ -3,12 +3,14 @@
         <div class="row justify-content-between">
             <div class="col-12 col-md-3 mb-6 mb-md-0 pb-md-5 pe-4 bg-light">
                 <div class="pt-6">
-                    <form action="~/@rootNode.Slug">
-                        <div class="input-group shadow-sm">
-                            <span class="input-group-text pe-0 border-end-0">
-                                <i class="fe fe-search" id="searchAddon"></i>
-                            </span>
-                            <input name="search" class="form-control form-control-no-highlight ps-2 border-start-0" type="search" placeholder="Search" aria-label="Search Articles" aria-describedby="searchArticle" onkeypress="DoSearch(event)" value="">
+                    <form>
+                        <div class="input-group">
+                            <input name="search" class="form-control ps-2 bg-transparent shadow-none placeholder-secondary" onkeypress="DoSearch(event)" type="search" placeholder="Search" aria-label="Search Articles" aria-describedby="searchArticle" value="">
+                            <button class="btn border bg-secondary-subtle text-secondary" onclick="DoSearch(event)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+                                </svg>
+                            </button>
                         </div>
                     </form>
                 </div>

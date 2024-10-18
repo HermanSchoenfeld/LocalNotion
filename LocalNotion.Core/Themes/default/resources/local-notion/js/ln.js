@@ -42,13 +42,19 @@ $(document).ready(function () {
 
 // Used to search articles on website, just redirects to google
 function DoSearch(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        const query = event.target.value;
-        if (query.trim() !== "") {
-            const domainAndPath = window.location.host + window.location.pathname;
-            const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)} site:${domainAndPath}`;
-            window.location.href = googleSearchUrl;
-        }
+    if (event.type === "keypress" && event.key !== "Enter") {
+        return; // Do nothing if the key is not Enter
+    }
+
+    event.preventDefault(); // Prevent form submission or default button behavior
+
+    const parentElement = event.target.closest('.input-group'); // Get parent .input-group
+    const inputElement = parentElement.querySelector('input[type="search"]'); // Find the input inside the parent
+    const query = inputElement.value; // Get the value of the input
+
+    if (query.trim() !== "") {
+        const domainAndPath = window.location.host + window.location.pathname;
+        const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)} site:${domainAndPath}`;
+        window.location.href = googleSearchUrl; // Redirect to Google search
     }
 }
