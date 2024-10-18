@@ -94,7 +94,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 					"articles",
 					new RenderTokens() {
 						["category_root"] = RenderCategoryTree(allNode, 1),
-						["categories"] = root.Children.Select(x => RenderCategoryTree(x, 1)).ToDelimittedString(Environment.NewLine),
+						["categories"] = root.Children.Where(x => x.Type == CMSContentType.Book).Select(x => RenderCategoryTree(x, 1)).ToDelimittedString(Environment.NewLine),
 						["summaries"] = articleNodes.Select((x, i) => RenderSummary(x, i % 2 == 1)).ToDelimittedString(Environment.NewLine)
 					}
 				),

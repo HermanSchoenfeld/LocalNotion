@@ -1079,6 +1079,9 @@ $@"Local Notion Status:
 		//string[] RenderBug36Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46" };
 		// string[] RenderBug37Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "55109fbe-96e3-46cf-9dfe-d54ba27039b1" };
 		// string[] RenderBug38Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "17406e2a-5881-4ff0-b641-df8ac9a9275d" };
+
+		string[] RenderBug39Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "330e8d61-7dc7-4f79-a41a-a662e5b6694c" };
+		
 		 
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
 		//		string[] RemoveBug2 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80", "47476668-4850-4290-a15a-a03e5e1f701d", "aa633dda-e13d-4a1e-8727-577051cd43b3", "0a932935-51c7-4ae8-ae5a-690a85c918b0", "7fd61738-3b6c-4df5-9eee-b257f1e13e20", "957e39ad-3a63-43a0-91f3-8e1e132696a5", "41c1973e-228e-46d1-9ece-ef0dc9ee913e", "64615900-e2b3-4cdf-9a5d-03a6f1d1744f" };
@@ -1103,7 +1106,7 @@ $@"Local Notion Status:
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
 		if (args.Length == 0)
-			args = PullBug26Page;  // PullBug23Page   RenderBug36Page
+			args = RenderBug39Page;  // PullBug23Page   RenderBug36Page
 
 		//#endif
 
