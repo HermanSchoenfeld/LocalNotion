@@ -285,13 +285,11 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			_ => throw new ArgumentOutOfRangeException(nameof(partType), partType, null)
 		};
 
-		// Ugly hack: move empty theme up-front if exists
 		var pageThemes = new[] { theme }.Union(page.CMSProperties.Themes ?? []).ToList();
-		var indexOfEmpty = pageThemes.IndexOf("empty");
-		if (indexOfEmpty > 0) {
-			pageThemes.RemoveAt(indexOfEmpty);
-			pageThemes.Insert(0, "empty");
-		}
+
+		// Ugly hack: return empty if has empty theme
+		if (pageThemes.Contains("empty"))
+			return string.Empty;
 
 		using (EnterRenderingContext(new PageRenderingContext {
 			       Themes = pageThemes.ToArray(),
