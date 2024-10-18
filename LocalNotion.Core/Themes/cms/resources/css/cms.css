@@ -29,6 +29,13 @@ html {
         margin: -100px 0 0 -100px;
     }
 
+.h-15 {    height: 15% !important; }
+.h-10 {    height: 10% !important; }
+.h-5 {     height: 5% !important; }
+.w-15 {    width: 15% !important; }
+.w-10 {    width: 10% !important; }
+.w-5 {     width: 5% !important;}
+
 /** NAVBAR **/
 .nav-link {
     border-bottom: 2px solid transparent;

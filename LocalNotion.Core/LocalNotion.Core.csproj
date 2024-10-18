@@ -77,6 +77,8 @@
 	  <None Remove="Themes\cms_gallery\gallery_badge.html" />
 	  <None Remove="Themes\cms_gallery\gallery_card.html" />
 	  <None Remove="Themes\cms_gallery\gallery_card_cover.html" />
+	  <None Remove="Themes\cms_header\carousel.inc" />
+	  <None Remove="Themes\cms_header\carousel_height.inc" />
 	  <None Remove="Themes\cms_header\carousel_post_end.inc" />
 	  <None Remove="Themes\cms_header\carousel_post_start.inc" />
 	  <None Remove="Themes\cms_header\carousel_pre_end.inc" />
@@ -84,6 +86,10 @@
 	  <None Remove="Themes\cms_header\image.html" />
 	  <None Remove="Themes\cms_gallery\.config.json" />
 	  <None Remove="Themes\cms_section\gallery.html" />
+	  <None Remove="Themes\header_full\.config.json" />
+	  <None Remove="Themes\header_full\carousel_height.inc" />
+	  <None Remove="Themes\header_large\.config.json" />
+	  <None Remove="Themes\header_large\carousel_height.inc" />
 	  <None Remove="Themes\header_fade\.config.json" />
 	  <None Remove="Themes\header_fade\carousel_type.inc" />
 	  <None Remove="Themes\cms_header\carousel_type.inc" />
@@ -94,6 +100,9 @@
 	  <None Remove="Themes\cms_header\paragraph.html" />
 	  <None Remove="Themes\cms_header\toggle_closed.html" />
 	  <None Remove="Themes\cms_header\toggle_open.html" />
+	  <None Remove="Themes\header_tiny\.config.json" />
+	  <None Remove="Themes\header_tiny\carousel_height.inc" />
+	  <None Remove="Themes\header_small\.config.json" />
 	  <None Remove="Themes\header_particles\.config.json" />
 	  <None Remove="Themes\header_particles\carousel_pre_end.inc" />
 	  <None Remove="Themes\cms\badge_align.inc" />
@@ -157,6 +166,7 @@
 	  <None Remove="Themes\cms_navbar\toggle_open.html" />
 	  <None Remove="Themes\cms_footer\.config.json" />
 	  <None Remove="Themes\cms_section\shape.inc" />
+	  <None Remove="Themes\header_small\carousel_height.inc" />
 	  <None Remove="Themes\shape_line_up\.config.json" />
 	  <None Remove="Themes\shape_line_up\shape.inc" />
 	  <None Remove="Themes\shape_curve_down\shape.inc" />
@@ -798,10 +808,16 @@
 	  <EmbeddedResource Include="Themes\cms_header\carousel_post_start.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pre_end.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pre_start.inc" />
+	  <EmbeddedResource Include="Themes\cms_header\carousel_height.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\image.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\.config.json" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_card.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery.html" />
+	  <EmbeddedResource Include="Themes\cms_header\carousel.inc" />
+	  <EmbeddedResource Include="Themes\header_full\.config.json" />
+	  <EmbeddedResource Include="Themes\header_full\carousel_height.inc" />
+	  <EmbeddedResource Include="Themes\header_large\.config.json" />
+	  <EmbeddedResource Include="Themes\header_large\carousel_height.inc" />
 	  <EmbeddedResource Include="Themes\header_fade\.config.json" />
 	  <EmbeddedResource Include="Themes\header_fade\carousel_type.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\heading_1.html" />
@@ -812,6 +828,9 @@
 	  <EmbeddedResource Include="Themes\cms_header\paragraph.html" />
 	  <EmbeddedResource Include="Themes\cms_header\toggle_open.html" />
 	  <EmbeddedResource Include="Themes\cms_header\toggle_closed.html" />
+	  <EmbeddedResource Include="Themes\header_tiny\.config.json" />
+	  <EmbeddedResource Include="Themes\header_tiny\carousel_height.inc" />
+	  <EmbeddedResource Include="Themes\header_small\.config.json" />
 	  <EmbeddedResource Include="Themes\header_particles\.config.json" />
 	  <EmbeddedResource Include="Themes\header_particles\carousel_pre_end.inc" />
 	  <EmbeddedResource Include="Themes\cms\badge_align.inc" />
@@ -875,6 +894,7 @@
 	  <EmbeddedResource Include="Themes\cms_navbar\toggle_open.html" />
 	  <EmbeddedResource Include="Themes\cms_footer\.config.json" />
 	  <EmbeddedResource Include="Themes\cms_section\shape.inc" />
+	  <EmbeddedResource Include="Themes\header_small\carousel_height.inc" />
 	  <EmbeddedResource Include="Themes\shape_line_up\.config.json" />
 	  <EmbeddedResource Include="Themes\shape_line_up\shape.inc" />
 	  <EmbeddedResource Include="Themes\shape_curve_up_right\.config.json" />
