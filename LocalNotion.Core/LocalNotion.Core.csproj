@@ -74,6 +74,7 @@
 	  <None Remove="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <None Remove="Themes\cms\resources\js\particles.min.js" />
 	  <None Remove="Themes\cms_articles\.config.json" />
+	  <None Remove="Themes\cms_articles\articles_summary_feature.html" />
 	  <None Remove="Themes\cms_gallery\gallery_badge.html" />
 	  <None Remove="Themes\cms_gallery\gallery_card.html" />
 	  <None Remove="Themes\cms_gallery\gallery_card_cover.html" />
@@ -802,6 +803,7 @@
 	  <EmbeddedResource Include="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\particles.min.js" />
 	  <EmbeddedResource Include="Themes\cms_articles\.config.json" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_feature.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_card_cover.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_badge.html" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_post_end.inc" />
@@ -1219,8 +1221,8 @@
 	  <EmbeddedResource Include="Themes\cms\.config.json" />
 	  <EmbeddedResource Include="Themes\cms_articles\articles_category_active.html" />
 	  <EmbeddedResource Include="Themes\cms_articles\articles_category.html" />
-	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_thumbnail.html" />
-	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_emoji.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_thumbnail_image.html" />
+	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_thumbnail_emoji.html" />
 	  <EmbeddedResource Include="Themes\cms_articles\articles_summary.html" />
 	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_alt.html" />
 	  <EmbeddedResource Include="Themes\cms_articles\articles.html" />

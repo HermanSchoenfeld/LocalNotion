@@ -77,7 +77,6 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 		SuppressFormatting = suppressFormatting;
 	}
-
 	protected override string Merge(IEnumerable<string> outputs)
 		=> outputs.ToDelimittedString(string.Empty);
 

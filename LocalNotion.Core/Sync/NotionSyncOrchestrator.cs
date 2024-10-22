@@ -86,7 +86,6 @@ public class NotionSyncOrchestrator {
 				// Fetch page graph from notion
 				Logger.Info($"Fetching database graph for '{notionDatabase.GetTitle()}' ({notionDatabase.Id})");
 				
-			
 				// Determine the parent page
 				localDatabase.ParentResourceID = CalculateResourceParent(localDatabase.ID); // note: it's parent, if it has one, will be in the Repository at this point
 
@@ -100,6 +99,10 @@ public class NotionSyncOrchestrator {
 					ObjectID = databaseID,
 					Children = notionChildPages.Select(x => new NotionObjectGraph { ObjectID = x.Id } ).Reverse().ToArray()
 				};
+
+				// Determine feature image
+				localDatabase.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localDatabase, notionDatabase, databaseGraph);
+
 				Repository.SavePageGraph(databaseGraph);
 
 				// Save local notion page resource 
@@ -115,7 +118,6 @@ public class NotionSyncOrchestrator {
 				// issue.
 				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Database))
 					Repository.ImportBlankResourceRender(notionDatabase.Id, options.RenderType);
-
 
 				var linkGenerator = LinkGeneratorFactory.Create(Repository);
 				// Download cover
@@ -288,10 +290,14 @@ public class NotionSyncOrchestrator {
 				// Determine the parent page
 				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects);
 
+				// Determine feature image
+				localPage.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localPage, notionPage, pageObjects, pageGraph);
+
 				// Parse keywords using a text renderer
 				var textRenderer = new TextRenderer(Logger);
 				var text = textRenderer.Render(localPage, pageGraph, pageObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, localPage.ID, FileSystemPathType.Absolute));
 				localPage.Keywords = RakeAlgorithm.Run([text], minCharLength: 2).Select(x => x.Key).Take(10).ToArray();
+				
 				// Determine child resources
 				childPages =
 					pageObjects

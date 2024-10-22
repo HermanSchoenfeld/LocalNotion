@@ -11,6 +11,9 @@ public abstract class LocalNotionEditableResource : LocalNotionResource {
 	[JsonProperty("thumbnail")]
 	public LocalNotionThumbnail Thumbnail { get; set; } = LocalNotionThumbnail.None;
 
+	[JsonProperty("feature", NullValueHandling = NullValueHandling.Ignore)]
+	public string FeatureImageID { get; set; }
+
 	[JsonProperty("name", NullValueHandling = NullValueHandling.Ignore)]
 	public string Name { get; set; }
 

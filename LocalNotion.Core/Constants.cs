@@ -55,7 +55,9 @@ public static class Constants {
 	public const string TagHideHeader = "@HideHeader";
 	public const string TagHideNavBar = "@HideNavBar";
 	public const string TagHideFooter = "@HideFooter";
-
+	public const string TagUseCoverAsFeature = "@UseCoverAsFeature";
+	public const string TagUseThumbnailAsFeature = "@UseThumbnailAsFeature";
+	public const string TagUseFirstImageAsFeature = "@UseFirstImageAsFeature";
 
 	// if a file is synchronized too soon after it is edited, it is premature and resynced again later
 	// Notion API only keeps minute-level accuracy

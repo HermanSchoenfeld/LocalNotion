@@ -68,6 +68,8 @@ public class CMSContentNode {
 
 	public IEnumerable<string> Tags => Content.SelectMany(x => x.CMSProperties.Tags).Distinct();
 
+	public IEnumerable<string> FeatureImageBlocks => Content.Where(x => !string.IsNullOrWhiteSpace(x.FeatureImageID)).Select(x => x.FeatureImageID);
+
 	public CMSContentNode Root => this.Visit(x => x.Parent).Last();
 
 	public CMSContentNode Parent { get; set; }

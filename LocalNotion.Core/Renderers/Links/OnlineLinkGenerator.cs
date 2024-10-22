@@ -15,7 +15,7 @@ public class OnlineLinkGenerator : LinkGeneratorBase {
 	public override bool TryGenerate(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource) {
 		url = default;
 
-		if (from.ID == toResourceID) {
+		if (from?.ID == toResourceID) {
 			url = "";
 			toResource = from;
 			return true;

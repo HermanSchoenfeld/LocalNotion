@@ -215,6 +215,28 @@ public class LocalNotionHelper {
 	public static string CalculatePageName(string id, string title) 
 		=> Tools.Url.ToHtml4DOMObjectID($"{Tools.Text.ToCasing(TextCasing.KebabCase, title)}", String.Empty);
 
+	public static string CalculateFeatureImageID(LocalNotionPage localPage, Page page, IDictionary<string, IObject> pageObjects, NotionObjectGraph objectGraph) {
+		var firstImage = FindFirstImage(objectGraph);
+		return firstImage?.Id;
+		
+		ImageBlock FindFirstImage(NotionObjectGraph node) {
+			var block = pageObjects[node.ObjectID];
+			if (block is ImageBlock imgBlock)
+				return imgBlock;
+
+			foreach(var childNode in node.Children) {
+				var result = FindFirstImage(childNode);
+				if (result is not null)
+					return result;
+			}
+			
+			return null;
+		}
+	}
+
+	public static string CalculateFeatureImageID(LocalNotionDatabase localDatabase, Database database, NotionObjectGraph objectGraph) 
+		=> null;
+
 	public static IEnumerable<LocalNotionEditableResource> FilterRenderableResources(IEnumerable<LocalNotionResource> resources)
 		=> resources.Where(x => x is LocalNotionEditableResource).Cast<LocalNotionEditableResource>().Distinct();
 
@@ -263,6 +285,7 @@ public class LocalNotionHelper {
 
 	public static IEnumerable<string> CombineMultiPageKeyWords(IEnumerable<IEnumerable<string>> pageKeyWords)
 		=> pageKeyWords.SelectMany(x => x).Distinct(StringComparer.InvariantCultureIgnoreCase).Take(50);
+
 
 }
 

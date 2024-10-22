@@ -122,16 +122,47 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		}
 
 		string RenderSummary(CMSContentNode articleNode, bool alternateRow)  {
-			// Get all the info from node (TODO: can refactor this out and remove CMSItem altogether)
+			var primaryPage = articleNode.Content.First();
+			// TODO:
+			// figure out images to use here
+			var backgroundImage = TryGetPageFeature(primaryPage, null, null, null, out var url) ? url : "https://via.placeholder.com/200";
+			var thumbnailImage = articleNode.Thumbnail.Type switch {
+				ThumbnailType.Image => articleNode.Thumbnail.Data.ToNullWhenWhitespace() ?? "https://via.placeholder.com/200",
+				_ => null
+			};
+
+			// do not use a background image if same as thumbnail
+			if (!string.IsNullOrWhiteSpace(backgroundImage) && !string.IsNullOrWhiteSpace(thumbnailImage) && Tools.FileSystem.DoPathsReferToSameFileName(backgroundImage, thumbnailImage)) {
+				// background and thumbnail same, use cover for background
+				backgroundImage = TryGetPageFeature(primaryPage, null, true, null, out url) ? url : "https://via.placeholder.com/200";
+			}
+
+			// Get all the info from node
 			return RenderTemplate(
 				!alternateRow ? "articles_summary" : "articles_summary_alt",
 				new RenderTokens {
-					["image"] = articleNode.Thumbnail.Type switch {
-						ThumbnailType.Emoji => RenderEmoji(articleNode.Thumbnail.Data),
-						ThumbnailType.Image => RenderThumbnail(articleNode.Thumbnail.Data),
-						ThumbnailType.None => string.Empty,
-						_ => string.Empty
-					},
+					["feature"] =
+						RenderTemplate(
+							"articles_summary_feature",
+							new RenderTokens {
+								["url"] = backgroundImage,
+								["thumbnail"] = articleNode.Thumbnail.Type switch {
+									ThumbnailType.Emoji => RenderTemplate(
+										"articles_summary_thumbnail_emoji",
+										new RenderTokens {
+											["emoji"] = articleNode.Thumbnail.Data
+										}
+									),
+									ThumbnailType.Image => RenderTemplate(
+										"articles_summary_thumbnail_image",
+										new RenderTokens {
+											["url"] = thumbnailImage
+										}
+									),
+									_ => string.Empty
+								}
+							}
+						),
 					["title"] = articleNode.Title.ToNullWhenWhitespace() ?? string.Empty,
 					["created_on"] = articleNode.CreatedOn.ToString("yyyy-MM-dd"),
 					["created_on_formatted"] = articleNode.CreatedOn.ToString("D"),
@@ -140,22 +171,8 @@ public class CmsHtmlRenderer : HtmlRenderer {
 				}
 			);
 
-			string RenderEmoji(string emoji) 
-				=> RenderTemplate(
-					"articles_summary_emoji",
-					new RenderTokens {
-						["emoji"] = emoji
-					}
-				);
+	
 
-
-			string RenderThumbnail(string url) 
-				=> RenderTemplate(
-					"articles_summary_thumbnail",
-					new RenderTokens {
-						["url"] = url.ToNullWhenWhitespace() ?? "https://via.placeholder.com/200"
-					}
-				);
 		}
 
 	}
@@ -174,11 +191,11 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		var galleryID = Tools.Text.ToCasing(TextCasing.KebabCase, galleryTitle, FirstCharacterPolicy.HtmlDomObj);
 
 		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(galleryPages.Select(x => x.Keywords)).ToArray();
-		
+
 		// load framing
 		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
 
-		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms_gallery"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
+		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms_gallery"], AmbientTokens = ambientTokens, RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
 			IsPartialRendering = false;
 			return RenderPageInternal(
 				galleryTitle,
@@ -198,7 +215,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 										.ToDelimittedString(Environment.NewLine)
 					}
 				),
-				galleryPages.Min(x => x.CreatedOn), 
+				galleryPages.Min(x => x.CreatedOn),
 				galleryPages.Min(x => x.LastEditedOn),
 				"cms-gallery",
 				string.Empty
@@ -222,12 +239,12 @@ public class CmsHtmlRenderer : HtmlRenderer {
 				new RenderTokens {
 					["gallery_id"] = galleryID,
 					["badges"] = GetPageBadges(card).Select(x => x.BadgeName).ToDelimittedString(" "),
-					["cover"] = TryGetGalleryCover(card, out var url) ? 
-								RenderTemplate("gallery_card_cover", new RenderTokens { ["title"] = card.Title, ["url"] = url } ) : 
+					["cover"] = TryGetPageFeature(card, null, null, null, out var url) ?
+								RenderTemplate("gallery_card_cover", new RenderTokens { ["title"] = card.Title, ["url"] = url }) :
 								string.Empty,
-					["url"] =  LocalNotionHelper.SanitizeSlug(card.CMSProperties?.CustomSlug ?? (card.Renders.TryGetValue(RenderType.HTML, out var renderEntry) ? renderEntry.Slug : "/")),
+					["url"] = LocalNotionHelper.SanitizeSlug(card.CMSProperties?.CustomSlug ?? (card.Renders.TryGetValue(RenderType.HTML, out var renderEntry) ? renderEntry.Slug : "/")),
 					["title"] = card.Title,
-					["summary"] =  card.CMSProperties?.Summary ?? string.Empty,
+					["summary"] = card.CMSProperties?.Summary ?? string.Empty,
 				}
 			);
 		}
@@ -243,32 +260,23 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			}
 
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category2)) {
-				yield return (BadgeTitle: page.CMSProperties.Category2, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category2, FirstCharacterPolicy.HtmlDomObj));
+				yield return (BadgeTitle: page.CMSProperties.Category2, BadgeName: galleryID + "-" + Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category2, FirstCharacterPolicy.HtmlDomObj));
 			}
 
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category3)) {
-				yield return (BadgeTitle: page.CMSProperties.Category3, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category3, FirstCharacterPolicy.HtmlDomObj));
+				yield return (BadgeTitle: page.CMSProperties.Category3, BadgeName: galleryID + "-" + Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category3, FirstCharacterPolicy.HtmlDomObj));
 			}
 
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category4)) {
-				yield return (BadgeTitle: page.CMSProperties.Category4, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category4, FirstCharacterPolicy.HtmlDomObj));
+				yield return (BadgeTitle: page.CMSProperties.Category4, BadgeName: galleryID + "-" + Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category4, FirstCharacterPolicy.HtmlDomObj));
 			}
 
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category5)) {
-				yield return (BadgeTitle: page.CMSProperties.Category5, BadgeName: galleryID + "-" +Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category5, FirstCharacterPolicy.HtmlDomObj));
+				yield return (BadgeTitle: page.CMSProperties.Category5, BadgeName: galleryID + "-" + Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category5, FirstCharacterPolicy.HtmlDomObj));
 			}
 
 		}
-		
 
-		bool TryGetGalleryCover(LocalNotionPage page, out string url) {
-			if (string.IsNullOrWhiteSpace(page.Cover)) {
-				url = string.Empty;
-				return false;
-			}
-			url = page.Cover;
-			return true;
-		}
 	}
 
 	protected virtual string RenderCmsItemPart(string partID, CMSPageType partType, IDictionary<string, object> ambientTokens = null) {
@@ -329,4 +337,69 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		return tokens;
 	}
 
+	protected bool TryGetPageFeature(LocalNotionPage page, bool? featureImportant, bool? coverImportant, bool? thumbnailImportant, out string url) {
+		var useFeature = featureImportant ?? page.CMSProperties.Tags.Contains(Constants.TagUseFirstImageAsFeature);
+		var useCover = coverImportant ?? page.CMSProperties.Tags.Contains(Constants.TagUseCoverAsFeature);
+		var useThumbnail = thumbnailImportant ?? page.CMSProperties.Tags.Contains(Constants.TagUseThumbnailAsFeature);
+		url = null;
+		if (useFeature) {
+			if (!GetFirstImage(out url))
+				if (!GetCover(out url))
+					if (!GetThumbnail(out url))
+						return false;
+			return true;
+		}
+
+		if (useCover) {
+			if (!GetCover(out url))
+				if (!GetThumbnail(out url))
+					return false;
+			return true;
+		}
+
+		if (useThumbnail) {
+			if (!GetThumbnail(out url))
+				return false;
+			return true;
+		}
+
+		// default
+		if (!GetFirstImage(out url))
+			if (!GetCover(out url))
+				if (!GetThumbnail(out url))
+					return false;
+		return true;
+
+
+		bool GetFirstImage(out string url) {
+			if (!string.IsNullOrWhiteSpace(page.FeatureImageID)) {
+				var imageBlock = Repository.GetObject(page.FeatureImageID) as ImageBlock;
+				if (imageBlock != null) {
+					url = GetFileUrl(imageBlock.Image, out _);
+					return true;
+				}
+			}
+			url = null;
+			return false;
+		}
+
+		bool GetCover(out string url) {
+			if (!string.IsNullOrWhiteSpace(page.Cover)) {
+				url = page.Cover;
+				return true;
+			}
+			url = null;
+			return false;
+		}
+
+		bool GetThumbnail(out string url) {
+			if (page.Thumbnail.Type == ThumbnailType.Image) {
+				url = page.Thumbnail.Data;
+				return true;
+			}
+			url = null;
+			return false;
+		}
+
+	}
 }
