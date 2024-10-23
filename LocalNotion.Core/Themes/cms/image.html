@@ -1,5 +1,7 @@
-﻿<figure id="{object_id}" {include://image.inc}>
-    <img class="img-fluid d-block mx-auto" src="{url}" alt="">
+﻿<figure id="{object_id}" {include://image_figure_attr.inc}>
+    <a {include://image_link_attr.inc}>
+        <img class="img-fluid d-block mx-auto" {include: //image_img_attr.inc} src="{url}" alt="">
+    </a>
     <figcaption class="text-secondary text-center">
         <small>{caption}</small>
     </figcaption>
