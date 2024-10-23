@@ -15,7 +15,7 @@ namespace LocalNotion.Repository;
 /// application relies on a repository but does not update it. Thus it only wants read-only access to it. A ASP.NET Core web-application using Local Notion as
 /// a View store is a perfect example.
 /// </summary>
-public class MonitoredRepository : DisposableResource, ILocalNotionRepository, IDisposable {
+public class MonitoredRepository : DisposableResource, ICmsLocalNotionRepository, IDisposable {
 	public event EventHandlerEx<object> Loading { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object> Loaded { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object>? Changing { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
@@ -36,7 +36,7 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 		Guard.DirectoryExists(repositoryFolder);
 		var registryFile = PathResolver.ResolveDefaultRegistryFilePath(repositoryFolder);
 		Guard.FileExists(registryFile);
-		InternalRepository = Tools.Values.Future.Reloadable(() =>  (ILocalNotionRepository) LocalNotionRepository.OpenRegistry(registryFile).ResultSafe());
+		InternalRepository = Tools.Values.Future.Reloadable(() =>  (ICmsLocalNotionRepository) LocalNotionRepository.OpenRegistry(registryFile).ResultSafe());
 		var fileMonitor = Tools.FileSystem.MonitorFile(
 			registryFile, 
 			(WatcherChangeTypes changeType, string file) => {
@@ -50,7 +50,7 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 		Disposables.Add(fileMonitor);
 	}
 
-	private Reloadable<ILocalNotionRepository> InternalRepository { get; }
+	private Reloadable<ICmsLocalNotionRepository> InternalRepository { get; }
 	
 	public virtual int Version => InternalRepository.Value.Version;
 	
@@ -63,6 +63,8 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 	public virtual string DefaultNotionApiKey => InternalRepository.Value.DefaultNotionApiKey;
 
 	public string CMSDatabaseID => InternalRepository.Value.CMSDatabaseID;
+
+	public CMSDatabase CMSDatabase => InternalRepository.Value.CMSDatabase;
 
 	public virtual IEnumerable<string> Objects => InternalRepository.Value.Objects;
 	
@@ -138,5 +140,16 @@ public class MonitoredRepository : DisposableResource, ILocalNotionRepository, I
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.Value.CalculateRenderSlug(resource, render, renderedFilename);
 
+	public virtual bool ContainsCmsItem(string slug) => InternalRepository.Value.ContainsCmsItem(slug);
+
+	public virtual bool TryGetCMSItem(string slug, out CMSItem cmsItem) => InternalRepository.Value.TryGetCMSItem(slug, out cmsItem);
+
+	public virtual void AddCMSItem(CMSItem cmsItem) => InternalRepository.Value.AddCMSItem(cmsItem);
+
+	public virtual void UpdateCMSItem(CMSItem cmsItem) => InternalRepository.Value.UpdateCMSItem(cmsItem);
+
+	public virtual void AddOrUpdateCMSItem(CMSItem cmsItem) => InternalRepository.Value.AddOrUpdateCMSItem(cmsItem);
+
+	public virtual void RemoveCmsItem(string slug) => InternalRepository.Value.RemoveCmsItem(slug);
 }
 

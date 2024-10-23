@@ -1,11 +1,9 @@
 ﻿using Hydrogen;
-using Microsoft.Win32;
-using Notion.Client;
-using System.IO;
+
 
 namespace LocalNotion.Core;
 
-public class CMSLocalNotionRepository : LocalNotionRepository {
+public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRepository {
 
 	private readonly IFuture<CMSDatabase> _cmsDatabase;
 	private CMSProperties _preUpdateCmsProperties;
@@ -30,13 +28,6 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 		return Registry.CMSItemsBySlug.TryGetValue(slug, out cmsItem);
 	}
 	
-	public CMSItem GetCMSItem(string slug) {
-		CheckLoaded();
-		if (!TryGetCMSItem(slug, out var cmsItem))
-			throw new InvalidOperationException($"CMS Item '{slug}' does not exist");
-		return cmsItem;
-	}
-
 	public void AddCMSItem(CMSItem cmsItem) {
 		CheckLoaded();
 		Registry.CMSItemsBySlug.Add(cmsItem.Slug, cmsItem);
@@ -55,7 +46,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 
 	public void RemoveCmsItem(string slug) {
 		CheckLoaded();
-		var cmsItem = GetCMSItem(slug);
+		var cmsItem = this.GetCMSItem(slug);
 		if (!string.IsNullOrWhiteSpace(cmsItem.RenderPath)) {
 			var renderFile = Path.Join(Paths.GetRepositoryPath(FileSystemPathType.Absolute), cmsItem.RenderPath);
 			if (File.Exists(renderFile)) {
@@ -330,8 +321,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository {
 
 	#region Aux Methods
 
-
-	public void RemoveCmsItemReferencesTo(string pageID) {
+	private void RemoveCmsItemReferencesTo(string pageID) {
 		foreach(var render in CMSItems.ToArray()) {
 			if (render.ReferencesResource(pageID)) {
 				render.RemovePageReference(pageID);

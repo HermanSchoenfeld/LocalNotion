@@ -48,11 +48,6 @@ public class LocalNotionRegistry {
 		set => _cmsRenders = value?.ToDictionary(x => x.Slug);
 	}
 
-	[JsonIgnore]
-	public IEnumerable<LocalNotionPage> Articles =>
-		Resources
-		.Where(x => x.Type == LocalNotionResourceType.Page && x is LocalNotionPage { CMSProperties: not null })
-		.Cast<LocalNotionPage>();
 
 	[JsonIgnore]
 	internal IDictionary<string, CMSItem> CMSItemsBySlug => _cmsRenders;
