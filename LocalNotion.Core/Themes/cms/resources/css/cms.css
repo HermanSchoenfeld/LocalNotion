@@ -2,6 +2,11 @@
     CMS Related Styles
 ***************************************************/
 
+:root {
+    --box-shadow-lift: 0 1rem 2.5rem rgba(0, 0, 0, 0.9), 0 .5rem 1rem -.75rem rgba(0, 0, 0, 0.9);
+    --box-shadow-lift-lg: 0 2rem 5rem rgba(0, 0, 0, 0.9), 0 .5rem 1rem -.75rem rgba(0, 0, 0, 0.95);
+}
+
 /** Global **/
 html {
     scroll-padding-top: 5em;
@@ -35,6 +40,24 @@ html {
 .w-15 {    width: 15% !important; }
 .w-10 {    width: 10% !important; }
 .w-5 {     width: 5% !important;}
+
+.lift {
+    box-shadow: 0 0 0 rgba($black, 0);
+    transition: box-shadow .25s ease, transform .25s ease;
+}
+
+    .lift:hover,
+    .lift:focus {
+        box-shadow: var(--box-shadow-lift) !important;
+        transform: translate3d(0, -3px, 0);
+    }
+
+.lift-lg:hover,
+.lift-lg:focus {
+    box-shadow: var(--box-shadow-lift-lg) !important;
+    transform: translate3d(0, -5px, 0);
+}
+
 
 /** NAVBAR **/
 .nav-link {

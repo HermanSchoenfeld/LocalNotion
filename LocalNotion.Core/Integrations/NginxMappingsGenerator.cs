@@ -8,7 +8,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 	private const string NGinxConf = 
 		"""
-		worker_processes  1;
+		worker_processes  auto;
 
 		events {
 		    worker_connections  1024;
@@ -33,7 +33,11 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		        listen       80;
 		        server_name  localhost;
 
-		        root ../../;
+				# Windows hosting (nb: nginx.exe inside /.localnotion/nginx)
+		        # root ../../;
+
+				# Linux hosting (NGINX docker container)
+				root /usr/share/nginx/html/;
 
 		        include ln-urls.conf;
 		    }
