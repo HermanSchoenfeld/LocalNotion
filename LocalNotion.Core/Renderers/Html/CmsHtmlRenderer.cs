@@ -135,6 +135,9 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			if (!string.IsNullOrWhiteSpace(backgroundImage) && !string.IsNullOrWhiteSpace(thumbnailImage) && Tools.FileSystem.DoPathsReferToSameFileName(backgroundImage, thumbnailImage)) {
 				// background and thumbnail same, use cover for background
 				backgroundImage = TryGetPageFeature(primaryPage, null, true, null, out url) ? url : "https://via.placeholder.com/200";
+				if (!string.IsNullOrWhiteSpace(backgroundImage) && !string.IsNullOrWhiteSpace(thumbnailImage) && Tools.FileSystem.DoPathsReferToSameFileName(backgroundImage, thumbnailImage)) {
+					backgroundImage = string.Empty;
+				}
 			}
 
 			// Get all the info from node

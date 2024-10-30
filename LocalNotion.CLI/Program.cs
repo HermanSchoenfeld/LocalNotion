@@ -1081,13 +1081,11 @@ $@"Local Notion Status:
 		//string[] RenderBug36Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46" };
 		// string[] RenderBug37Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "55109fbe-96e3-46cf-9dfe-d54ba27039b1" };
 		// string[] RenderBug38Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "17406e2a-5881-4ff0-b641-df8ac9a9275d" };
-		// string[] RenderBug39Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "330e8d61-7dc7-4f79-a41a-a662e5b6694c" };
+		 //string[] RenderBug39Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "330e8d61-7dc7-4f79-a41a-a662e5b6694c" };
 		//  string[] RenderBug40Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "906fe7ef-7d08-458e-818d-a58477cf3281" };
-
 		  //string[] RenderBug41Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "b3de6fc4-e7e3-42d6-ba31-50f932519b28" };
-
-		  string[] RenderBug42Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "67acf08e-a9d0-413a-9dc8-2e83876924a0" };
-
+		  //string[] RenderBug42Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "67acf08e-a9d0-413a-9dc8-2e83876924a0" };
+		//  string[] RenderBug43Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "12df1a97-ddeb-808c-a762-eba09fafb14b" };
 		  
 		
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
@@ -1112,8 +1110,8 @@ $@"Local Notion Status:
 		// localnotion init -k YOUR_NOTION_API_KEY_HERE --cms 2dcb720f5ed6415091f6e83f42d6a44c -v
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
-		if (args.Length == 0)
-			args = RenderBug42Page;  // PullBug23Page   RenderBug36Page
+		//if (args.Length == 0)
+		//	args = RenderBug39Page;  // PullBug23Page   RenderBug36Page
 
 		//#endif
 

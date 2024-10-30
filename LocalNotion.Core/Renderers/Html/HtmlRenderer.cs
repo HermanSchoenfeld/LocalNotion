@@ -775,11 +775,13 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(ChildPageBlock block) => RenderReference(block.Id, false, true);
 
 	protected override string Render(CodeBlock block) {
+		var rawCode = block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty);
 		return RenderTemplate(
 			"code",
 			new RenderTokens(block) {
 				["language"] = ToPrismLanguage(block.Code.Language),
-				["code"] = Encode(block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty), true, true, false)
+				["code"] = Encode(rawCode, true, true, false),
+				["raw_code"] = rawCode
 			}
 		);
 
