@@ -67,6 +67,7 @@
 	  <None Remove="Themes\badge_color_light - Copy (2)\.config.json" />
 	  <None Remove="Themes\badge_color_light - Copy (2)\badge_color.html" />
 	  <None Remove="Themes\card\color_card.inc" />
+	  <None Remove="Themes\cms\google_tag.inc" />
 	  <None Remove="Themes\cms\image_figure_attr.inc" />
 	  <None Remove="Themes\cms\image_img_attr.inc" />
 	  <None Remove="Themes\cms\image_link_attr.inc" />
@@ -843,6 +844,7 @@
 	  <EmbeddedResource Include="Themes\animate_image_zoom\image_figure_attr.inc" />
 	  <EmbeddedResource Include="Themes\badge\.config.json" />
 	  <EmbeddedResource Include="Themes\card\color_card.inc" />
+	  <EmbeddedResource Include="Themes\cms\google_tag.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_link_attr.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_img_attr.inc" />
 	  <EmbeddedResource Include="Themes\cms\resources\img\bx_loader.gif" />
