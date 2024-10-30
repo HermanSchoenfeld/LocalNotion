@@ -12,6 +12,7 @@ using System.Text;
 namespace LocalNotion.CLI;
 
 public class GitSentry : ProcessSentry {
+
 	private const string GitExecutable = "git";
 	private readonly StringBuilder _stringBuilder;
 	public GitSentry(string rootDir) : base(GitExecutable) {
@@ -446,6 +447,18 @@ $@"Local Notion Status:
 				consoleLogger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
 				throw new InvalidOperationException("Unable to create git repository");
 			}
+
+			var gitIgnoreFile = Path.Combine(arguments.Path, ".gitignore");
+			// Create .gitignore files
+			const string GitIgnoreContents = 
+				"""
+				# Local Notion logs
+				.localnotion/logs
+
+				# NGINX logs
+				.localnotion/nginx/logs
+				""";
+			await File.WriteAllTextAsync(gitIgnoreFile, GitIgnoreContents, cancellationToken);
 		}
 
 
@@ -479,6 +492,9 @@ $@"Local Notion Status:
 	
 		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		await repo.CleanAsync();
+
+		if (repo.RequiresSave)
+			await repo.SaveAsync();
 
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
@@ -720,6 +736,9 @@ $@"Local Notion Status:
 				}
 			}
 
+			if (repo.RequiresSave)
+				await repo.SaveAsync();
+
 			// Do git processing if available
 			if (repo.GitSettings.Enabled) {
 				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
@@ -784,6 +803,8 @@ $@"Local Notion Status:
 			}
 		}
 
+		if (repo.RequiresSave)
+			await repo.SaveAsync();
 		
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
