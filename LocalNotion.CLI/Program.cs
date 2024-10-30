@@ -1118,11 +1118,13 @@ $@"Local Notion Status:
 		//https://ossified-barnacle-a72.notion.site/Resources-61b8ed7e760d4ebb9c59f919d8a58dd9
 
 		try {
-#if DEBUG
+			// Disabled DRM 2024-10-30. Free to use license.
 			var frameworkOptions = HydrogenFrameworkOptions.Default;
-#else
-			var frameworkOptions = HydrogenFrameworkOptions.EnableDrm;
-#endif
+//#if DEBUG
+//			var frameworkOptions = HydrogenFrameworkOptions.Default;
+//#else
+//			var frameworkOptions = HydrogenFrameworkOptions.EnableDrm;
+//#endif
 			HydrogenFramework.Instance.StartFramework(frameworkOptions); // NOTE: background license verification is done in explicitly in command handlers, and only when doing work
 			
 			if (HydrogenFramework.Instance.Options.HasFlag(HydrogenFrameworkOptions.EnableDrm))
