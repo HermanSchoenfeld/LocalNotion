@@ -23,7 +23,7 @@ public static class ISearchClientExtensions {
 		do {
 			cancellationToken.ThrowIfCancellationRequested();
 			request.StartCursor = cursor;
-			searchResult = await searchClient.SearchAsync(request).WithCancellationToken(cancellationToken);
+			searchResult = await searchClient.SearchAsync(request, cancellationToken);
 			foreach(var result in searchResult.Results)
 				yield return result;
 			cursor = searchResult.NextCursor;

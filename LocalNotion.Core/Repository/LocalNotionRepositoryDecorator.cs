@@ -111,4 +111,7 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.CalculateRenderSlug(resource, render, renderedFilename);
 
+	public virtual void Dispose() => InternalRepository.Dispose();
+
+	public virtual ValueTask DisposeAsync() => InternalRepository.DisposeAsync();
 }

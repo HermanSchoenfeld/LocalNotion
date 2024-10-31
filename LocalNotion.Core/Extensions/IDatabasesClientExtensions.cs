@@ -7,7 +7,7 @@ namespace LocalNotion.Core;
 public static class IDatabasesClientExtensions {
 
 	public static Task<Page[]> GetAllDatabaseRows(this IDatabasesClient databasesClient, string databaseId, DatabasesQueryParameters parameters = null, CancellationToken cancellationToken = default)
-		=> databasesClient.EnumerateAsync(databaseId, parameters, cancellationToken).ToArrayAsync();
+		=> databasesClient.EnumerateAsync(databaseId, parameters, cancellationToken).ToArrayAsync(cancellationToken).AsTask();
 
 	public static async IAsyncEnumerable<Page> EnumerateAsync(this IDatabasesClient databasesClient, string databaseId, DatabasesQueryParameters parameters = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 		DatabaseQueryResponse searchResult;

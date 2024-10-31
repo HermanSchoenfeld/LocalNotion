@@ -15,7 +15,7 @@ namespace LocalNotion.Repository;
 /// application relies on a repository but does not update it. Thus it only wants read-only access to it. A ASP.NET Core web-application using Local Notion as
 /// a View store is a perfect example.
 /// </summary>
-public class MonitoredRepository : DisposableResource, ICmsLocalNotionRepository, IDisposable {
+public class MonitoredRepository : DisposableResource,  ICmsLocalNotionRepository {
 	public event EventHandlerEx<object> Loading { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object> Loaded { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
 	public event EventHandlerEx<object>? Changing { add => throw new NotSupportedException(); remove => throw new NotSupportedException(); }
@@ -151,5 +151,19 @@ public class MonitoredRepository : DisposableResource, ICmsLocalNotionRepository
 	public virtual void AddOrUpdateCMSItem(CMSItem cmsItem) => InternalRepository.Value.AddOrUpdateCMSItem(cmsItem);
 
 	public virtual void RemoveCmsItem(string slug) => InternalRepository.Value.RemoveCmsItem(slug);
+
+	protected override void FreeManagedResources() {
+		base.FreeManagedResources();
+		if (InternalRepository.Loaded)
+			InternalRepository.Value.Dispose();
+
+	}
+
+	protected override async ValueTask FreeManagedResourcesAsync() {
+		if (InternalRepository.Loaded)
+			await InternalRepository.Value.DisposeAsync();
+		await base.FreeManagedResourcesAsync();
+	}
+
 }
 

@@ -14,11 +14,12 @@ public static class IPagesClientExtensions  {
 
 	public static async Task<PagePropertyItems> ParallelRetrievePagePropertiesAsync(this IPagesClient pagesClient, Page page, IEnumerable<string> propertyIds, CancellationToken cancellationToken = default) {
 		var results = new SynchronizedDictionary<string,IPropertyItemObject>();
-		await Parallel.ForEachAsync(propertyIds, cancellationToken, async (id, ct) => {
+		var propIDs = propertyIds as string[] ?? propertyIds.ToArray();
+		await Parallel.ForEachAsync(propIDs, cancellationToken, async (id, ct) => {
 			var prop = await pagesClient.RetrievePagePropertyItemCompleteAsync(page.Id, id, ct);
 			results.Add(prop);
 		});
-		var kvps = propertyIds.Select(id => new KeyValuePair<string, IPropertyItemObject>(id, results[id])); // return properties in same order as parameters (since they may be fetched in different order)
+		var kvps = propIDs.Select(id => new KeyValuePair<string, IPropertyItemObject>(id, results[id])); // return properties in same order as parameters (since they may be fetched in different order)
 		return new(page, kvps);
 	}
 
@@ -31,7 +32,7 @@ public static class IPagesClientExtensions  {
 		var parameters = new RetrievePropertyItemParameters();
 		parameters.PageId = pageID;
 		parameters.PropertyId = propertyId;
-		var searchResult = await pagesClient.RetrievePagePropertyItemAsync(parameters).WithCancellationToken(cancellationToken);
+		var searchResult = await pagesClient.RetrievePagePropertyItemAsync(parameters, cancellationToken);
 
 		if (searchResult is ListPropertyItem lpi) {
 			var itemsList = new List<SimplePropertyItem>();
@@ -39,7 +40,7 @@ public static class IPagesClientExtensions  {
 			
 			while (lpi.HasMore) {
 				parameters.StartCursor = lpi.NextCursor;
-				var nextPage = (ListPropertyItem) await pagesClient.RetrievePagePropertyItemAsync(parameters).WithCancellationToken(cancellationToken) ;
+				var nextPage = (ListPropertyItem) await pagesClient.RetrievePagePropertyItemAsync(parameters, cancellationToken) ;
 				itemsList.AddRange(nextPage.Results);
 			}
 			lpi.Results = itemsList; // this aggregates all items into the list of first itemlist

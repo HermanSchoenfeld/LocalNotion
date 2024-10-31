@@ -13,7 +13,7 @@ public static class INotionClientExtensions {
 		if (!LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _))
 			return (default, default);
 
-		var block = await client.Blocks.RetrieveAsync(objectID).WithCancellationToken(cancellationToken);
+		var block = await client.Blocks.RetrieveAsync(objectID, cancellationToken);
 		if (block == null) {
 			return (default, default(DateTime?));
 		}

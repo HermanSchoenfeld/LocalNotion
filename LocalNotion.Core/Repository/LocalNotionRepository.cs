@@ -5,7 +5,7 @@ using Notion.Client;
 namespace LocalNotion.Core;
 
 // Make ThreadSafe
-public class LocalNotionRepository : ILocalNotionRepository {
+public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 	public event EventHandlerEx<object> Loading;
 	public event EventHandlerEx<object> Loaded;
 	public event EventHandlerEx<object> Changing;
@@ -768,6 +768,17 @@ public class LocalNotionRepository : ILocalNotionRepository {
 	}
 
 	#endregion
+
+	protected override void FreeManagedResources() {
+		_resourceByName.Purge();
+		_resourcesByNID.Purge();
+		Registry.CMSItems = null;
+		Registry.Resources = null;
+		Registry = null;
+		_objectStore.Dispose();
+		_graphStore.Dispose();
+		_renderBySlug.Purge();
+	}
 
 	protected async Task SaveInternal_PersistPhase(string registryFile) {
 		var persistFile = registryFile + ".persist";

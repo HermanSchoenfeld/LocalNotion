@@ -363,7 +363,7 @@ public static partial class Program {
 			return Constants.ERRORCODE_REPO_NOT_FOUND;
 		}
 
-		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+		await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		System.Console.WriteLine(
 $@"Local Notion Status:
 	Total Resources: {repo.Resources.Count()}
@@ -462,7 +462,7 @@ $@"Local Notion Status:
 		}
 
 
-		var repo = await LocalNotionRepository.CreateNew(
+		await using var repo = await LocalNotionRepository.CreateNew(
 			arguments.Path,
 			arguments.APIKey,
 			arguments.CMSDatabase,
@@ -489,8 +489,8 @@ $@"Local Notion Status:
 		if (!Directory.Exists(arguments.Path)) 
 			throw new DirectoryNotFoundException(arguments.Path);
 
-	
-		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+
+		await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		await repo.CleanAsync();
 
 		if (repo.RequiresSave)
@@ -509,7 +509,7 @@ $@"Local Notion Status:
 	public static async Task<int> ExecuteRemoveCommandAsync(RemoveRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		if (!arguments.All) {
-			var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+			await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 			foreach (var objectID in arguments.Objects.Select(x => x.ToString())) {
 				
 				if (!ILocalNotionRepository.IsValidObjectID(objectID)) {
@@ -566,7 +566,7 @@ $@"Local Notion Status:
 			apiKey = arguments.APIKey;
 		} else {
 			if (LocalNotionRepository.Exists(arguments.Path)) {
-				var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+				await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 				apiKey = repo.DefaultNotionApiKey;
 			}
 		}
@@ -633,7 +633,7 @@ $@"Local Notion Status:
 
 	public static async Task<int> ExecutePullCommandAsync(PullRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+		await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 
 		await using (repo.EnterUpdateScope()) {
 			var apiKey = arguments.APIKey ?? repo.DefaultNotionApiKey;
@@ -770,7 +770,7 @@ $@"Local Notion Status:
 
 	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-		var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+		await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 		await using (repo.EnterUpdateScope()) {
 			var renderer = new RenderingManager(repo, repo.Logger);
 			var toRender = (arguments.RenderAll ? LocalNotionHelper.FilterRenderableResources(repo.Resources).Select(x => x.ID) : arguments.Objects.Select(x => x.ToString())).ToHashSet();
@@ -1004,6 +1004,7 @@ $@"Local Notion Status:
 		//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		//		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
 		//		string[] SyncCmd3 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490", "-f", "3" };
+				string[] SyncCmd4 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all", "-f", "3" };
 
 		//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		//		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
@@ -1040,18 +1041,18 @@ $@"Local Notion Status:
 		//string[] PullBug19Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "cd9e81a3-1a14-4e94-a852-ea26c3743b16", "--force" };
 		// string[] PullBug20Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "55109fbe-96e3-46cf-9dfe-d54ba27039b1", "--force" };
 		//string[] PullBug21Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "1e00ea35-3ac9-4eaf-9824-3e659c3f18da", "--force" };
-	
+
 		//		string[] PullBug19Page = new[] { "pull", "-p", "d:\\Backup\\Notion\\Sphere10", "-o", "c649e6d6-754d-4d68-bea0-cb44c08be1fe" };
 		//		string[] PullBug20Page = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "a411e763503b46e79b620e791f7fd99f", "--force" };
 		//		string[] PullBug21Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "3881a16e-288a-4907-a021-acc21e7c0a0a", "--force" };
-		       //string[] PullBug22Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f96258439e6c489e8fae843ae779c63d", "--force" };
+		//string[] PullBug22Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f96258439e6c489e8fae843ae779c63d", "--force" };
 		//      string[] PullBug23Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80", "--force" };
 		//string[] PullBug24Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",   "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46", "--force" };
 		// string[] PullBug25Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "68e75336-7282-4aee-85e6-cdd71155286a", "--force" };
 		// string[] PullBug26Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "17406e2a-5881-4ff0-b641-df8ac9a9275d", "--force" };
 
 		// string[] PullBug27Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "906fe7ef-7d08-458e-818d-a58477cf3281", "--force" };
-		
+
 
 		//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 		// string[] PullDatabase2 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b95bd225-9407-4eb6-a8bd-e309c236564b", "--force" };
@@ -1102,13 +1103,13 @@ $@"Local Notion Status:
 		//string[] RenderBug36Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "f2539d7b-ade1-4271-bac9-ca4ad6ab7f46" };
 		// string[] RenderBug37Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "55109fbe-96e3-46cf-9dfe-d54ba27039b1" };
 		// string[] RenderBug38Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "17406e2a-5881-4ff0-b641-df8ac9a9275d" };
-		 //string[] RenderBug39Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "330e8d61-7dc7-4f79-a41a-a662e5b6694c" };
+		//string[] RenderBug39Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "330e8d61-7dc7-4f79-a41a-a662e5b6694c" };
 		//  string[] RenderBug40Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "906fe7ef-7d08-458e-818d-a58477cf3281" };
-		  //string[] RenderBug41Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "b3de6fc4-e7e3-42d6-ba31-50f932519b28" };
-		  //string[] RenderBug42Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "67acf08e-a9d0-413a-9dc8-2e83876924a0" };
+		//string[] RenderBug41Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "b3de6fc4-e7e3-42d6-ba31-50f932519b28" };
+		//string[] RenderBug42Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "67acf08e-a9d0-413a-9dc8-2e83876924a0" };
 		//  string[] RenderBug43Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "12df1a97-ddeb-808c-a762-eba09fafb14b" };
-		  
-		
+
+
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
 		//		string[] RemoveBug2 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80", "47476668-4850-4290-a15a-a03e5e1f701d", "aa633dda-e13d-4a1e-8727-577051cd43b3", "0a932935-51c7-4ae8-ae5a-690a85c918b0", "7fd61738-3b6c-4df5-9eee-b257f1e13e20", "957e39ad-3a63-43a0-91f3-8e1e132696a5", "41c1973e-228e-46d1-9ece-ef0dc9ee913e", "64615900-e2b3-4cdf-9a5d-03a6f1d1744f" };
 		//		string[] RenderAll = new[] { "render", "--all" };
@@ -1131,8 +1132,8 @@ $@"Local Notion Status:
 		// localnotion init -k YOUR_NOTION_API_KEY_HERE --cms 2dcb720f5ed6415091f6e83f42d6a44c -v
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
-		//if (args.Length == 0)
-		//	args = RenderBug39Page;  // PullBug23Page   RenderBug36Page
+		if (args.Length == 0)
+			args = SyncCmd4;  // PullBug23Page   RenderBug36Page
 
 		//#endif
 

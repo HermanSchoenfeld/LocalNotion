@@ -243,7 +243,7 @@ public class NotionSyncOrchestrator {
 			// tries to avoid calling this)
 			async Task FetchNotionPage() {
 				Logger.Info($"Fetching page '{pageID}'");
-				notionPage = await NotionClient.Pages.RetrieveAsync(pageID).WithCancellationToken(cancellationToken);
+				notionPage = await NotionClient.Pages.RetrieveAsync(pageID, cancellationToken);
 				knownNotionLastEditTime = notionPage.LastEditedTime;
 			}
 
@@ -621,7 +621,7 @@ public class NotionSyncOrchestrator {
 	}
 
 	public async Task<Database> FetchDatabaseHeader(string databaseID, CancellationToken cancellationToken = default) {
-		return await NotionClient.Databases.RetrieveAsync(databaseID).WithCancellationToken(cancellationToken);
+		return await NotionClient.Databases.RetrieveAsync(databaseID, cancellationToken);
 	}
 
 	public IAsyncEnumerable<Page> FetchDatabasePagesAsync(string databaseID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {

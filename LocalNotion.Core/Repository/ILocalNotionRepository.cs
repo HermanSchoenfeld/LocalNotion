@@ -5,7 +5,7 @@ using Tools;
 
 namespace LocalNotion.Core;
 
-public interface ILocalNotionRepository  {
+public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 
 	event EventHandlerEx<object> Changing;
 	event EventHandlerEx<object> Changed;

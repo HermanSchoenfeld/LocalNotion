@@ -1,4 +1,5 @@
-﻿using Hydrogen;
+﻿using System.Runtime.CompilerServices;
+using Hydrogen;
 using Notion.Client;
 
 
@@ -6,7 +7,7 @@ namespace LocalNotion.Core;
 
 public static class IBlocksClientExtensions {
 
-	public static async IAsyncEnumerable<IBlock> EnumerateChildrenAsync(this IBlocksClient blocksClient, string blockId, CancellationToken cancellationToken) {
+	public static async IAsyncEnumerable<IBlock> EnumerateChildrenAsync(this IBlocksClient blocksClient, string blockId, [EnumeratorCancellation] CancellationToken cancellationToken) {
 		PaginatedList<IBlock> searchResult;
 		var parameters = new BlockRetrieveChildrenRequest();
 		parameters.BlockId = blockId;
@@ -34,6 +35,8 @@ public static class IBlocksClientExtensions {
 		if (rootObject is Page or IBlock { HasChildren: true })  // note will not populate child page blocks
 			await PopulateChildren(root);
 
+		return root;
+
 		async Task PopulateChildren(NotionObjectGraph parent) {
 			cancellationToken.ThrowIfCancellationRequested();
 			var children = new List<NotionObjectGraph>();
@@ -46,6 +49,5 @@ public static class IBlocksClientExtensions {
 			}
 			parent.Children = children.ToArray();
 		}
-		return root;
 	}
 }
