@@ -103,7 +103,7 @@ function InitializeNestedDropdowns() {
     }
 }
 
-function ColorSectionShapeSeparators() {
+function InitializeSectionSeparatorShapes() {
     function GetEffectiveBackgroundColor(element) {
         let color = window.getComputedStyle(element).backgroundColor;
 
@@ -126,27 +126,32 @@ function ColorSectionShapeSeparators() {
     }
 
     document.querySelectorAll('.shape').forEach(function (shape) {
-        const parentDiv = shape.closest('.position-relative'); // Get the parent container
-        if (!parentDiv)
+        const shapeContainerDiv = shape.closest('.shape-container'); // Get the shape container
+        if (!shapeContainerDiv)
             return; // some other shape (not a page separating shape)
+        let currentContent = shapeContainerDiv.parentElement;
 
-        let nextLogicalSibling = parentDiv.nextElementSibling; // Get the next sibling
+        let nextContent = currentContent.nextElementSibling; // Get the next sibling
 
         // If no next sibling exists, get the parent's next sibling
-        if (!nextLogicalSibling) {
-            nextLogicalSibling = parentDiv.parentElement.nextElementSibling;
-        } else if (nextLogicalSibling.tagName.toLowerCase() === 'main') {
-            // If the nextLogicalSibling is a <main>, get its first child
-            nextLogicalSibling = nextLogicalSibling.firstElementChild;
+        if (!nextContent) {
+            nextContent = currentContent.parentElement.nextElementSibling;
+        } else if (nextContent.tagName.toLowerCase() === 'main') {
+            // If the nextContent is a <main>, get its first child
+            nextContent = nextContent.firstElementChild;
         }
 
-        if (nextLogicalSibling) {
-            const sectionColor = GetEffectiveBackgroundColor(nextLogicalSibling); // Get effective background color
+        if (nextContent) {
+            const sectionColor = GetEffectiveBackgroundColor(nextContent); // Get effective background color
             const svgPath = shape.querySelector('svg path'); // Find the path inside the SVG
             if (svgPath) {
                 // Apply the computed background color as fill, including any alpha
                 svgPath.setAttribute('fill', sectionColor); // Set the fill attribute to the background color
             }
+
+            // Adjust the shape bottom so it sits at end of currentContent
+            const paddingBottom = window.getComputedStyle(currentContent).paddingBottom;
+            shape.style.bottom = `-${paddingBottom}`;
         }
     });
 }
@@ -248,7 +253,7 @@ function InitializeBigPictures() {
 PageLoader_Init();
 SetActiveNavbarItems();
 InitializeNestedDropdowns();
-ColorSectionShapeSeparators();
+InitializeSectionSeparatorShapes();
 InitializeTypedText();
 InitializeAnimateOnScroll();
 InitializeGalleries();

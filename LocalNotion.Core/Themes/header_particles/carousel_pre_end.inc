@@ -7,7 +7,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        z-index: 3; /* Higher than carousel content */
+        z-index: 1; /* Higher than carousel content */
 
     }
 </style>

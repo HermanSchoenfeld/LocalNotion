@@ -333,11 +333,11 @@ html {
 
 /* Ensure carousel content stays on top */
 .carousel-inner {
-    z-index: 2; /* Keeps carousel controls and content above particles */
+    z-index: 1; /* Keeps carousel controls and content above particles */
 }
 
 .carousel-control-prev, .carousel-control-next, .carousel-indicators {
-    z-index: 4; /* Keeps carousel controls and content above particles */
+    z-index: 2; /* Keeps carousel controls above caption and particles */
 }
 
 .carousel-caption {
@@ -348,8 +348,7 @@ html {
     width: 100%;
     text-align: center;
     align-content: center;
-    z-index: 3; /* Ensures caption is on top */
-    color: #fff;
+    z-index: 2; /* Ensures caption is on top */
 }
 
 /* Default styles for small screens */

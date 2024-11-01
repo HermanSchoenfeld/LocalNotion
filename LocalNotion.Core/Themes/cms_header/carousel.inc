@@ -69,8 +69,7 @@
 
         scriptTag.remove(); // You can uncomment this to remove the script after execution
     </script>
-
+    {include://shape.inc}
     {include://carousel_pre_end.inc}
 </div>
 {include://carousel_post_end.inc}
-{include://shape.inc}
