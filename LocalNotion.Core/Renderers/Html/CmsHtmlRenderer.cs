@@ -59,7 +59,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens, RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute)})) {
 			IsPartialRendering = false;
-			return RenderPageInternal(title, keywords, content, sections.Min(x => x.CreatedOn), sections.Min(x => x.LastEditedOn), "cms-sectioned-page", id);
+			return RenderPageInternal(title, keywords, cmsItem.Description, content, sections.Min(x => x.CreatedOn), sections.Min(x => x.LastEditedOn), "cms-sectioned-page", id);
 		}
 	}
 
@@ -90,6 +90,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			return RenderPageInternal(
 				contentNode.Title,
 				contentNode.Keywords.ToArray(),
+				contentNode.Summary,
 				RenderTemplate(
 					"articles",
 					new RenderTokens() {
@@ -203,6 +204,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			return RenderPageInternal(
 				galleryTitle,
 				keywords,
+				cmsItem.Description,
 				RenderTemplate(
 					"gallery",
 					new RenderTokens {

@@ -561,6 +561,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderPageInternal(
 			RenderingContext.Resource.Title,
 			RenderingContext.Resource.Keywords,
+			RenderingContext.Resource.CMSProperties?.Summary ?? string.Empty,
 			RenderPageContent(page),
 			page.CreatedTime,
 			page.LastEditedTime,
@@ -568,7 +569,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			page.Id
 		);
 
-	protected string RenderPageInternal(string title, string[] keyWords, string contents, DateTime createdTime, DateTime updatedTime, string objectType, string objectID) {
+	protected string RenderPageInternal(string title, string[] keyWords, string description, string contents, DateTime createdTime, DateTime updatedTime, string objectType, string objectID) {
 		var framingTokens = new RenderTokens() {
 				["object-id"] = objectID,
 				["object-type"] = objectType,
@@ -577,9 +578,9 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				["type"] = "page",
 				["id"] = objectID,
 				["style"] = "wide",
-				["title"] = title,   
-				["description"] = string.Empty,
-				["keywords"] = keyWords.ToDelimittedString(", "),
+				["title"] = title  ?? string.Empty,   
+				["description"] = description ?? string.Empty,
+				["keywords"] = (keyWords ?? []).ToDelimittedString(", "),
 				["author"] = "Local Notion"
 		};
 		return RenderTemplate(
