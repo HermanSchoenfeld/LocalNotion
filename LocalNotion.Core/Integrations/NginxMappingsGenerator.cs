@@ -227,6 +227,8 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		var mappingsFilePath = Path.Combine(CalculateNGinxFolderPath(), "conf", MappingFileName);
 		await using var writer = new FileTextWriter(mappingsFilePath, FileMode.Create);
 		await writer.WriteLineAsync(MappingsFileHeader);
+
+		// Generate entries for hostable resources
 		foreach (var hostableResource in LocalNotionHelper.EnumerateWebHostableResources(LocalNotionRepository)) {
 			var location = LocationTemplate.FormatWithDictionary(
 				new Dictionary<string, string> {
@@ -237,6 +239,9 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 			);
 			await writer.WriteLineAsync(location);
 		}
+
+		// Generate entries for theme resources
+		// TODO
 
 		// Generate sitemap.xml entry
 		var siteMapPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Relative);

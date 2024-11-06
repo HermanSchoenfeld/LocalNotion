@@ -34,13 +34,61 @@ html {
         margin: -100px 0 0 -100px;
     }
 
-.h-15 {    height: 15% !important; }
-.h-10 {    height: 10% !important; }
-.h-5 {     height: 5% !important; }
-.w-15 {    width: 15% !important; }
-.w-10 {    width: 10% !important; }
-.w-5 {     width: 5% !important;}
+ /* Width/Height not available in Bootstrap 5.3 */
+.w-15 { width: 15% !important; }
+.w-10 { width: 10% !important; }
+.w-5 { width: 5% !important; }
+.h-5 { height: 5% !important; }
+.h-10 { height: 10% !important; }
+.h-15 { height: 15% !important; }
 
+/* CMS width/height classes */
+.w-xxs { width: 5rem !important; }
+.w-xs { width: 10rem !important; }
+.w-sm { width: 15rem !important; }
+.w-md { width: 25rem !important; }
+.w-lg { width: 35rem !important; }
+.w-xl { width: 45rem !important; }
+.w-xxl { width: 60rem !important; }
+.h-xxs { height: 5rem !important; }
+.h-xs { height: 10rem !important; }
+.h-sm { height: 15rem !important; }
+.h-md { height: 25rem !important; }
+.h-lg { height: 35rem !important; }
+.h-xl { height: 45rem !important; }
+.h-xxl { height: 60rem !important; }
+
+/* CMS max/min width/height classes */
+.w-min-xxs { min-width: 5rem !important; }
+.w-min-xs { min-width: 10rem !important; }
+.w-min-sm { min-width: 15rem !important; }
+.w-min-md { min-width: 25rem !important; }
+.w-min-lg { min-width: 35rem !important; }
+.w-min-xl { min-width: 45rem !important; }
+.w-min-xxl { min-width: 60rem !important; }
+.w-max-xxs { max-width: 5rem !important; }
+.w-max-xs { max-width: 10rem !important; }
+.w-max-sm { max-width: 15rem !important; }
+.w-max-md { max-width: 25rem !important; }
+.w-max-lg { max-width: 35rem !important; }
+.w-max-xl { max-width: 45rem !important; }
+.w-max-xxl { max-width: 60rem !important; }
+.h-min-xxs { min-height: 5rem !important; }
+.h-min-xs { min-height: 10rem !important; }
+.h-min-sm { min-height: 15rem !important; }
+.h-min-md { min-height: 25rem !important; }
+.h-min-lg { min-height: 35rem !important; }
+.h-min-xl { min-height: 45rem !important; }
+.h-min-xxl { min-height: 60rem !important; }
+.h-max-xxs { max-height: 5rem !important; }
+.h-max-xs { max-height: 10rem !important; }
+.h-max-sm { max-height: 15rem !important; }
+.h-max-md { max-height: 25rem !important; }
+.h-max-lg { max-height: 35rem !important; }
+.h-max-xl { max-height: 45rem !important; }
+.h-max-xxl { max-height: 60rem !important; }
+
+/* Lifting effect */
 .lift {
     box-shadow: 0 0 0 rgba($black, 0);
     transition: box-shadow .25s ease, transform .25s ease;
@@ -57,6 +105,26 @@ html {
     box-shadow: var(--box-shadow-lift-lg) !important;
     transform: translate3d(0, -5px, 0);
 }
+
+/* Text Shadows */
+.text-shadow-sm { text-shadow: 0 0.08em 0.15em rgba(0, 0, 0, 0.1); }
+.text-shadow { text-shadow: 0 0.1em 0.2em rgba(0, 0, 0, 0.15), 0 0.06em 0.12em rgba(0, 0, 0, 0.1); }
+.text-shadow-md { text-shadow: 0 0.2em 0.3em rgba(0, 0, 0, 0.15), 0 0.1em 0.2em rgba(0, 0, 0, 0.1); }
+.text-shadow-lg { text-shadow: 0 0.35em 0.45em rgba(0, 0, 0, 0.15), 0 0.2em 0.3em rgba(0, 0, 0, 0.1); }
+.text-shadow-xl { text-shadow: 0 0.5em 0.7em rgba(0, 0, 0, 0.2), 0 0.3em 0.4em rgba(0, 0, 0, 0.1); }
+.text-shadow-2xl { text-shadow: 0 0.6em 1.2em rgba(0, 0, 0, 0.3); }
+.text-shadow-none { text-shadow: none; }
+
+/* Cursors */
+.cursor-auto { cursor: auto; }
+.cursor-default { cursor: default; }
+.cursor-pointer { cursor: pointer; }
+.cursor-wait { cursor: wait; }
+.cursor-text { cursor: text; }
+.cursor-move { cursor: move; }
+.cursor-not-allowed { cursor: not-allowed; }
+.cursor-crosshair { cursor: crosshair; }
+.cursor-help { cursor: help; }
 
 
 /** NAVBAR **/

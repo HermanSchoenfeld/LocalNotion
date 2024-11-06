@@ -1,1 +1,0 @@
-﻿style="margin:auto; max-width: 15em;"

@@ -1,0 +1,1 @@
+﻿img-thumbnail shadow

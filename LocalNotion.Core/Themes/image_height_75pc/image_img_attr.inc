@@ -1,1 +1,0 @@
-﻿style="height: 75% !important;"
