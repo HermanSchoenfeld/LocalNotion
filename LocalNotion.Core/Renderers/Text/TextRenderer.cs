@@ -406,30 +406,43 @@ public class TextRenderer : RecursiveRendererBase<string> {
 	protected override string Render(VideoBlock block) {
 		switch (block.Video) {
 			case ExternalFile externalFile: {
-				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url)) {
-					if (Tools.Url.TryParseYouTubeUrl(externalFile.External.Url, out var videoID))
-						return RenderYouTubeEmbed(block, videoID);
+				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url, out var platform, out var videoID)) {
+					switch(platform) {
+						case VideoSharingPlatform.YouTube:
+							return $"[YouTube]({videoID}) {block.Video.Caption} " + Environment.NewLine;
 
-					if (Tools.Url.TryParseVimeoUrl(externalFile.External.Url, out videoID))
-						return RenderVimeoEmbed(block, videoID);
+						case VideoSharingPlatform.Rumble:
+							return $"[Rumble]({videoID}) {block.Video.Caption} " + Environment.NewLine;
+
+						case VideoSharingPlatform.BitChute:
+							return $"[BitChute]({videoID}) {block.Video.Caption} " + Environment.NewLine;
+						case VideoSharingPlatform.Vimeo:
+							return $"[Vimeo]({videoID}) {block.Video.Caption} " + Environment.NewLine;
+						default:
+							throw new NotSupportedException(platform.ToString());
+					}
 				}
-				return RenderVideoEmbed(block, externalFile.External.Url);
+
+				return $"[Video]({externalFile.External.Url}) {block.Video.Caption} " + Environment.NewLine;
+
 			}
 			case UploadedFile uploadedFile: {
-				return RenderVideoEmbed(block, "url");
+				return $"[Video]({uploadedFile.File.Url}) {block.Video.Caption} " + Environment.NewLine;
 			}
 			default:
 				throw new ArgumentOutOfRangeException(nameof(block), block, null);
 		}
 	}
+	protected override string Render(EmbedBlock block) {
+		var isXCom = 
+			block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase) ||
+			block.Embed.Url.Contains("x.com", StringComparison.InvariantCultureIgnoreCase);
 
-	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID) => $"https://www.youtube.com/watch?v={videoID}" + Environment.NewLine;
-
-	protected override string RenderVimeoEmbed(VideoBlock videoBlock, string videoID) => $"https://vimeo.com/{videoID}" + Environment.NewLine;
-
-	protected override string RenderVideoEmbed(VideoBlock videoBlock, string url) => url + Environment.NewLine;
-
-	protected override string RenderTwitterEmbed(EmbedBlock embedBlock, string url) => url + Environment.NewLine;
+		if (isXCom) {
+			return block.Embed.Url + Environment.NewLine;
+		}
+		return RenderUnsupported(block);
+	}
 
 	protected override string RenderUnsupported(object @object) => string.Empty + Environment.NewLine;
 

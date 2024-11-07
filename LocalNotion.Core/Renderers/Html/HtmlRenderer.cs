@@ -5,6 +5,8 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 using AngleSharp.Html.Parser;
+using Tools;
+using AngleSharp.Dom;
 
 namespace LocalNotion.Core;
 
@@ -81,6 +83,28 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> outputs.ToDelimittedString(string.Empty);
 
 	#region Values
+
+	protected override string Render(EmbedBlock block) {
+		var isXCom = 
+			block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase) ||
+			block.Embed.Url.Contains("x.com", StringComparison.InvariantCultureIgnoreCase);
+
+		if (isXCom) {
+			return RenderTemplate(
+				"embed_x",
+				new RenderTokens(block) {
+					["url"] = SanitizeUrl(block.Embed.Url),
+					["caption"] = Render(block.Embed.Caption)
+				}
+			);
+		}
+
+		if (Tools.Url.IsVideoSharingUrl(block.Embed.Url, out var platform, out var videoID)) 
+			return RenderSocialMediaVideo(block, platform, videoID, Render(block.Embed.Caption));
+		
+
+		return RenderUnsupported(block);
+	}
 
 	protected override string Render(EmojiObject emojiObject)
 		 => emojiObject.Emoji;
@@ -1243,59 +1267,61 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(VideoBlock block) {
 		switch (block.Video) {
 			case ExternalFile externalFile: {
-				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url)) {
-					if (Tools.Url.TryParseYouTubeUrl(externalFile.External.Url, out var videoID))
-						return RenderYouTubeEmbed(block, videoID);
+				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url, out var platform, out var videoID)) 
+					return RenderSocialMediaVideo(block, platform, videoID, Render(block.Video.Caption));
 
-					if (Tools.Url.TryParseVimeoUrl(externalFile.External.Url, out videoID))
-						return RenderVimeoEmbed(block, videoID);
-				}
-				return RenderVideoEmbed(block, externalFile.External.Url);
+				return  RenderTemplate(
+					"embed_video",
+					new RenderTokens(block) {
+						["caption"] = Render(block.Video.Caption),
+						["url"] = Render(externalFile.External.Url)
+					}
+				);
 			}
 			case UploadedFile uploadedFile: {
 				var url = Resolver.GenerateUploadedFileLink(RenderingContext.Resource, uploadedFile, out _);
-				return RenderVideoEmbed(block, url);
+				return RenderTemplate(
+					"embed_video",
+					new RenderTokens(block) {
+						["caption"] = Render(block.Video.Caption),
+						["url"] = Render(url)
+					}
+				);
 			}
 			default:
 				throw new ArgumentOutOfRangeException(nameof(block), block, null);
 		}
 	}
-
-	protected override string RenderYouTubeEmbed(VideoBlock videoBlock, string videoID)
-		=> RenderTemplate(
-			"embed_youtube",
-			new RenderTokens(videoBlock) {
-				["caption"] = Render(videoBlock.Video.Caption),
-				["video_id"] = videoID,
-			}
-		);
-
-	protected override string RenderVimeoEmbed(VideoBlock videoBlock, string videoID)
-		=> RenderTemplate(
-			"embed_vimeo",
-			new RenderTokens(videoBlock) {
-				["caption"] = Render(videoBlock.Video.Caption),
-				["video_id"] = videoID,
-			}
-		);
-
-	protected override string RenderVideoEmbed(VideoBlock videoBlock, string url)
-		=> RenderTemplate(
-			"embed_video",
-			new RenderTokens(videoBlock) {
-				["caption"] = Render(videoBlock.Video.Caption),
-				["url"] = Render(videoBlock.Video)
-			}
-		);
-
-	protected override string RenderTwitterEmbed(EmbedBlock embedBlock, string url)
-		=> RenderTemplate(
-			"embed_x",
-			new RenderTokens(embedBlock) {
-				["url"] = SanitizeUrl(embedBlock.Embed.Url),
-				["caption"] = Render(embedBlock.Embed.Caption)
-			}
-		);
+	
+	protected virtual string RenderSocialMediaVideo(Block block, VideoSharingPlatform platform, string videoID, string caption) {
+		return platform switch {
+			VideoSharingPlatform.YouTube => RenderTemplate(
+				"embed_youtube",
+				new RenderTokens(block) {
+					["caption"] = Render(caption),
+					["video_id"] = videoID,
+				}),
+			VideoSharingPlatform.Rumble => RenderTemplate(
+				"embed_rumble",
+				new RenderTokens(block) {
+					["caption"] = Render(caption),
+					["video_id"] = videoID,
+				}),
+			VideoSharingPlatform.BitChute => RenderTemplate(
+				"embed_bitchute",
+				new RenderTokens(block) {
+					["caption"] = Render(caption),
+					["video_id"] = videoID,
+				}),
+			VideoSharingPlatform.Vimeo => RenderTemplate(
+				"embed_vimeo",
+				new RenderTokens(block) {
+					["caption"] = Render(caption),
+					["video_id"] = videoID,
+				}),
+			_ => throw new NotSupportedException(platform.ToString())
+		};
+	}
 
 	protected override string RenderUnsupported(object @object)
 		=> RenderTemplate(

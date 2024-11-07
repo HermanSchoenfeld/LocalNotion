@@ -126,16 +126,16 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			var primaryPage = articleNode.Content.First();
 			// TODO:
 			// figure out images to use here
-			var backgroundImage = TryGetPageFeature(primaryPage, null, null, null, out var url) ? url : "https://via.placeholder.com/200";
+			var backgroundImage = TryGetPageFeature(primaryPage, null, null, null, out var url) ? url : string.Empty;
 			var thumbnailImage = articleNode.Thumbnail.Type switch {
-				ThumbnailType.Image => articleNode.Thumbnail.Data.ToNullWhenWhitespace() ?? "https://via.placeholder.com/200",
+				ThumbnailType.Image => articleNode.Thumbnail.Data.ToNullWhenWhitespace() ?? string.Empty,
 				_ => null
 			};
 
 			// do not use a background image if same as thumbnail
 			if (!string.IsNullOrWhiteSpace(backgroundImage) && !string.IsNullOrWhiteSpace(thumbnailImage) && Tools.FileSystem.DoPathsReferToSameFileName(backgroundImage, thumbnailImage)) {
 				// background and thumbnail same, use cover for background
-				backgroundImage = TryGetPageFeature(primaryPage, null, true, null, out url) ? url : "https://via.placeholder.com/200";
+				backgroundImage = TryGetPageFeature(primaryPage, null, true, null, out url) ? url : string.Empty;
 				if (!string.IsNullOrWhiteSpace(backgroundImage) && !string.IsNullOrWhiteSpace(thumbnailImage) && Tools.FileSystem.DoPathsReferToSameFileName(backgroundImage, thumbnailImage)) {
 					backgroundImage = string.Empty;
 				}

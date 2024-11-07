@@ -118,6 +118,8 @@
 	  <None Remove="Themes\code_all\.config.json" />
 	  <None Remove="Themes\code_inject\code.html" />
 	  <None Remove="Themes\code_all\page_content.html" />
+	  <None Remove="Themes\default\embed_bitchute.html" />
+	  <None Remove="Themes\default\embed_rumble.html" />
 	  <None Remove="Themes\default\text_size.inc" />
 	  <None Remove="Themes\h123_shadow_lg\.config.json" />
 	  <None Remove="Themes\h123_shadow_lg\h123_shadow.inc" />
@@ -1009,6 +1011,8 @@
 	  <EmbeddedResource Include="Themes\cms_section\section_post.inc" />
 	  <EmbeddedResource Include="Themes\code_all\.config.json" />
 	  <EmbeddedResource Include="Themes\code_all\page_content.html" />
+	  <EmbeddedResource Include="Themes\default\embed_bitchute.html" />
+	  <EmbeddedResource Include="Themes\default\embed_rumble.html" />
 	  <EmbeddedResource Include="Themes\default\text_size.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow_lg\.config.json" />
 	  <EmbeddedResource Include="Themes\h123_shadow_lg\h123_shadow.inc" />

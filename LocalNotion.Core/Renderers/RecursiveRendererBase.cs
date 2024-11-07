@@ -123,16 +123,7 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	protected abstract TOutput Render(VideoBlock block);
 
-	protected virtual TOutput Render(EmbedBlock block) {
-		var isXCom = 
-			block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase) ||
-			block.Embed.Url.Contains("x.com", StringComparison.InvariantCultureIgnoreCase);
-
-		if (isXCom) {
-			return RenderTwitterEmbed(block, block.Embed.Url);
-		}
-		return RenderUnsupported(block);
-	}
+	protected abstract TOutput Render(EmbedBlock block);
 
 	#endregion
 
@@ -403,14 +394,6 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 	protected abstract TOutput RenderText(string content, bool isUrl, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, (string Url, TOutput Icon, TOutput Indicator) urlInfo = default);
 
 	protected abstract TOutput RenderReference(string objectID, bool isInline, bool omitIndicator = false);
-
-	protected abstract TOutput RenderYouTubeEmbed(VideoBlock videoBlock, string videoID);
-
-	protected abstract TOutput RenderVimeoEmbed(VideoBlock videoBlock, string videoID);
-
-	protected abstract TOutput RenderVideoEmbed(VideoBlock videoBlock, string url);
-
-	protected abstract TOutput RenderTwitterEmbed(EmbedBlock embedBlock, string url);
 
 	protected abstract TOutput RenderUnsupported(object @object);
 
