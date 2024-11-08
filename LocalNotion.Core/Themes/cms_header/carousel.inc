@@ -32,12 +32,23 @@
 
             // Fix up slide HTML (can't be done in editor)
             for (var i = 0; i < carouselItems.length; i++) {
-                // (1) Check if the first child of carousel-caption is an image and move it to be a child of the carousel-item
+                // For every carousel item, configure the background image (if present)
                 var caption = carouselItems[i].querySelector('.carousel-caption');
-                if (caption && caption.firstElementChild && caption.firstElementChild.tagName === 'IMG') {
-                    var img = caption.firstElementChild;
-                    caption.removeChild(img);
-                    carouselItems[i].insertBefore(img, caption); // Move the image to be a direct child of the carousel-item
+                var backgroundImage = carouselItems[i].querySelector('img[alt="{BACKGROUND}"], img[alt=" {BACKGROUND}"], img[alt="{BACKGROUND} "]');
+                if (backgroundImage) {
+                    // remember the parent of background image
+                    var imageParent = backgroundImage.parentNode;
+                    
+                    // move background image before caption (and set classes)
+                    backgroundImage.className = "d-block h-100 w-100 object-fit-cover";
+                    carouselItems[i].insertBefore(backgroundImage, caption); // Move the image to be a direct child of the carousel-item
+
+                    // remove all the old ancestors of image
+                    while (imageParent && imageParent != caption) {
+                        var imageGrandParent = imageParent.parentNode;
+                        imageGrandParent.removeChild(imageParent);
+                        imageParent = imageGrandParent;
+                    }
                 }
             }
         }

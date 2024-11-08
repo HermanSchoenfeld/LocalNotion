@@ -88,6 +88,7 @@
 	  <None Remove="Themes\cms\image_zoomable.inc" />
 	  <None Remove="Themes\cms\page_title.html" />
 	  <None Remove="Themes\cms\paragraph.html" />
+	  <None Remove="Themes\cms\quote.html" />
 	  <None Remove="Themes\cms\resources\img\bx_loader.gif" />
 	  <None Remove="Themes\cms\resources\js\BigPicture.min.js" />
 	  <None Remove="Themes\cms\resources\js\cms_post2.js" />
@@ -107,8 +108,8 @@
 	  <None Remove="Themes\cms_header\carousel_post_start.inc" />
 	  <None Remove="Themes\cms_header\carousel_pre_end.inc" />
 	  <None Remove="Themes\cms_header\carousel_pre_start.inc" />
-	  <None Remove="Themes\cms_header\image.html" />
 	  <None Remove="Themes\cms_gallery\.config.json" />
+	  <None Remove="Themes\cms_header\image.html.old" />
 	  <None Remove="Themes\cms_navbar\navbar_position.inc" />
 	  <None Remove="Themes\cms_section\gallery.html" />
 	  <None Remove="Themes\cms_section\section_padding_bottom.inc" />
@@ -223,8 +224,11 @@
 	  <None Remove="Themes\image_width_xxs\image_width.inc" />
 	  <None Remove="Themes\image_zoomable\image_cursor.inc" />
 	  <None Remove="Themes\navbar_fixed_bottom\.config.json" />
+	  <None Remove="Themes\navbar_fixed_bottom\navbar_position.inc" />
 	  <None Remove="Themes\navbar_fixed_top\.config.json" />
+	  <None Remove="Themes\navbar_fixed_top\navbar_position.inc" />
 	  <None Remove="Themes\navbar_sticky_bottom\.config.json" />
+	  <None Remove="Themes\navbar_sticky_bottom\navbar_position.inc" />
 	  <None Remove="Themes\navbar_sticky_top\.config.json" />
 	  <None Remove="Themes\image_zoomable\image_zoomable.inc" />
 	  <None Remove="Themes\h123_shadow\.config.json" />
@@ -331,6 +335,7 @@
 	  <None Remove="Themes\cms_section\shape.inc" />
 	  <None Remove="Themes\header_small\carousel_height.inc" />
 	  <None Remove="Themes\code_inject\.config.json" />
+	  <None Remove="Themes\navbar_sticky_top\navbar_position.inc" />
 	  <None Remove="Themes\quote_no_indent\.config.json" />
 	  <None Remove="Themes\quote_no_indent\quote.html" />
 	  <None Remove="Themes\section_padding_bottom_none\.config.json" />
@@ -982,6 +987,7 @@
 	  <EmbeddedResource Include="Themes\cms\image_framed.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_width.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_height.inc" />
+	  <EmbeddedResource Include="Themes\cms\quote.html" />
 	  <EmbeddedResource Include="Themes\cms\text_align.inc" />
 	  <EmbeddedResource Include="Themes\cms\page_title.html" />
 	  <EmbeddedResource Include="Themes\cms\paragraph.html" />
@@ -999,7 +1005,7 @@
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pre_end.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pre_start.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_height.inc" />
-	  <EmbeddedResource Include="Themes\cms_header\image.html" />
+	  <EmbeddedResource Include="Themes\cms_header\image.html.old" />
 	  <EmbeddedResource Include="Themes\cms_gallery\.config.json" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_card.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery.html" />
@@ -1115,8 +1121,11 @@
 	  <EmbeddedResource Include="Themes\image_framed\image_framed.inc" />
 	  <EmbeddedResource Include="Themes\image_zoomable\image_cursor.inc" />
 	  <EmbeddedResource Include="Themes\navbar_fixed_bottom\.config.json" />
+	  <EmbeddedResource Include="Themes\navbar_fixed_bottom\navbar_position.inc" />
 	  <EmbeddedResource Include="Themes\navbar_fixed_top\.config.json" />
+	  <EmbeddedResource Include="Themes\navbar_fixed_top\navbar_position.inc" />
 	  <EmbeddedResource Include="Themes\navbar_sticky_bottom\.config.json" />
+	  <EmbeddedResource Include="Themes\navbar_sticky_bottom\navbar_position.inc" />
 	  <EmbeddedResource Include="Themes\navbar_sticky_top\.config.json" />
 	  <EmbeddedResource Include="Themes\image_width_75pc\.config.json" />
 	  <EmbeddedResource Include="Themes\image_height_75pc\.config.json" />
@@ -1217,6 +1226,7 @@
 	  <EmbeddedResource Include="Themes\header_small\carousel_height.inc" />
 	  <EmbeddedResource Include="Themes\code_inject\.config.json" />
 	  <EmbeddedResource Include="Themes\code_inject\code.html" />
+	  <EmbeddedResource Include="Themes\navbar_sticky_top\navbar_position.inc" />
 	  <EmbeddedResource Include="Themes\quote_no_indent\.config.json" />
 	  <EmbeddedResource Include="Themes\quote_no_indent\quote.html" />
 	  <EmbeddedResource Include="Themes\section_padding_bottom_none\.config.json" />

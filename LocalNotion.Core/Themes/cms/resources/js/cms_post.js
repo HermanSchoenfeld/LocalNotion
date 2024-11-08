@@ -65,7 +65,7 @@ function SetActiveNavbarItems() {
         const href = link.getAttribute('href');
 
         // Ignore links with href="#" or empty href
-        if (!href || href === '#' || href === '') {
+        if (!href || href.includes('#') || href === '') {
             continue;
         }
 
@@ -125,6 +125,13 @@ function InitializeSectionSeparatorShapes() {
         return false;
     }
 
+    function IsVisible(element) {
+        const nonVisualTags = ['script', 'style', 'meta', 'link'];
+        return !nonVisualTags.includes(element.tagName.toLowerCase()) &&
+            getComputedStyle(element).display !== 'none' &&
+            getComputedStyle(element).visibility !== 'hidden';
+    }
+
     document.querySelectorAll('.shape').forEach(function (shape) {
         const shapeContainerDiv = shape.closest('.shape-container'); // Get the shape container
         if (!shapeContainerDiv)
@@ -139,6 +146,10 @@ function InitializeSectionSeparatorShapes() {
         } else if (nextContent.tagName.toLowerCase() === 'main') {
             // If the nextContent is a <main>, get its first child
             nextContent = nextContent.firstElementChild;
+            // Keep iterating until we find a non-script tag
+            while (nextContent && !IsVisible(nextContent)) {
+                nextContent = nextContent.nextElementSibling;
+            }
         }
 
         if (nextContent) {

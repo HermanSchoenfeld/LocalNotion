@@ -115,6 +115,9 @@ html {
 .text-shadow-2xl { text-shadow: 0 0.6em 1.2em rgba(0, 0, 0, 0.3); }
 .text-shadow-none { text-shadow: none; }
 
+/* Text Alignment (missing from Bootstrap 5.3) */
+.text-justify { text-align: justify !important; }
+    
 /* Cursors */
 .cursor-auto { cursor: auto; }
 .cursor-default { cursor: default; }
