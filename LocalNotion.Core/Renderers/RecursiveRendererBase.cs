@@ -135,7 +135,7 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	protected abstract string Render(Date date);
 
-	protected abstract string Render(DateTime? date);
+	protected abstract string Render(DateTimeOffset? date);
 
 	protected abstract string Render(bool? val);
 

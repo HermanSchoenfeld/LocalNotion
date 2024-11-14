@@ -17,10 +17,16 @@ public static class PlainTextExtensions {
 	}
 
 	public static string ToPlainText(this DateTime? dateTime) 
-		=> $"{dateTime:yyyy-MM-dd HH:mm:ss.fff}";
+		=> $"{dateTime:yyyy-MM-dd HH:mm:ss.fff zzz}";
 
 	public static string ToPlainText(this DateTime dateTime) 
-		=> $"{dateTime:yyyy-MM-dd HH:mm:ss.fff}";
+		=> $"{dateTime:yyyy-MM-dd HH:mm:ss.fff zzz}";
+
+	public static string ToPlainText(this DateTimeOffset? dateTime) 
+		=> $"{dateTime:yyyy-MM-dd HH:mm:ss.fff zzz}";
+
+	public static string ToPlainText(this DateTimeOffset dateTime) 
+		=> $"{dateTime:yyyy-MM-dd HH:mm:ss.fff zzz}";
 
 	public static string ToPlainText(this double? number) 
 		=> $"{number}";

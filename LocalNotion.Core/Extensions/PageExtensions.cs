@@ -15,7 +15,7 @@ public static class PageExtensions {
 		return propertyValue.ToPlainText();
 	}
 
-	public static DateTime? GetPropertyDate(this Page page, string propertyName) {
+	public static DateTimeOffset? GetPropertyDate(this Page page, string propertyName) {
 		if (!page.Properties.TryGetValue(propertyName, out var propertyValue))
 			throw new InvalidOperationException($"Property '{propertyName}' not found");
 		var datePropertyValue = propertyValue as DatePropertyValue;

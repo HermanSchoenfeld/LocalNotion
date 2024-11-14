@@ -452,8 +452,17 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 					keywords = LocalNotionHelper.CombineMultiPageKeyWords(pageParts.Select(x => x.Keywords)).ToArray();
 				}
 				break;
-			case CMSContentType.File:
 			case CMSContentType.None:
+				// this will be a unpublished item
+				type = 0;
+				title = string.Empty;
+				description = string.Empty;
+				image = string.Empty;
+				parts = [];
+				keywords = [];
+				return false;
+				break;
+			case CMSContentType.File:
 			default:
 				throw new NotImplementedException(contentNode.Type.ToString());
 		}

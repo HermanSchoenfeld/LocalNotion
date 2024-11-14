@@ -10,7 +10,7 @@ public class CMSProperties {
 	public CMSPageType PageType { get; set; }
 
 	[JsonProperty("publish_on", NullValueHandling = NullValueHandling.Ignore)]
-	public DateTime? PublishOn { get; set; }
+	public DateTimeOffset? PublishOn { get; set; }
 
 	[JsonProperty("status", NullValueHandling = NullValueHandling.Ignore)]
 	[JsonConverter(typeof(StringEnumConverter))]

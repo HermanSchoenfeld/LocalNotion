@@ -46,7 +46,7 @@ namespace LocalNotion.Core {
 		public string GetPropertyPlainTextValue(string propertyName)
 			=> GetPropertyObject(propertyName).ToPlainText();
 
-		public DateTime? GetPropertyDateValue(string propertyName) {
+		public DateTimeOffset? GetPropertyDateValue(string propertyName) {
 			var dateProp = GetPropertyObject<DatePropertyItem>(propertyName);
 			return dateProp.Date?.Start ?? dateProp.Date?.End;
 		}

@@ -5,6 +5,7 @@
 :root {
     --box-shadow-lift: 0 1rem 2.5rem rgba(0, 0, 0, 0.9), 0 .5rem 1rem -.75rem rgba(0, 0, 0, 0.9);
     --box-shadow-lift-lg: 0 2rem 5rem rgba(0, 0, 0, 0.9), 0 .5rem 1rem -.75rem rgba(0, 0, 0, 0.95);
+    --spacer: 1rem;  /* should match bootstrap theme used */
 }
 
 /** Global **/
@@ -12,6 +13,7 @@ html {
     scroll-padding-top: 5em;
 }
 
+/* Loading */
 #preloader {
     position: fixed;
     top: 0;
@@ -34,6 +36,17 @@ html {
         margin: -100px 0 0 -100px;
     }
 
+/* Large Spacer Classes not available in Bootstrap 5.3 */
+.mt-lg { margin-top: calc(var(--spacer) * 6) !important; }
+.mb-lg { margin-bottom: calc(var(--spacer) * 6) !important; }
+.ms-lg { margin-inline-start: calc(var(--spacer) * 6) !important; }
+.me-lg { margin-inline-end: calc(var(--spacer) * 6) !important; }
+
+.pt-lg { padding-top: calc(var(--spacer) * 6) !important; }
+.pb-lg { padding-bottom: calc(var(--spacer) * 6) !important; }
+.ps-lg { padding-inline-start: calc(var(--spacer) * 6) !important; }
+.pe-lg { padding-inline-end: calc(var(--spacer) * 6) !important; }
+
  /* Width/Height not available in Bootstrap 5.3 */
 .w-15 { width: 15% !important; }
 .w-10 { width: 10% !important; }
@@ -42,7 +55,7 @@ html {
 .h-10 { height: 10% !important; }
 .h-15 { height: 15% !important; }
 
-/* CMS width/height classes */
+/* CMS width/height classes not available in Bootstrap 5.3 */
 .w-xxs { width: 5rem !important; }
 .w-xs { width: 10rem !important; }
 .w-sm { width: 15rem !important; }
@@ -58,7 +71,7 @@ html {
 .h-xl { height: 45rem !important; }
 .h-xxl { height: 60rem !important; }
 
-/* CMS max/min width/height classes */
+/* CMS max/min width/height classes not available in Bootstrap 5.3 */
 .w-min-xxs { min-width: 5rem !important; }
 .w-min-xs { min-width: 10rem !important; }
 .w-min-sm { min-width: 15rem !important; }

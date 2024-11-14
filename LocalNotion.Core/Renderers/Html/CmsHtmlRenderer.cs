@@ -339,6 +339,8 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		var cmsDatabase = Repository.GetDatabase(Repository.CMSDatabaseID);
 		tokens["site_icon_url"] = cmsDatabase.Thumbnail.Type == ThumbnailType.Image ? cmsDatabase.Thumbnail.Data : string.Empty;
 
+		tokens["color"] = "default";
+
 		return tokens;
 	}
 

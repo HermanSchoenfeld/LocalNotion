@@ -129,8 +129,8 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		return date.End == null ? start : $"{start} - {end}";
 	}
 
-	protected override string Render(DateTime? date)
-		=> date != null ? date.ToString("yyyy-MM-dd HH:mm") : "Empty";
+	protected override string Render(DateTimeOffset? date)
+		=> date != null ? $"{date:yyyy-MM-dd HH:mm zzz}" : "Empty";
 
 	protected override string Render(bool? val)
 		=> !val.HasValue ? string.Empty : val.Value ? "[X]" : "[ ]";
@@ -785,6 +785,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 														 ["url"] = Render(fileObject)
 													 }
 												),
+						CustomEmojiObject customEmojiObject => RenderTemplate(
+							"icon_image",
+							new RenderTokens(block) {
+								["url"] = Render(customEmojiObject)
+							}
+						),
 						null => string.Empty,
 						_ => throw new ArgumentOutOfRangeException()
 					},
@@ -1261,6 +1267,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			EmojiObject emojiObject => Render(emojiObject),
 			ExternalFile externalFile => (string)(object)GetFileUrl(externalFile, out _),   // WARNING: ugly cast hack here
 			UploadedFile uploadedFile => (string)(object)GetFileUrl(uploadedFile, out _),   // WARNING: ugly cast hack here
+			CustomEmojiObject customEmojiObject => customEmojiObject.Emoji.Url,
 			_ => throw new NotSupportedException()
 		};
 

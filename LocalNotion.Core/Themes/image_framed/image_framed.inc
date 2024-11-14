@@ -1,1 +1,1 @@
-﻿img-thumbnail shadow
+﻿img-thumbnail

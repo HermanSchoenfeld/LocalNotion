@@ -66,12 +66,14 @@ public class LocalNotionHelper {
 					null => ThumbnailType.None,
 					EmojiObject => ThumbnailType.Emoji,
 					FileObject => ThumbnailType.Image,
+					CustomEmojiObject => ThumbnailType.Image,
 					_ => throw new ArgumentOutOfRangeException()
 				},
 
 				Data = notionPage.Icon switch {
 					EmojiObject emojiObject => emojiObject.Emoji,
 					FileObject fileObject => ParseFileUrl(fileObject, out _),
+					CustomEmojiObject customEmojiObject => customEmojiObject.Emoji.Url,
 					_ => throw new ArgumentOutOfRangeException()
 				}
 			};

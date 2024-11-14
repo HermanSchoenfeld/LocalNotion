@@ -21,21 +21,27 @@ public class WrappedNotionFile {
 			case UploadedFile uploadedFile:
 				Init(uploadedFile);
 				break;
+			case CustomEmojiObject customEmojiObject:
+				Init(customEmojiObject);
+				break;
 			default:
 				throw new NotSupportedException(obj.GetType().ToString());
 		}
 	}
 
 	public WrappedNotionFile(FileObject fileObject) {
-		_getUrlFunc = fileObject.GetUrl;
-		_setUrlFunc = fileObject.SetUrl;
-		FileObject = fileObject;
+		Init(fileObject);
 	}
 
 	public WrappedNotionFile(FileObjectWithName fileObjectWithName) {
-		_getUrlFunc = fileObjectWithName.GetUrl;
-		_setUrlFunc = fileObjectWithName.SetUrl;
-		FileObject = fileObjectWithName;
+		Init(fileObjectWithName);
+	}
+
+
+	public WrappedNotionFile(CustomEmojiObject customEmoji) {
+		_getUrlFunc = () => customEmoji.Emoji.Url;
+		_setUrlFunc  = v => customEmoji.Emoji.Url = v;
+		FileObject = customEmoji;
 	}
 
 	public void Init(FileObject fileObject) {
@@ -48,6 +54,12 @@ public class WrappedNotionFile {
 		_getUrlFunc = fileObjectWithName.GetUrl;
 		_setUrlFunc = fileObjectWithName.SetUrl;
 		FileObject = fileObjectWithName;
+	}
+
+	public void Init(CustomEmojiObject customEmoji) {
+		_getUrlFunc = () => customEmoji.Emoji.Url;
+		_setUrlFunc  = v => customEmoji.Emoji.Url = v;
+		FileObject = customEmoji;
 	}
 
 	public string GetUrl() => _getUrlFunc();

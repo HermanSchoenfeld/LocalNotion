@@ -132,26 +132,47 @@ function InitializeSectionSeparatorShapes() {
             getComputedStyle(element).visibility !== 'hidden';
     }
 
+    function GetNextLogicalSibling(element) {
+        // If the element has a next sibling, return it
+        if (element.nextElementSibling) {
+            return element.nextElementSibling;
+        }
+
+        // If there's no next sibling, move up to the parent and try to get the parent's next sibling
+        let parent = element.parentElement;
+        while (parent) {
+            if (parent.nextElementSibling) {
+                return parent.nextElementSibling;
+            }
+            parent = parent.parentElement; // Keep moving up the hierarchy
+        }
+
+        // If no logical sibling is found, return null
+        return null;
+    }
+
+    function GetNextVisibleLogicalSibling(element) {
+        let nextElement = GetNextLogicalSibling(element);
+        while (nextElement && !IsVisible(nextElement)) {
+            nextElement = GetNextLogicalSibling(nextElement);
+        }
+        return nextElement;
+    }
+
+    // Process each shape
     document.querySelectorAll('.shape').forEach(function (shape) {
         const shapeContainerDiv = shape.closest('.shape-container'); // Get the shape container
         if (!shapeContainerDiv)
             return; // some other shape (not a page separating shape)
         let currentContent = shapeContainerDiv.parentElement;
 
-        let nextContent = currentContent.nextElementSibling; // Get the next sibling
-
-        // If no next sibling exists, get the parent's next sibling
-        if (!nextContent) {
-            nextContent = currentContent.parentElement.nextElementSibling;
-        } else if (nextContent.tagName.toLowerCase() === 'main') {
+        let nextContent = GetNextVisibleLogicalSibling(currentContent); // Get the next sibling
+        if (nextContent && nextContent.tagName.toLowerCase() === 'main') {
             // If the nextContent is a <main>, get its first child
             nextContent = nextContent.firstElementChild;
-            // Keep iterating until we find a non-script tag
-            while (nextContent && !IsVisible(nextContent)) {
-                nextContent = nextContent.nextElementSibling;
-            }
+            if (nextContent && !IsVisible(nextContent))
+                nextContent = GetNextVisibleLogicalSibling(nextContent);
         }
-
         if (nextContent) {
             const sectionColor = GetEffectiveBackgroundColor(nextContent); // Get effective background color
             const svgPath = shape.querySelector('svg path'); // Find the path inside the SVG

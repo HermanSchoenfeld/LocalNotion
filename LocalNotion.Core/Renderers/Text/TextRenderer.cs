@@ -30,8 +30,8 @@ public class TextRenderer : RecursiveRendererBase<string> {
 		return date.End == null ? start : $"{start} - {end}";
 	}
 
-	protected override string Render(DateTime? date)
-		=> date != null ? date.ToString("yyyy-MM-dd HH:mm") : "Empty";
+	protected override string Render(DateTimeOffset? date)
+		=> date != null ? $"{date:yyyy-MM-dd HH:mm zzz}" : "Empty";
 
 	protected override string Render(bool? val)
 		=> !val.HasValue ? string.Empty : val.Value ? "[X]" : "[ ]";

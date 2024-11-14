@@ -141,7 +141,7 @@ public class NotionSyncOrchestrator {
 					if (file != null) {
 						localDatabase.Thumbnail.Data = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
-						((FileObject)notionDatabase.Icon).SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
+						notionDatabase.Icon.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
 
 						// track new file
 						downloadedResources.Add(file);
@@ -357,7 +357,7 @@ public class NotionSyncOrchestrator {
 					if (file != null) {
 						localPage.Thumbnail.Data = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
 						// update notion object with url (this is a component object and saved with page)
-						((FileObject)notionPage.Icon).SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
+						notionPage.Icon.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
 
 						// track new file
 						downloadedResources.Add(file);
@@ -370,7 +370,7 @@ public class NotionSyncOrchestrator {
 						.VisitAll()
 						.Where(x => pageObjects[x.ObjectID].HasFileAttachment())
 						.Select(x => pageObjects[x.ObjectID].GetFileAttachment())
-						.Where(x => x is FileObject || x is FileObjectWithName)
+						.Where(x => x is FileObject || x is FileObjectWithName || x is CustomEmojiObject)
 						.Select(x => new WrappedNotionFile(x))
 						.Union(
 							notionPage
