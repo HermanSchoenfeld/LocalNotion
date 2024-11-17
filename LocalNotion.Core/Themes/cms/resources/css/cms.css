@@ -144,6 +144,10 @@ html {
 
 
 /** NAVBAR **/
+.nav-logo-size {
+    max-height: 3rem !important;
+}
+
 .nav-link {
     border-bottom: 2px solid transparent;
     border-radius: var(--bs-border-radius);

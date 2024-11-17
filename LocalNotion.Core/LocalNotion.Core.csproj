@@ -77,6 +77,7 @@
 	  <None Remove="Themes\cms\callout.html" />
 	  <None Remove="Themes\cms\callout_shadow.inc" />
 	  <None Remove="Themes\cms\column_valign.inc" />
+	  <None Remove="Themes\cms\h123_padding.inc" />
 	  <None Remove="Themes\cms\h1_color.inc" />
 	  <None Remove="Themes\cms\h1_fontsize.inc" />
 	  <None Remove="Themes\cms\h1_shadow.inc" />
@@ -120,7 +121,9 @@
 	  <None Remove="Themes\cms_gallery\gallery_card.html" />
 	  <None Remove="Themes\cms_gallery\gallery_card_cover.html" />
 	  <None Remove="Themes\cms_header\carousel.inc" />
+	  <None Remove="Themes\cms_header\carousel_buttons.inc" />
 	  <None Remove="Themes\cms_header\carousel_height.inc" />
+	  <None Remove="Themes\cms_header\carousel_indicators.inc" />
 	  <None Remove="Themes\cms_header\carousel_post_end.inc" />
 	  <None Remove="Themes\cms_header\carousel_post_start.inc" />
 	  <None Remove="Themes\cms_header\carousel_pre_end.inc" />
@@ -146,6 +149,8 @@
 	  <None Remove="Themes\h123_color_aux\h1_color.inc" />
 	  <None Remove="Themes\h123_color_aux\h2_color.inc" />
 	  <None Remove="Themes\h123_color_aux\h3_color.inc" />
+	  <None Remove="Themes\h123_default_padding\.config.json" />
+	  <None Remove="Themes\h123_default_padding\h123_padding.inc" />
 	  <None Remove="Themes\h123_shadow\h1_shadow.inc" />
 	  <None Remove="Themes\h123_shadow\h2_shadow.inc" />
 	  <None Remove="Themes\h123_shadow\h3_shadow.inc" />
@@ -162,6 +167,9 @@
 	  <None Remove="Themes\image_width_25pc\image_width.inc" />
 	  <None Remove="Themes\image_width_50pc\image_width.inc" />
 	  <None Remove="Themes\image_width_75pc\image_width.inc" />
+	  <None Remove="Themes\header_no_slide_controls\.config.json" />
+	  <None Remove="Themes\header_no_slide_controls\carousel_buttons.inc" />
+	  <None Remove="Themes\header_no_slide_controls\carousel_indicators.inc" />
 	  <None Remove="Themes\shadow_none\.config.json" />
 	  <None Remove="Themes\shadow_none\shadow.inc" />
 	  <None Remove="Themes\shadow_none\text-shadow.inc" />
@@ -321,9 +329,6 @@
 	  <None Remove="Themes\header_fade\.config.json" />
 	  <None Remove="Themes\header_fade\carousel_type.inc" />
 	  <None Remove="Themes\cms_header\carousel_type.inc" />
-	  <None Remove="Themes\cms_header\heading_1.html" />
-	  <None Remove="Themes\cms_header\heading_2.html" />
-	  <None Remove="Themes\cms_header\heading_3.html" />
 	  <None Remove="Themes\cms_header\page_content.html" />
 	  <None Remove="Themes\cms_header\paragraph.html" />
 	  <None Remove="Themes\cms_header\toggle_closed.html" />
@@ -1039,6 +1044,7 @@
 	  <EmbeddedResource Include="Themes\cms\column_valign.inc" />
 	  <EmbeddedResource Include="Themes\cms\callout_shadow.inc" />
 	  <EmbeddedResource Include="Themes\cms\button_shadow.inc" />
+	  <EmbeddedResource Include="Themes\cms\h123_padding.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_shadow.inc" />
 	  <EmbeddedResource Include="Themes\cms\text-shadow.inc" />
 	  <EmbeddedResource Include="Themes\cms\shadow.inc" />
@@ -1078,6 +1084,8 @@
 	  <EmbeddedResource Include="Themes\cms_articles\articles_summary_feature.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_card_cover.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_badge.html" />
+	  <EmbeddedResource Include="Themes\cms_header\carousel_buttons.inc" />
+	  <EmbeddedResource Include="Themes\cms_header\carousel_indicators.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_post_end.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_post_start.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pre_end.inc" />
@@ -1104,6 +1112,8 @@
 	  <EmbeddedResource Include="Themes\h123_color_aux\h1_color.inc" />
 	  <EmbeddedResource Include="Themes\h123_color_aux\h2_color.inc" />
 	  <EmbeddedResource Include="Themes\h123_color_aux\h3_color.inc" />
+	  <EmbeddedResource Include="Themes\h123_default_padding\.config.json" />
+	  <EmbeddedResource Include="Themes\h123_default_padding\h123_padding.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow\h1_shadow.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow\h2_shadow.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow\h3_shadow.inc" />
@@ -1125,6 +1135,9 @@
 	  <EmbeddedResource Include="Themes\image_width_25pc\image_width.inc" />
 	  <EmbeddedResource Include="Themes\image_width_50pc\image_width.inc" />
 	  <EmbeddedResource Include="Themes\image_width_75pc\image_width.inc" />
+	  <EmbeddedResource Include="Themes\header_no_slide_controls\.config.json" />
+	  <EmbeddedResource Include="Themes\header_no_slide_controls\carousel_buttons.inc" />
+	  <EmbeddedResource Include="Themes\header_no_slide_controls\carousel_indicators.inc" />
 	  <EmbeddedResource Include="Themes\shadow_none\.config.json" />
 	  <EmbeddedResource Include="Themes\shadow_none\shadow.inc" />
 	  <EmbeddedResource Include="Themes\shadow_none\text-shadow.inc" />
@@ -1274,9 +1287,6 @@
 	  <EmbeddedResource Include="Themes\header_large\carousel_height.inc" />
 	  <EmbeddedResource Include="Themes\header_fade\.config.json" />
 	  <EmbeddedResource Include="Themes\header_fade\carousel_type.inc" />
-	  <EmbeddedResource Include="Themes\cms_header\heading_1.html" />
-	  <EmbeddedResource Include="Themes\cms_header\heading_2.html" />
-	  <EmbeddedResource Include="Themes\cms_header\heading_3.html" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_type.inc" />
 	  <EmbeddedResource Include="Themes\cms_header\page_content.html" />
 	  <EmbeddedResource Include="Themes\cms_header\paragraph.html" />
