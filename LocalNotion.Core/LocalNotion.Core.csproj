@@ -149,8 +149,12 @@
 	  <None Remove="Themes\h123_color_aux\h1_color.inc" />
 	  <None Remove="Themes\h123_color_aux\h2_color.inc" />
 	  <None Remove="Themes\h123_color_aux\h3_color.inc" />
+	  <None Remove="Themes\h123_fontsize_default\.config.json" />
 	  <None Remove="Themes\h123_default_padding\.config.json" />
 	  <None Remove="Themes\h123_default_padding\h123_padding.inc" />
+	  <None Remove="Themes\h123_fontsize_default\h1_fontsize.inc" />
+	  <None Remove="Themes\h123_fontsize_default\h2_fontsize.inc" />
+	  <None Remove="Themes\h123_fontsize_default\h3_fontsize.inc" />
 	  <None Remove="Themes\h123_shadow\h1_shadow.inc" />
 	  <None Remove="Themes\h123_shadow\h2_shadow.inc" />
 	  <None Remove="Themes\h123_shadow\h3_shadow.inc" />
@@ -1112,8 +1116,12 @@
 	  <EmbeddedResource Include="Themes\h123_color_aux\h1_color.inc" />
 	  <EmbeddedResource Include="Themes\h123_color_aux\h2_color.inc" />
 	  <EmbeddedResource Include="Themes\h123_color_aux\h3_color.inc" />
+	  <EmbeddedResource Include="Themes\h123_fontsize_default\.config.json" />
 	  <EmbeddedResource Include="Themes\h123_default_padding\.config.json" />
 	  <EmbeddedResource Include="Themes\h123_default_padding\h123_padding.inc" />
+	  <EmbeddedResource Include="Themes\h123_fontsize_default\h1_fontsize.inc" />
+	  <EmbeddedResource Include="Themes\h123_fontsize_default\h2_fontsize.inc" />
+	  <EmbeddedResource Include="Themes\h123_fontsize_default\h3_fontsize.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow\h1_shadow.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow\h2_shadow.inc" />
 	  <EmbeddedResource Include="Themes\h123_shadow\h3_shadow.inc" />
