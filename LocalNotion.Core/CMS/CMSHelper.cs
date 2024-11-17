@@ -137,8 +137,13 @@ public class CMSHelper {
 		result.Category3 = page.GetPropertyDisplayValue(Constants.Category3PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Category4 = page.GetPropertyDisplayValue(Constants.Category4PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Category5 = page.GetPropertyDisplayValue(Constants.Category5PropertyName)?.Trim().ToNullWhenWhitespace();
-		result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName)?.Trim().ToNullWhenWhitespace();
-		result.Tags = ((MultiSelectPropertyValue)page.Properties[Constants.TagsPropertyName]).MultiSelect.Select(x => x.Name).Select(x => x.Trim()).ToArray();
+		if (!result.PageType.IsIn(CMSPageType.NavBar, CMSPageType.Header, CMSPageType.Footer, CMSPageType.Internal)) {
+			result.Summary = page.GetPropertyDisplayValue(Constants.SummaryPropertyName)?.Trim().ToNullWhenWhitespace();
+			result.Tags = ((MultiSelectPropertyValue)page.Properties[Constants.TagsPropertyName]).MultiSelect.Select(x => x.Name).Select(x => x.Trim()).ToArray();
+		} else {
+			result.Summary = string.Empty;
+			result.Tags = [];
+		}
 		var pageTitle =page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 			
 
@@ -184,6 +189,7 @@ public class CMSHelper {
 			CMSPageType.Header => calculatedSlug,
 			CMSPageType.NavBar => calculatedSlug,
 			CMSPageType.Footer => calculatedSlug,
+			CMSPageType.Internal => calculatedSlug,
 			_ => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}

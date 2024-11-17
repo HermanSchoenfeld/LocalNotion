@@ -70,6 +70,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				case CMSPageType.Header:
 				case CMSPageType.NavBar:
 				case CMSPageType.Footer:
+				case CMSPageType.Internal:
 					RecalculateAllFraming();
 					break;
 				case CMSPageType.Page:
@@ -94,6 +95,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				case CMSPageType.Header:
 				case CMSPageType.NavBar:
 				case CMSPageType.Footer:
+				case CMSPageType.Internal:
 					RecalculateAllFraming();
 					break;
 				case CMSPageType.Page:
@@ -126,6 +128,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				case CMSPageType.Header:
 				case CMSPageType.NavBar:
 				case CMSPageType.Footer:
+				case CMSPageType.Internal:
 					if (_preUpdateCmsProperties.PageType != page.CMSProperties.PageType) {
 						RecalculateAllFraming();
 					} else {
@@ -170,10 +173,10 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				case CMSPageType.Gallery:
 					OnRemovedGalleryPage(page, pageCmsProperties);
 					break;
-				case CMSPageType.Footer:
-					// Doesn't need to do anything
-					break;
 				case CMSPageType.NavBar:
+				case CMSPageType.Header:
+				case CMSPageType.Footer:
+				case CMSPageType.Internal:
 					// Doesn't need to do anything
 					break;
 				case CMSPageType.Page:
@@ -363,6 +366,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 			HeaderID = CMSDatabase.GetContent(slug).Header?.ID,
 			MenuID = CMSDatabase.GetContent(slug).NavBar?.ID,
 			FooterID = CMSDatabase.GetContent(slug).Footer?.ID,
+			InternalID = CMSDatabase.GetContent(slug).Internal?.ID,
 			Parts = parts ?? [],
 			Dirty = true,
 			RenderPath = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderPath : null
@@ -382,11 +386,13 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 			var headerPageID = CMSDatabase.GetContent(render.Slug).Header?.ID;
 			var menuPageID = CMSDatabase.GetContent(render.Slug).NavBar?.ID;
 			var footerPageID = CMSDatabase.GetContent(render.Slug).Footer?.ID;
+			var internalID = CMSDatabase.GetContent(render.Slug).Internal?.ID;
 
-			if (render.HeaderID != headerPageID || render.MenuID != menuPageID || render.FooterID != footerPageID) {
+			if (render.HeaderID != headerPageID || render.MenuID != menuPageID || render.FooterID != footerPageID || render.InternalID != internalID ) {
 				render.HeaderID = headerPageID;
 				render.MenuID = menuPageID;
 				render.FooterID = footerPageID;
+				render.InternalID = internalID;
 				render.Dirty = true;
 			}
 		}

@@ -76,7 +76,7 @@ public class CMSContentNode {
 
 	public List<LocalNotionPage> Content { get; } = [];
 
-	internal IEnumerable<LocalNotionPage> NonFramingContent => Content.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer));
+	internal IEnumerable<LocalNotionPage> NonFramingContent => Content.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer, CMSPageType.Internal));
 
 	public List<CMSContentNode> Children { get; } = [];
 	
@@ -84,6 +84,7 @@ public class CMSContentNode {
 		!Tags.Contains(Constants.TagHideHeader) ?
 		Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.Header) ?? Parent?.Header :
 		default;
+
 
 	public LocalNotionPage NavBar => 
 			!Tags.Contains(Constants.TagHideNavBar) ?
@@ -93,6 +94,11 @@ public class CMSContentNode {
 	public LocalNotionPage Footer => 
 		!Tags.Contains(Constants.TagHideFooter) ?
 			Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.Footer) ?? Parent?.Footer :
+			default;
+
+	public LocalNotionPage Internal => 
+		!Tags.Contains(Constants.TagHideInternal) ?
+			Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.Internal) ?? Parent?.Internal :
 			default;
 
 	public CMSContentNode GetLogicalContentRoot() {

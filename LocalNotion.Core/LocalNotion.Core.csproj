@@ -77,7 +77,6 @@
 	  <None Remove="Themes\cms\callout.html" />
 	  <None Remove="Themes\cms\callout_shadow.inc" />
 	  <None Remove="Themes\cms\column_valign.inc" />
-	  <None Remove="Themes\cms\google_tag.inc" />
 	  <None Remove="Themes\cms\h1_color.inc" />
 	  <None Remove="Themes\cms\h1_fontsize.inc" />
 	  <None Remove="Themes\cms\h1_shadow.inc" />
@@ -87,10 +86,6 @@
 	  <None Remove="Themes\cms\h3_color.inc" />
 	  <None Remove="Themes\cms\h3_fontsize.inc" />
 	  <None Remove="Themes\cms\h3_shadow.inc" />
-	  <None Remove="Themes\cms\html_body_end.inc" />
-	  <None Remove="Themes\cms\html_body_start.inc" />
-	  <None Remove="Themes\cms\html_head_end.inc" />
-	  <None Remove="Themes\cms\html_head_start.inc" />
 	  <None Remove="Themes\cms\image_align.inc" />
 	  <None Remove="Themes\cms\image_cursor.inc" />
 	  <None Remove="Themes\cms\image_figure_attr.inc" />
@@ -370,8 +365,6 @@
 	  <None Remove="Themes\cms\heading_3.html" />
 	  <None Remove="Themes\cms\image.html" />
 	  <None Remove="Themes\cms\page.offline.html" />
-	  <None Remove="Themes\cms\page_header.inc" />
-	  <None Remove="Themes\cms\page_navbar.inc" />
 	  <None Remove="Themes\cms\resources\css\aos.css" />
 	  <None Remove="Themes\cms\resources\js\aos.min.js" />
 	  <None Remove="Themes\cms\resources\js\cms_post.js" />
@@ -558,9 +551,6 @@
 	  <None Remove="Themes\columns_md\column_list_8.html" />
 	  <None Remove="Themes\columns_md\column_list_9.html" />
 	  <None Remove="Themes\default\page_cover.html" />
-	  <None Remove="Themes\default\page_footer.inc" />
-	  <None Remove="Themes\default\page_header.inc" />
-	  <None Remove="Themes\default\page_navbar.inc" />
 	  <None Remove="Themes\default\text_block_attrs.inc" />
 	  <None Remove="Themes\h1_align_center - Copy (2)\.config.json" />
 	  <None Remove="Themes\h1_align_center - Copy (2)\h1_align.inc" />
@@ -1047,7 +1037,6 @@
 	  <EmbeddedResource Include="Themes\callout_card\color_card.inc" />
 	  <EmbeddedResource Include="Themes\cms\callout.html" />
 	  <EmbeddedResource Include="Themes\cms\column_valign.inc" />
-	  <EmbeddedResource Include="Themes\cms\google_tag.inc" />
 	  <EmbeddedResource Include="Themes\cms\callout_shadow.inc" />
 	  <EmbeddedResource Include="Themes\cms\button_shadow.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_shadow.inc" />
@@ -1061,8 +1050,6 @@
 	  <EmbeddedResource Include="Themes\cms\h1_color.inc" />
 	  <EmbeddedResource Include="Themes\cms\h3_fontsize.inc" />
 	  <EmbeddedResource Include="Themes\cms\h2_fontsize.inc" />
-	  <EmbeddedResource Include="Themes\cms\html_body_end.inc" />
-	  <EmbeddedResource Include="Themes\cms\html_head_start.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_align.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_minwidth.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_minheight.inc" />
@@ -1075,8 +1062,6 @@
 	  <EmbeddedResource Include="Themes\cms\image_framed.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_width.inc" />
 	  <EmbeddedResource Include="Themes\cms\image_height.inc" />
-	  <EmbeddedResource Include="Themes\cms\html_body_start.inc" />
-	  <EmbeddedResource Include="Themes\cms\html_head_end.inc" />
 	  <EmbeddedResource Include="Themes\cms\quote.html" />
 	  <EmbeddedResource Include="Themes\cms\text_align.inc" />
 	  <EmbeddedResource Include="Themes\cms\page_title.html" />
@@ -1335,8 +1320,6 @@
 	  <EmbeddedResource Include="Themes\cms\heading_3.html" />
 	  <EmbeddedResource Include="Themes\cms\image.html" />
 	  <EmbeddedResource Include="Themes\cms\page.offline.html" />
-	  <EmbeddedResource Include="Themes\cms\page_header.inc" />
-	  <EmbeddedResource Include="Themes\cms\page_navbar.inc" />
 	  <EmbeddedResource Include="Themes\cms\resources\css\aos.css" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\aos.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\cms_post.js" />
@@ -1525,9 +1508,6 @@
 	  <EmbeddedResource Include="Themes\columns_md\column_list_7.html" />
 	  <EmbeddedResource Include="Themes\columns_md\column_list_8.html" />
 	  <EmbeddedResource Include="Themes\columns_md\column_list_9.html" />
-	  <EmbeddedResource Include="Themes\default\page_footer.inc" />
-	  <EmbeddedResource Include="Themes\default\page_navbar.inc" />
-	  <EmbeddedResource Include="Themes\default\page_header.inc" />
 	  <EmbeddedResource Include="Themes\h3_as_h6\.config.json" />
 	  <EmbeddedResource Include="Themes\h2_as_h5\.config.json" />
 	  <EmbeddedResource Include="Themes\h1_as_h4\.config.json" />

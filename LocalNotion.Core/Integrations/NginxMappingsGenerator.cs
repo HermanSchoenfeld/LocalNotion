@@ -8,37 +8,49 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 	private const string NGinxConf = 
 		"""
-		worker_processes  auto;
-
+		worker_processes auto;  # Automatically adjusts to the number of available CPU cores
+		worker_rlimit_nofile 8192;  # Increase file descriptor limit to handle more connections
+		
 		events {
-		    worker_connections  1024;
+		    worker_connections 4096;  # Allows more concurrent connections per worker
+		
+		    # Linux-only Settings
+		    use epoll;  # Use epoll for efficient event handling on Linux (comment this out on Windows)
 		}
-
+		
 		http {
 		    include       mime.types;
 		    default_type  application/octet-stream;
-
-		    sendfile        on;
-
-		    #keepalive_timeout  0;
-		    keepalive_timeout  65;
-
-			# Map the incoming URL to a lowercase version
-			map $uri $lowercase_uri {
-				default $uri;
-				"~[A-Z]" $uri; # Keep the original case if lowercase is not needed
-			}
-
+		
+		    sendfile on;  # Efficient file transfer using zero-copy in the kernel
+		    tcp_nopush on;  # Optimizes packet transmission for large responses (comment this out on Windows)
+		    tcp_nodelay on;  # Reduces latency for small responses by disabling delayed ACKs
+		    keepalive_timeout 15;  # Shortened for better handling of persistent connections from the reverse proxy
+		    client_max_body_size 50k;  # Lowered limit as no uploads are required; helps block oversized requests
+		    send_timeout 20s;  # Default timeout for general requests
+		
 		    server {
-		        listen       80;
-		        server_name  localhost;
-
-				# Windows hosting (nb: nginx.exe inside /.localnotion/nginx)
+		        listen 80;
+		        server_name localhost;
+		
+		        # Windows hosting (nb: nginx.exe inside /.localnotion/nginx)
 		        # root ../../;
-
-				# Linux hosting (NGINX docker container)
-				root /usr/share/nginx/html/;
-
+		
+		        # Linux hosting (NGINX docker container)
+		        root /usr/share/nginx/html/;
+		
+		        # Docker logging to stdout and stderr
+		        # Note: In Docker, NGINX logs are directed to stdout and stderr by default for easy access via `docker logs`
+		        # access_log /dev/stdout;
+		        # error_log /dev/stderr;
+	
+		        # Caching for common static assets (commented out for Cloudflare)
+		        # Note: If using Cloudflare, avoid setting caching here as Cloudflare will handle asset caching.
+		        # location ~* \.(jpg|jpeg|png|gif|ico|css|js|webp)$ {
+		        #     expires 30d;
+		        #     access_log off;  # Reduce disk I/O by disabling logging for assets
+		        # }
+		
 		        include ln-urls.conf;
 		    }
 		}

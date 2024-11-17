@@ -46,6 +46,9 @@ public class CMSItem {
 	[JsonProperty("footer", NullValueHandling = NullValueHandling.Ignore)]
 	public string FooterID { get; set; }
 
+	[JsonProperty("internal", NullValueHandling = NullValueHandling.Ignore)]
+	public string InternalID { get; set; }
+
 	[JsonProperty("render_path", NullValueHandling = NullValueHandling.Ignore)]
 	public string RenderPath { get; set; } = null;
 
@@ -66,6 +69,9 @@ public class CMSItem {
 		if (FooterID != null && resourceIDs.Contains(FooterID))
 			return true;
 
+		if (InternalID != null && resourceIDs.Contains(InternalID))
+			return true;
+
 		return Parts != null && Parts.Any(resourceIDs.Contains);
 
 	}
@@ -79,6 +85,9 @@ public class CMSItem {
 
 		if (FooterID == page)
 			FooterID = null;
+
+		if (InternalID == page)
+			InternalID = null;
 
 		Parts = Parts.Except(page).ToArray();
 	}

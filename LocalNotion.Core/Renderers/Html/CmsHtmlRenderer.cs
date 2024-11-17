@@ -40,7 +40,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 	protected virtual string RenderPage(CMSItem cmsItem)  {
 		// load framing (no cms header for normal pages, rely on page header)
-		var ambientTokens = FetchFramingTokens(string.Empty, cmsItem.MenuID, cmsItem.FooterID);
+		var ambientTokens = FetchFramingTokens(string.Empty, cmsItem.MenuID, cmsItem.FooterID, cmsItem.InternalID);
 		return RenderCmsItemPart(cmsItem.Parts[0], CMSPageType.Page, ambientTokens);
 	}
 
@@ -55,7 +55,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		var content = sections.Select(x => RenderCmsItemPart(x.ID, CMSPageType.Section)).ToDelimittedString(Environment.NewLine);
 
 		// load framing 
-		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID, cmsItem.InternalID);
 
 		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms"], AmbientTokens = ambientTokens, RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute)})) {
 			IsPartialRendering = false;
@@ -69,13 +69,13 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			cmsItem
 				.Parts
 				.Select(Repository.GetPage)
-				.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer))
+				.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer, CMSPageType.Internal))
 				.GroupBy(x => Tools.Url.StripAnchorTag(x.CMSProperties.CustomSlug))
 				.Select(g => Repository.CMSDatabase.GetContent(g.Key))
 				.ToArray();
 		
 		// load framing
-		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID, cmsItem.InternalID);
 
 		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms_articles"], AmbientTokens = ambientTokens, RenderOutputPath  = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
 			IsPartialRendering = false;
@@ -174,11 +174,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 					["slug"] = LocalNotionHelper.SanitizeSlug(articleNode.Slug),
 				}
 			);
-
-	
-
 		}
-
 	}
 
 	protected virtual string RenderGalleryPage(CMSItem cmsItem) {
@@ -197,7 +193,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		var keywords = LocalNotionHelper.CombineMultiPageKeyWords(galleryPages.Select(x => x.Keywords)).ToArray();
 
 		// load framing
-		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID);
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID, cmsItem.InternalID);
 
 		using (EnterRenderingContext(new PageRenderingContext { Themes = ["cms_gallery"], AmbientTokens = ambientTokens, RenderOutputPath = Repository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Absolute) })) {
 			IsPartialRendering = false;
@@ -279,9 +275,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 			if (!string.IsNullOrWhiteSpace(page.CMSProperties.Category5)) {
 				yield return (BadgeTitle: page.CMSProperties.Category5, BadgeName: galleryID + "-" + Tools.Text.ToCasing(TextCasing.KebabCase, page.CMSProperties.Category5, FirstCharacterPolicy.HtmlDomObj));
 			}
-
 		}
-
 	}
 
 	protected virtual string RenderCmsItemPart(string partID, CMSPageType partType, IDictionary<string, object> ambientTokens = null) {
@@ -316,30 +310,47 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		}
 	}
 
-	protected virtual Dictionary<string, object> FetchFramingTokens(string headerID, string navBarID, string footerID) {
-		var tokens = new Dictionary<string, object>();
-		if (!headerID.IsNullOrWhiteSpace()) {
-			tokens["include://page_header.inc"] = RenderCmsItemPart(headerID, CMSPageType.Header);
-		} else {
-			tokens["include://page_header.inc"] = string.Empty;
+	protected virtual Dictionary<string, object> FetchFramingTokens(string headerID, string navBarID, string footerID, string internalID) {
+		var tokens = new Dictionary<string, object>() {
+			["html_body_start"] = string.Empty,
+			["html_body_end"] = string.Empty,
+			["html_head_start"] = string.Empty,
+			["html_head_end"] = string.Empty,
+			["google_tag"] = string.Empty,
+			["page_header"] = string.Empty,
+			["page_navbar"] = string.Empty,
+			["page_footer"] = string.Empty,
+		};
+ 
+		// get tags from internal page
+		if (!internalID.IsNullOrWhiteSpace()) {
+			foreach(var block in Repository.GetEditableResourceGraph(internalID).VisitAll()) {
+				var notionObj = Repository.GetObject(block.ObjectID);
+				if (notionObj is CodeBlock codeBlock) {
+					var caption = codeBlock.Code.Caption.ToPlainText();
+					if (!string.IsNullOrWhiteSpace(caption)) {
+						tokens[caption.Trim()] = codeBlock.Code.RichText.ToPlainText();
+					}
+				}
+			}
 		}
 
-		if (!navBarID.IsNullOrWhiteSpace()) {
-			tokens["include://page_navbar.inc"] = RenderCmsItemPart(navBarID, CMSPageType.NavBar);
-		} else {
-			tokens["include://page_navbar.inc"] = string.Empty;
-		}
-		
-		if (!footerID.IsNullOrWhiteSpace()) {
-			tokens["include://page_footer.inc"] = RenderCmsItemPart(footerID, CMSPageType.Footer);
-		} else {
-			tokens["include://page_footer.inc"] = string.Empty;
-		}
-
+		// get the content-based tags
 		var cmsDatabase = Repository.GetDatabase(Repository.CMSDatabaseID);
 		tokens["site_icon_url"] = cmsDatabase.Thumbnail.Type == ThumbnailType.Image ? cmsDatabase.Thumbnail.Data : string.Empty;
-
 		tokens["color"] = "default";
+
+		if (!headerID.IsNullOrWhiteSpace()) {
+			tokens["page_header"] = RenderCmsItemPart(headerID, CMSPageType.Header);
+		} 
+
+		if (!navBarID.IsNullOrWhiteSpace()) {
+			tokens["page_navbar"] = RenderCmsItemPart(navBarID, CMSPageType.NavBar);
+		} 
+		
+		if (!footerID.IsNullOrWhiteSpace()) {
+			tokens["page_footer"] = RenderCmsItemPart(footerID, CMSPageType.Footer);
+		}
 
 		return tokens;
 	}

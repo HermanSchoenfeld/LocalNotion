@@ -1,5 +1,5 @@
 ﻿<head>
-    {include://html_head_start.inc}    
+    {html_head_start}
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,18 +18,18 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{theme://resources/js/cms_pre.js}"></script>
     <title>{title}</title>
-    {include://google_tag.inc}
-    {include://html_head_end.inc}
+    {google_tag}
+    {html_head_end}
 </head>
 <body class="ln-page-{style}">
-    {include://html_body_start.inc}
+    {html_body_start}
     <div id="preloader"><div id="preloader_status"></div></div>
-    {include://page_navbar.inc}
-    {include://page_header.inc}
+    {page_navbar}
+    {page_header}
     <main>
         {page_content}
     </main>
-    {include://page_footer.inc}
+    {page_footer}
     <script src="{theme://resources/js/feather.min.js}"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="{theme://resources/js/typed.umd.js}"></script>
@@ -44,5 +44,5 @@
     <script async src="https://cdn.jsdelivr.net/npm/prismjs@1.28.0/components/prism-core.min.js"></script>
     <script async src="https://cdn.jsdelivr.net/npm/prismjs@1.28.0/plugins/autoloader/prism-autoloader.min.js"></script>
     <script async src="https://platform.x.com/widgets.js" charset="utf-8"></script>
-    {include://html_body_end.inc}
+    {html_body_end}
 </body>

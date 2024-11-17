@@ -14,5 +14,6 @@ public enum CMSItemType {
 	CategoryPage,
 
 	[EnumMember(Value = "gallery_page")]
-	GalleryPage
+	GalleryPage,
+
 }

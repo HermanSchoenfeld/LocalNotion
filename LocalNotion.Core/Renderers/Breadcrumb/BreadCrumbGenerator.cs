@@ -57,7 +57,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			}
 
 			var isPartialPage = 
-				isCmsPage && ((LocalNotionPage)item).CMSProperties.PageType.IsIn(CMSPageType.Section, CMSPageType.Footer);
+				isCmsPage && ((LocalNotionPage)item).CMSProperties.PageType.IsIn(CMSPageType.Section, CMSPageType.NavBar, CMSPageType.Header, CMSPageType.Footer);
 
 			var hasUrl = LinkGenerator.TryGenerate(from, item.ID, RenderType.HTML, out var url, out var resource);
 			traits.SetFlags(BreadCrumbItemTraits.HasUrl, hasUrl);
@@ -90,7 +90,7 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 			var parentIsPartial = 
 				repoContainsParentResource && 
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 
-				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section or CMSPageType.Footer }; 
+				parentResource is LocalNotionEditableResource { CMSProperties.PageType: CMSPageType.Section or CMSPageType.NavBar or CMSPageType.Header or CMSPageType.Footer }; 
 
 			var title = isPartialPage ? 
 				 BuildCompositeSlugPartTitle(((LocalNotionEditableResource)item).CMSProperties.GetTipCategory(), item.Title) :

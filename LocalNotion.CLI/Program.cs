@@ -1057,13 +1057,14 @@ $@"Local Notion Status:
 
 		//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 		// string[] PullDatabase2 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b95bd225-9407-4eb6-a8bd-e309c236564b", "--force" };
+		 //string[] PullDatabase3 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
 		//		string[] RenderDatabase1 = new[] { "render", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391" };
 		//		string[] RenderDatabasePage = new[] { "render", "-p", "d:\\databases\\test", "-o", "95741d25-ae23-428e-88b9-a8919066483c" };
 
 		//		string[] PullSP10Cmd = new[] { "pull", "-o", "784082f3-5b8e-402a-b40e-149108da72f3" };
 
-				string[] PullP2P = new[] { "pull", "-p", "d:\\databases\\LN-POWER2PEOPLE.COM.AU", "-all" };
+		//		string[] PullP2P = new[] { "pull", "-p", "d:\\databases\\LN-POWER2PEOPLE.COM.AU", "-all" };
 
 		//		string[] PullPage = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d" };
 		//		string[] PullPageForce = new[] { "pull", "-o", "bffe3340-e269-4f2a-9587-e793b70f5c3d", "--force" };
@@ -1139,8 +1140,8 @@ $@"Local Notion Status:
 		// localnotion init -k YOUR_NOTION_API_KEY_HERE --cms 2dcb720f5ed6415091f6e83f42d6a44c -v
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
-		if (args.Length == 0)
-			args = PullP2P;  // PullBug23Page   RenderBug36Page
+		//if (args.Length == 0)
+		//	args = PullDatabase3;  // PullBug23Page   RenderBug36Page
 
 		//#endif
 

@@ -20,6 +20,8 @@ public enum CMSPageType {
 	Gallery, 
 
 	[EnumMember(Value = "footer")]
-	Footer
+	Footer,
 
+	[EnumMember(Value = "internal")]
+	Internal,
 }

@@ -1,4 +1,5 @@
 ﻿<head>
+    {html_head_start}
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,18 +14,17 @@
     <script src="{theme://resources/bootstrap/bootstrap.bundle.min.js}"></script>
     <script src="{theme://resources/js/cms_pre.js}"></script>
     <title>{title}</title>
-    {include://html_head_post.inc}
+    {html_head_end}
 </head>
-
 <body class="ln-page-{style}">
-    {include://html_body_pre.inc}
+    {html_body_start}
     <div id="preloader"><div id="preloader_status"></div></div>
-    {include://page_header.inc}
-    {include://page_navbar.inc}
+    {page_navbar}
+    {page_header}
     <main>
         {content}
     </main>
-    {include://page_footer.inc}
+    {page_footer}
     <script src="{theme://resources/js/feather.min.js}"></script>
     <script src="{theme://resources/js/aos.min.js}"></script>
     <script src="{theme://resources/js/typed.umd.js}"></script>
@@ -38,4 +38,5 @@
     <script async id="MathJax-script" src="{theme://resources/mathjax/es5/tex-mml-chtml.js}"></script>
     <script async src="{theme://resources/prism/prism.js}"></script>
     <script async src="{theme://resources/x.com/widgets.js}" charset="utf-8"></script>
+    {html_body_end}
 </body>
