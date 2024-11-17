@@ -129,7 +129,14 @@
 	  <None Remove="Themes\cms_header\carousel_pre_end.inc" />
 	  <None Remove="Themes\cms_header\carousel_pre_start.inc" />
 	  <None Remove="Themes\cms_gallery\.config.json" />
+	  <None Remove="Themes\cms_header\h1_fontsize.inc" />
+	  <None Remove="Themes\cms_header\h2_fontsize.inc" />
+	  <None Remove="Themes\cms_header\h3_fontsize.inc" />
 	  <None Remove="Themes\cms_header\image.html.old" />
+	  <None Remove="Themes\cms_navbar\h123_padding.inc" />
+	  <None Remove="Themes\cms_navbar\h1_fontsize.inc" />
+	  <None Remove="Themes\cms_navbar\h2_fontsize.inc" />
+	  <None Remove="Themes\cms_navbar\h3_fontsize.inc" />
 	  <None Remove="Themes\cms_navbar\navbar_position.inc" />
 	  <None Remove="Themes\cms_section\gallery.html" />
 	  <None Remove="Themes\cms_section\section_padding_bottom.inc" />
@@ -383,9 +390,6 @@
 	  <None Remove="Themes\cms_navbar\callout.html" />
 	  <None Remove="Themes\cms_navbar\column_list_2.html" />
 	  <None Remove="Themes\cms_navbar\divider.html" />
-	  <None Remove="Themes\cms_navbar\heading_1.html" />
-	  <None Remove="Themes\cms_navbar\heading_2.html" />
-	  <None Remove="Themes\cms_navbar\heading_3.html" />
 	  <None Remove="Themes\cms_navbar\icon_image_2.html" />
 	  <None Remove="Themes\cms_navbar\page_content.html" />
 	  <None Remove="Themes\cms_navbar\paragraph.html" />
@@ -1099,6 +1103,10 @@
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery_card.html" />
 	  <EmbeddedResource Include="Themes\cms_gallery\gallery.html" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel.inc" />
+	  <EmbeddedResource Include="Themes\cms_header\h1_fontsize.inc" />
+	  <EmbeddedResource Include="Themes\cms_header\h2_fontsize.inc" />
+	  <EmbeddedResource Include="Themes\cms_header\h3_fontsize.inc" />
+	  <EmbeddedResource Include="Themes\cms_navbar\h123_padding.inc" />
 	  <EmbeddedResource Include="Themes\cms_navbar\navbar_position.inc" />
 	  <EmbeddedResource Include="Themes\cms_section\section_padding_bottom.inc" />
 	  <EmbeddedResource Include="Themes\cms_section\section_padding_top.inc" />
@@ -1347,9 +1355,6 @@
 	  <EmbeddedResource Include="Themes\cms_navbar\callout.html" />
 	  <EmbeddedResource Include="Themes\cms_navbar\column_list_2.html" />
 	  <EmbeddedResource Include="Themes\cms_navbar\divider.html" />
-	  <EmbeddedResource Include="Themes\cms_navbar\heading_1.html" />
-	  <EmbeddedResource Include="Themes\cms_navbar\heading_2.html" />
-	  <EmbeddedResource Include="Themes\cms_navbar\heading_3.html" />
 	  <EmbeddedResource Include="Themes\cms_navbar\icon_image_2.html" />
 	  <EmbeddedResource Include="Themes\cms_navbar\page_content.html" />
 	  <EmbeddedResource Include="Themes\cms_navbar\paragraph.html" />
