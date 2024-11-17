@@ -50,9 +50,6 @@ public class GitSentry : ProcessSentry {
 			return false;
 		}
 	}
-
-
-
 }
 
 public static partial class Program {
