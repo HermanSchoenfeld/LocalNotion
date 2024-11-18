@@ -813,7 +813,6 @@
 	  <None Remove="Themes\default\resources\local-notion\js\feather.min.js" />
 	  <None Remove="Themes\default\resources\local-notion\js\ln.js" />
 	  <None Remove="Themes\default\resources\local-notion\js\noop.js" />
-	  <None Remove="Themes\default\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\default\resources\mathjax\es5\output\chtml.js" />
 	  <None Remove="Themes\default\resources\mathjax\es5\output\chtml\fonts\tex.js" />
 	  <None Remove="Themes\default\resources\mathjax\es5\output\chtml\fonts\woff-v2\MathJax_AMS-Regular.woff" />
@@ -868,8 +867,6 @@
 	  <None Remove="Themes\default\to_do.html" />
 	  <None Remove="Themes\default\unsupported.html" />
 	  <None Remove="Themes\default\user.html" />
-	  <None Remove="Themes\demo\.config.json" />
-	  <None Remove="Themes\demo\page.offline.html" />
 	  <None Remove="Themes\.root\.config.json" />
 	  <None Remove="Themes\.root\editable\audio.html" />
 	  <None Remove="Themes\.root\editable\bulleted_list.html" />
@@ -968,7 +965,6 @@
 	  <None Remove="Themes\.root\readonly\toggle_open.html" />
 	  <None Remove="Themes\.root\readonly\to_do.html" />
 	  <None Remove="Themes\.root\readonly\user.html" />
-	  <None Remove="Themes\demo\resources\local-notion\js\toc.js" />
 	  <None Remove="Themes\embedded\.config.json" />
 	  <None Remove="Themes\embedded\editable\page.offline.html" />
 	  <None Remove="Themes\embedded\editable\page.online.html" />
@@ -1949,7 +1945,6 @@
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\css\common.css" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\noop.js" />
 	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\ln.js" />
-	  <EmbeddedResource Include="Themes\default\resources\local-notion\js\toc.js" />
 	  <EmbeddedResource Include="Themes\default\resources\prism\prism.css" />
 	  <EmbeddedResource Include="Themes\default\resources\prism\prism.js" />
 	  <EmbeddedResource Include="Themes\default\resources\x\widgets.js" />
@@ -1977,10 +1972,7 @@
 	  <EmbeddedResource Include="Themes\default\to_do.html" />
 	  <EmbeddedResource Include="Themes\default\unsupported.html" />
 	  <EmbeddedResource Include="Themes\default\user.html" />
-	  <EmbeddedResource Include="Themes\demo\.config.json" />
-	  <EmbeddedResource Include="Themes\demo\page.offline.html" />
 	  <EmbeddedResource Include="Themes\.root\.config.json" />
-	  <EmbeddedResource Include="Themes\demo\resources\local-notion\js\toc.js" />
 	  <EmbeddedResource Include="Themes\embedded\.config.json" />
 	  <EmbeddedResource Include="Themes\embedded\editable\page.offline.html" />
 	  <EmbeddedResource Include="Themes\embedded\editable\page.online.html" />
