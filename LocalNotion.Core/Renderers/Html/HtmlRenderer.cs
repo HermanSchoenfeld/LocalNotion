@@ -111,13 +111,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	protected override string Render(Link link) =>
 		!string.IsNullOrWhiteSpace(link.Url) ?
-		RenderTemplate(
-				"text_link",
-				new RenderTokens {
-					["url"] = SanitizeUrl(link.Url),
-					["text"] = link.Url,
-				}
-			) :
+		RenderLink(SanitizeUrl(link.Url), link.Url, string.Empty, string.Empty) :
 		string.Empty;
 
 	protected override string Render(Date date) {
@@ -524,13 +518,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderTemplate(
 			"property_value",
 			new RenderTokens(propertyValue) {
-				["contents"] = RenderTemplate(
-					"text_link",
-					new RenderTokens {
-						["url"] = !string.IsNullOrWhiteSpace(propertyValue.Url) ? SanitizeUrl(propertyValue.Url) : string.Empty,
-						["text"] = !string.IsNullOrWhiteSpace(propertyValue.Url) ? Render(propertyValue.Url) : string.Empty
-					}
-				)
+				["contents"] = RenderLink(
+					!string.IsNullOrWhiteSpace(propertyValue.Url) ? SanitizeUrl(propertyValue.Url) : string.Empty,
+					!string.IsNullOrWhiteSpace(propertyValue.Url) ? Render(propertyValue.Url) : string.Empty,
+					string.Empty,
+					string.Empty
+				) 
 			} 
 		);
 
@@ -577,6 +570,17 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			}
 		);
 	
+	protected virtual string RenderLink(string url, string text, string icon, string indicator)
+		=> RenderTemplate(
+			RenderingContext.RenderingStack.Select(x => Repository.GetObject(x.ObjectID)).Any(x => x is HeadingOneBlock or HeadingTwoBlock or HeadingThreeBlock) ? "header_link" : "text_link",
+			new RenderTokens {
+				["url"] = url,
+				["text"] = text,
+				["icon"] = icon,
+				["indicator"] = indicator
+			}
+		);
+
 	#endregion
 
 	#region Page
@@ -1142,16 +1146,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		if (isUrl) {
 			Guard.ArgumentNotNull(urlInfo, nameof(urlInfo));
 
-			return RenderTemplate(
-				"text_link",
-				new RenderTokens {
-					["url"] = SanitizeUrl(urlInfo.Url ?? string.Empty),
-					["text"] = RenderText(content, false, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color),
-					["icon"] = urlInfo.Icon,
-					["indicator"] = urlInfo.Indicator
-				}
+			return RenderLink(
+				SanitizeUrl(urlInfo.Url ?? string.Empty),
+				RenderText(content, false, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color),
+				urlInfo.Icon,
+				urlInfo.Indicator
 			);
-
 		}
 
 		if (isBold) {

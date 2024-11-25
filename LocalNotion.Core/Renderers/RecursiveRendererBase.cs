@@ -424,7 +424,7 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 		public NotionObjectGraph GetParentRenderingNode(int level) => RenderingStack.TryPeek(out var value, level) ? value : null;
 
 		public IObject GetParentRenderingObject(int level) => RenderingStack.TryPeek(out var value, level) ? PageObjects.TryGetValue(value.ObjectID, out var obj) ? obj : null : null;
-
+	
 	}
 
 	#endregion
