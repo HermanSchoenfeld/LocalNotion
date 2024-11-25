@@ -37,69 +37,165 @@ html {
     }
 
 /* Large Spacer Classes not available in Bootstrap 5.3 */
-.mt-lg { margin-top: calc(var(--spacer) * 6) !important; }
-.mb-lg { margin-bottom: calc(var(--spacer) * 6) !important; }
-.ms-lg { margin-inline-start: calc(var(--spacer) * 6) !important; }
-.me-lg { margin-inline-end: calc(var(--spacer) * 6) !important; }
+:root {
+    --scale-unit: 5; /* Base unit in rem-based scaling */
+    --spacing-unit: 0.5; /* Base unit for ref-based padding and margin */
 
-.pt-lg { padding-top: calc(var(--spacer) * 6) !important; }
-.pb-lg { padding-bottom: calc(var(--spacer) * 6) !important; }
-.ps-lg { padding-inline-start: calc(var(--spacer) * 6) !important; }
-.pe-lg { padding-inline-end: calc(var(--spacer) * 6) !important; }
+    /* Scaling Sizes */
+    --scale-xxs: calc(var(--scale-unit) * 1rem);
+    --scale-xs: calc(var(--scale-unit) * 2rem);
+    --scale-sm: calc(var(--scale-unit) * 3rem);
+    --scale-md: calc(var(--scale-unit) * 5rem);
+    --scale-lg: calc(var(--scale-unit) * 7rem);
+    --scale-xl: calc(var(--scale-unit) * 9rem);
+    --scale-xxl: calc(var(--scale-unit) * 12rem);
+    
+    /* Spacing Sizes */
+    --spacing-xxs: calc(var(--spacing-unit) * 1rem);
+    --spacing-xs: calc(var(--spacing-unit) * 2rem);
+    --spacing-sm: calc(var(--spacing-unit) * 3rem);
+    --spacing-md: calc(var(--spacing-unit) * 6rem);
+    --spacing-lg: calc(var(--spacing-unit) * 12rem);
+    --spacing-xl: calc(var(--spacing-unit) * 20rem);
+    --spacing-xxl: calc(var(--spacing-unit) * 32rem);
+}
 
- /* Width/Height not available in Bootstrap 5.3 */
-.w-15 { width: 15% !important; }
-.w-10 { width: 10% !important; }
+/* Percentage Width/Height (Static) */
 .w-5 { width: 5% !important; }
+.w-10 { width: 10% !important; }
+.w-15 { width: 15% !important; }
 .h-5 { height: 5% !important; }
 .h-10 { height: 10% !important; }
 .h-15 { height: 15% !important; }
 
-/* CMS width/height classes not available in Bootstrap 5.3 */
-.w-xxs { width: 5rem !important; }
-.w-xs { width: 10rem !important; }
-.w-sm { width: 15rem !important; }
-.w-md { width: 25rem !important; }
-.w-lg { width: 35rem !important; }
-.w-xl { width: 45rem !important; }
-.w-xxl { width: 60rem !important; }
-.h-xxs { height: 5rem !important; }
-.h-xs { height: 10rem !important; }
-.h-sm { height: 15rem !important; }
-.h-md { height: 25rem !important; }
-.h-lg { height: 35rem !important; }
-.h-xl { height: 45rem !important; }
-.h-xxl { height: 60rem !important; }
+/* REM-Based CMS Width/Height */
+.w-xxs { width: var(--scale-xxs) !important; }
+.w-xs { width: var(--scale-xs) !important; }
+.w-sm { width: var(--scale-sm) !important; }
+.w-md { width: var(--scale-md) !important; }
+.w-lg { width: var(--scale-lg) !important; }
+.w-xl { width: var(--scale-xl) !important; }
+.w-xxl { width: var(--scale-xxl) !important; }
+.h-xxs { height: var(--scale-xxs) !important; }
+.h-xs { height: var(--scale-xs) !important; }
+.h-sm { height: var(--scale-sm) !important; }
+.h-md { height: var(--scale-md) !important; }
+.h-lg { height: var(--scale-lg) !important; }
+.h-xl { height: var(--scale-xl) !important; }
+.h-xxl { height: var(--scale-xxl) !important; }
 
-/* CMS max/min width/height classes not available in Bootstrap 5.3 */
-.w-min-xxs { min-width: 5rem !important; }
-.w-min-xs { min-width: 10rem !important; }
-.w-min-sm { min-width: 15rem !important; }
-.w-min-md { min-width: 25rem !important; }
-.w-min-lg { min-width: 35rem !important; }
-.w-min-xl { min-width: 45rem !important; }
-.w-min-xxl { min-width: 60rem !important; }
-.w-max-xxs { max-width: 5rem !important; }
-.w-max-xs { max-width: 10rem !important; }
-.w-max-sm { max-width: 15rem !important; }
-.w-max-md { max-width: 25rem !important; }
-.w-max-lg { max-width: 35rem !important; }
-.w-max-xl { max-width: 45rem !important; }
-.w-max-xxl { max-width: 60rem !important; }
-.h-min-xxs { min-height: 5rem !important; }
-.h-min-xs { min-height: 10rem !important; }
-.h-min-sm { min-height: 15rem !important; }
-.h-min-md { min-height: 25rem !important; }
-.h-min-lg { min-height: 35rem !important; }
-.h-min-xl { min-height: 45rem !important; }
-.h-min-xxl { min-height: 60rem !important; }
-.h-max-xxs { max-height: 5rem !important; }
-.h-max-xs { max-height: 10rem !important; }
-.h-max-sm { max-height: 15rem !important; }
-.h-max-md { max-height: 25rem !important; }
-.h-max-lg { max-height: 35rem !important; }
-.h-max-xl { max-height: 45rem !important; }
-.h-max-xxl { max-height: 60rem !important; }
+/* Min/Max Width/Height */
+.w-min-xxs { min-width: var(--scale-xxs) !important; }
+.w-min-xs { min-width: var(--scale-xs) !important; }
+.w-min-sm { min-width: var(--scale-sm) !important; }
+.w-min-md { min-width: var(--scale-md) !important; }
+.w-min-lg { min-width: var(--scale-lg) !important; }
+.w-min-xl { min-width: var(--scale-xl) !important; }
+.w-min-xxl { min-width: var(--scale-xxl) !important; }
+.w-max-xxs { max-width: var(--scale-xxs) !important; }
+.w-max-xs { max-width: var(--scale-xs) !important; }
+.w-max-sm { max-width: var(--scale-sm) !important; }
+.w-max-md { max-width: var(--scale-md) !important; }
+.w-max-lg { max-width: var(--scale-lg) !important; }
+.w-max-xl { max-width: var(--scale-xl) !important; }
+.w-max-xxl { max-width: var(--scale-xxl) !important; }
+.h-min-xxs { min-height: var(--scale-xxs) !important; }
+.h-min-xs { min-height: var(--scale-xs) !important; }
+.h-min-sm { min-height: var(--scale-sm) !important; }
+.h-min-md { min-height: var(--scale-md) !important; }
+.h-min-lg { min-height: var(--scale-lg) !important; }
+.h-min-xl { min-height: var(--scale-xl) !important; }
+.h-min-xxl { min-height: var(--scale-xxl) !important; }
+.h-max-xxs { max-height: var(--scale-xxs) !important; }
+.h-max-xs { max-height: var(--scale-xs) !important; }
+.h-max-sm { max-height: var(--scale-sm) !important; }
+.h-max-md { max-height: var(--scale-md) !important; }
+.h-max-lg { max-height: var(--scale-lg) !important; }
+.h-max-xl { max-height: var(--scale-xl) !important; }
+.h-max-xxl { max-height: var(--scale-xxl) !important; }
+
+/* Margin Classes */
+.m-xxs { margin: var(--spacing-xxs) !important; }
+.m-xs { margin: var(--spacing-xs) !important; }
+.m-sm { margin: var(--spacing-sm) !important; }
+.m-md { margin: var(--spacing-md) !important; }
+.m-lg { margin: var(--spacing-lg) !important; }
+.m-xl { margin: var(--spacing-xl) !important; }
+.m-xxl { margin: var(--spacing-xxl) !important; }
+
+.mt-xxs { margin-top: var(--spacing-xxs) !important; }
+.mt-xs { margin-top: var(--spacing-xs) !important; }
+.mt-sm { margin-top: var(--spacing-sm) !important; }
+.mt-md { margin-top: var(--spacing-md) !important; }
+.mt-lg { margin-top: var(--spacing-lg) !important; }
+.mt-xl { margin-top: var(--spacing-xl) !important; }
+.mt-xxl { margin-top: var(--spacing-xxl) !important; }
+
+.mb-xxs { margin-bottom: var(--spacing-xxs) !important; }
+.mb-xs { margin-bottom: var(--spacing-xs) !important; }
+.mb-sm { margin-bottom: var(--spacing-sm) !important; }
+.mb-md { margin-bottom: var(--spacing-md) !important; }
+.mb-lg { margin-bottom: var(--spacing-lg) !important; }
+.mb-xl { margin-bottom: var(--spacing-xl) !important; }
+.mb-xxl { margin-bottom: var(--spacing-xxl) !important; }
+
+.ms-xxs { margin-inline-start: var(--spacing-xxs) !important; }
+.ms-xs { margin-inline-start: var(--spacing-xs) !important; }
+.ms-sm { margin-inline-start: var(--spacing-sm) !important; }
+.ms-md { margin-inline-start: var(--spacing-md) !important; }
+.ms-lg { margin-inline-start: var(--spacing-lg) !important; }
+.ms-xl { margin-inline-start: var(--spacing-xl) !important; }
+.ms-xxl { margin-inline-start: var(--spacing-xxl) !important; }
+
+.me-xxs { margin-inline-end: var(--spacing-xxs) !important; }
+.me-xs { margin-inline-end: var(--spacing-xs) !important; }
+.me-sm { margin-inline-end: var(--spacing-sm) !important; }
+.me-md { margin-inline-end: var(--spacing-md) !important; }
+.me-lg { margin-inline-end: var(--spacing-lg) !important; }
+.me-xl { margin-inline-end: var(--spacing-xl) !important; }
+.me-xxl { margin-inline-end: var(--spacing-xxl) !important; }
+
+/* Padding Classes */
+.p-xxs { padding: var(--spacing-xxs) !important; }
+.p-xs { padding: var(--spacing-xs) !important; }
+.p-sm { padding: var(--spacing-sm) !important; }
+.p-md { padding: var(--spacing-md) !important; }
+.p-lg { padding: var(--spacing-lg) !important; }
+.p-xl { padding: var(--spacing-xl) !important; }
+.p-xxl { padding: var(--spacing-xxl) !important; }
+
+.pt-xxs { padding-top: var(--spacing-xxs) !important; }
+.pt-xs { padding-top: var(--spacing-xs) !important; }
+.pt-sm { padding-top: var(--spacing-sm) !important; }
+.pt-md { padding-top: var(--spacing-md) !important; }
+.pt-lg { padding-top: var(--spacing-lg) !important; }
+.pt-xl { padding-top: var(--spacing-xl) !important; }
+.pt-xxl { padding-top: var(--spacing-xxl) !important; }
+
+.pb-xxs { padding-bottom: var(--spacing-xxs) !important; }
+.pb-xs { padding-bottom: var(--spacing-xs) !important; }
+.pb-sm { padding-bottom: var(--spacing-sm) !important; }
+.pb-md { padding-bottom: var(--spacing-md) !important; }
+.pb-lg { padding-bottom: var(--spacing-lg) !important; }
+.pb-xl { padding-bottom: var(--spacing-xl) !important; }
+.pb-xxl { padding-bottom: var(--spacing-xxl) !important; }
+
+.ps-xxs { padding-inline-start: var(--spacing-xxs) !important; }
+.ps-xs { padding-inline-start: var(--spacing-xs) !important; }
+.ps-sm { padding-inline-start: var(--spacing-sm) !important; }
+.ps-md { padding-inline-start: var(--spacing-md) !important; }
+.ps-lg { padding-inline-start: var(--spacing-lg) !important; }
+.ps-xl { padding-inline-start: var(--spacing-xl) !important; }
+.ps-xxl { padding-inline-start: var(--spacing-xxl) !important; }
+
+.pe-xxs { padding-inline-end: var(--spacing-xxs) !important; }
+.pe-xs { padding-inline-end: var(--spacing-xs) !important; }
+.pe-sm { padding-inline-end: var(--spacing-sm) !important; }
+.pe-md { padding-inline-end: var(--spacing-md) !important; }
+.pe-lg { padding-inline-end: var(--spacing-lg) !important; }
+.pe-xl { padding-inline-end: var(--spacing-xl) !important; }
+.pe-xxl { padding-inline-end: var(--spacing-xxl) !important; }
+
 
 /* Lifting effect */
 .lift {
@@ -160,7 +256,6 @@ html {
     }
 
     .nav-link.active {
-        border-bottom-color: currentColor;
         border-radius: var(--bs-border-radius);
         pointer-events: none;
     }
@@ -183,7 +278,6 @@ html {
 }
 
 .article-summary-thumbnail {
-    /*background-color: #fff;*/
     border: none;
     box-shadow: none;
     padding: 0.25rem;

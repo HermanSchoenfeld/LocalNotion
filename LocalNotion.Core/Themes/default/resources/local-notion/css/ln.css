@@ -1,0 +1,272 @@
+:root {
+    /* Hover Background Color */
+    --ln-hover-highlight-bg: #EFEFEF;
+    /* Foreground Colors */
+    --ln-gray: #787774;
+    --ln-gray-rgb: 120, 119, 116;
+    --ln-brown: #9F6B53;
+    --ln-brown-rgb: 159, 107, 83;
+    --ln-orange: #D9730D;
+    --ln-orange-rgb: 217, 115, 13;
+    --ln-yellow: #CB912F;
+    --ln-yellow-rgb: 203, 145, 47;
+    --ln-green: #448361;
+    --ln-green-rgb: 68, 131, 97;
+    --ln-blue: #337EA9;
+    --ln-blue-rgb: 51, 126, 169;
+    --ln-purple: #9065B0;
+    --ln-purple-rgb: 144, 101, 176;
+    --ln-pink: #C14C8A;
+    --ln-pink-rgb: 193, 76, 138;
+    --ln-red: #D44C47;
+    --ln-red-rgb: 212, 76, 71;
+    /* Background Colors */
+    --ln-gray-bg: #F1F1EF;
+    --ln-gray-bg-rgb: 241, 241, 239;
+    --ln-brown-bg: #F4EEEE;
+    --ln-brown-bg-rgb: 244, 238, 238;
+    --ln-orange-bg: #FBECDD;
+    --ln-orange-bg-rgb: 251, 236, 221;
+    --ln-yellow-bg: #FBF3DB;
+    --ln-yellow-bg-rgb: 251, 243, 219;
+    --ln-green-bg: #EDF3EC;
+    --ln-green-bg-rgb: 237, 243, 236;
+    --ln-blue-bg: #E7F3F8;
+    --ln-blue-bg-rgb: 231, 243, 248;
+    --ln-purple-bg: rgba(244, 240, 247, 0.8);
+    --ln-purple-bg-rgb: 244, 240, 247;
+    --ln-pink-bg: rgba(249, 238, 243, 0.8);
+    --ln-pink-bg-rgb: 249, 238, 243;
+    --ln-red-bg: #FDEBEC;
+    --ln-red-bg-rgb: 253, 235, 236;
+}
+
+/* General Layouts */
+.ln-page-wide main {
+    width: 100%;
+}
+
+.ln-page-thin main {
+    width: 11%;
+}
+
+/* Image and Cover Handling */
+.ln-cover {
+    background-size: cover;
+    background-position: center;
+    width: 100%;
+    height: 35vh;
+    min-height: 200px;
+}
+
+.ln-page-thumbnail {
+    display: block;
+    object-fit: cover;
+    border-radius: 3px;
+    width: 124.32px;
+    height: 124.32px;
+    transition: opacity 100ms ease-out 0s;
+    font-size: 5rem;
+}
+
+.ln-icon-image {
+    object-fit: fill;
+    width: 21.312px;
+    height: 21.312px;
+}
+
+.ln-icon-emoji {
+    display: inline;
+    object-fit: fill;
+    width: 21.312px;
+    height: 21.312px;
+    text-align: center;
+}
+
+/* Table Handling */
+.ln-table {
+    margin: 8px 18px 18px 8px;
+}
+
+/* Child Components */
+.ln-page-children {
+}
+
+.ln-toggle-children {
+    margin-top: 0.7em;
+    margin-left: 1.5em;
+}
+
+.ln-paragraph-children {
+}
+
+.ln-bulleted-list-item-children {
+    margin-left: 0.3em;
+}
+
+.ln-numbered-list-item-children {
+    margin-top: 1.0em;
+    margin-left: 1.5em;
+}
+
+.ln-callout-children {
+    margin-top: 0.2em;
+    margin-left: 2.5em;
+}
+
+.ln-quote-children {
+    margin-top: 1.5em;
+}
+
+/* Hover Highlight */
+.ln-behaviour-hover-highlight:hover {
+    background-color: var(--ln-hover-highlight-bg);
+}
+
+/* Foreground Colors */
+.ln-color-default {
+    background: inherit;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-gray {
+    background: inherit;
+    color: var(--ln-gray);
+    fill: var(--ln-gray);
+    caret-color: var(--ln-gray);
+}
+
+.ln-color-brown {
+    background: inherit;
+    color: var(--ln-brown);
+    fill: var(--ln-brown);
+    caret-color: var(--ln-brown);
+}
+
+.ln-color-orange {
+    background: inherit;
+    color: var(--ln-orange);
+    fill: var(--ln-orange);
+    caret-color: var(--ln-orange);
+}
+
+.ln-color-yellow {
+    background: inherit;
+    color: var(--ln-yellow);
+    fill: var(--ln-yellow);
+    caret-color: var(--ln-yellow);
+}
+
+.ln-color-green {
+    background: inherit;
+    color: var(--ln-green);
+    fill: var(--ln-green);
+    caret-color: var(--ln-green);
+}
+
+.ln-color-blue {
+    background: inherit;
+    color: var(--ln-blue);
+    fill: var(--ln-blue);
+    caret-color: var(--ln-blue);
+}
+
+.ln-color-purple {
+    background: inherit;
+    color: var(--ln-purple);
+    fill: var(--ln-purple);
+    caret-color: var(--ln-purple);
+}
+
+.ln-color-pink {
+    background: inherit;
+    color: var(--ln-pink);
+    fill: var(--ln-pink);
+    caret-color: var(--ln-pink);
+}
+
+.ln-color-red {
+    background: inherit;
+    color: var(--ln-red);
+    fill: var(--ln-red);
+    caret-color: var(--ln-red);
+}
+
+/* Background Colors */
+.ln-color-default-background {
+    background: inherit;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-gray-background {
+    background: var(--ln-gray-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-brown-background {
+    background: var(--ln-brown-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-orange-background {
+    background: var(--ln-orange-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-yellow-background {
+    background: var(--ln-yellow-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-green-background {
+    background: var(--ln-green-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-blue-background {
+    background: var(--ln-blue-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-purple-background {
+    background: var(--ln-purple-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-pink-background {
+    background: var(--ln-pink-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+.ln-color-red-background {
+    background: var(--ln-red-bg) !important;
+    color: inherit;
+    fill: inherit;
+    caret-color: inherit;
+}
+
+/* Reduce Code Block Font Size */
+:not(pre) > code[class*="language-"],
+pre[class*="language-"] {
+    font-size: 95%;
+}
