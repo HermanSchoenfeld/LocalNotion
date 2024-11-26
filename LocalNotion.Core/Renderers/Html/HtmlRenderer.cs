@@ -811,10 +811,16 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	protected override string Render(CodeBlock block) {
 		var rawCode = block.Code.RichText.Select(x => x.PlainText).ToDelimittedString(string.Empty);
+		var lang = ToPrismLanguage(block.Code.Language);
+		
+		// Hack for injecting raw-html directly (used for embedded pages that can't specify themes)
+		if (lang == "html" && block.Code.Caption.ToPlainText().Trim() == "{INJECT}")
+			return rawCode;
+
 		return RenderTemplate(
 			"code",
 			new RenderTokens(block) {
-				["language"] = ToPrismLanguage(block.Code.Language),
+				["language"] = lang,
 				["code"] = Encode(rawCode, true, true, false),
 				["raw_code"] = rawCode
 			}
