@@ -1,5 +1,5 @@
 ﻿{include://carousel_pre_start.inc}
-<div id="{object_id}" class="carousel slide {include://carousel_type.inc} {include://carousel_height.inc} {include://color_bg.inc} {include://color_text.inc}" data-bs-ride="carousel">
+<div id="{object_id}" class="carousel slide {include://carousel_type.inc} {include://carousel_height.inc} {include://color_bg.inc} {include://color_text.inc}" data-bs-ride="carousel" {include://carousel_pause.inc}>
     {include://carousel_post_start.inc}
     {include://carousel_indicators.inc}
     <div class="carousel-inner">

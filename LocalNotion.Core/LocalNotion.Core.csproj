@@ -1080,6 +1080,8 @@
 	  <EmbeddedResource Include="Themes\cms\resources\js\imagesloaded.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\particles.min.js" />
+	  <EmbeddedResource Include="Themes\cms_header\carousel_pause.inc" />
+	  <EmbeddedResource Include="Themes\page_minimalist\.config.json" />
 	  <EmbeddedResource Include="Themes\default\header_link.html" />
 	  <EmbeddedResource Include="Themes\cms\text_link.html" />
 	  <EmbeddedResource Include="Themes\cms\button_type.inc" />
@@ -1141,6 +1143,8 @@
 	  <EmbeddedResource Include="Themes\h2_shadow\h2_shadow.inc" />
 	  <EmbeddedResource Include="Themes\h1_shadow\.config.json" />
 	  <EmbeddedResource Include="Themes\h1_shadow\h1_shadow.inc" />
+	  <EmbeddedResource Include="Themes\header_no_pause\.config.json" />
+	  <EmbeddedResource Include="Themes\header_no_pause\carousel_pause.inc" />
 	  <EmbeddedResource Include="Themes\image_shadow\.config.json" />
 	  <EmbeddedResource Include="Themes\image_shadow\image_shadow.inc" />
 	  <EmbeddedResource Include="Themes\image_width_100pc\image_width.inc" />
@@ -1150,6 +1154,7 @@
 	  <EmbeddedResource Include="Themes\header_no_slide_controls\.config.json" />
 	  <EmbeddedResource Include="Themes\header_no_slide_controls\carousel_buttons.inc" />
 	  <EmbeddedResource Include="Themes\header_no_slide_controls\carousel_indicators.inc" />
+	  <EmbeddedResource Include="Themes\page_minimalist\page.online.html" />
 	  <EmbeddedResource Include="Themes\shadow_none\.config.json" />
 	  <EmbeddedResource Include="Themes\shadow_none\shadow.inc" />
 	  <EmbeddedResource Include="Themes\shadow_none\text-shadow.inc" />
