@@ -29,7 +29,7 @@ $(document).ready(function () {
             }, interval);
         } else {
             // Max retries reached, log an error or handle as needed
-            console.error('DataTables script did not load in time.');
+            console.warn('DataTables script did not load in time.');
         }
     }
     // Start polling with the maximum number of retries
