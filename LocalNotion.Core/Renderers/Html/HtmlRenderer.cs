@@ -1311,25 +1311,25 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			VideoSharingPlatform.YouTube => RenderTemplate(
 				"embed_youtube",
 				new RenderTokens(block) {
-					["caption"] = Render(caption),
+					["caption"] = caption,
 					["video_id"] = videoID,
 				}),
 			VideoSharingPlatform.Rumble => RenderTemplate(
 				"embed_rumble",
 				new RenderTokens(block) {
-					["caption"] = Render(caption),
+					["caption"] = caption,
 					["video_id"] = videoID,
 				}),
 			VideoSharingPlatform.BitChute => RenderTemplate(
 				"embed_bitchute",
 				new RenderTokens(block) {
-					["caption"] = Render(caption),
+					["caption"] = caption,
 					["video_id"] = videoID,
 				}),
 			VideoSharingPlatform.Vimeo => RenderTemplate(
 				"embed_vimeo",
 				new RenderTokens(block) {
-					["caption"] = Render(caption),
+					["caption"] = caption,
 					["video_id"] = videoID,
 				}),
 			_ => throw new NotSupportedException(platform.ToString())

@@ -1001,7 +1001,7 @@ $@"Local Notion Status:
 		//		string[] SyncCmd = new[] { "sync", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		//		string[] SyncCmd2 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec", "-f", "3" };
 		//		string[] SyncCmd3 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "e1b6f94f-e561-409f-a2d8-4f43b85e9490", "-f", "3" };
-				//string[] SyncCmd4 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all", "-f", "3" };
+		//string[] SyncCmd4 = new[] { "sync", "-p", "d:\\databases\\LN-SPHERE10.COM", "--all", "-f", "3" };
 
 		//		string[] PullCmd = new[] { "pull", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
 		//		string[] PullCmd2 = new[] { "pull", "-p", "d:\\databases\\LN-SPHERE10.COM", "-o", "68e1d4d0-a9a0-43cf-a0dd-6a7ef877d5ec" };
@@ -1050,9 +1050,9 @@ $@"Local Notion Status:
 
 		// string[] PullBug27Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "906fe7ef-7d08-458e-818d-a58477cf3281", "--force" };
 
-		 //string[] PullBug28Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "136f1a97ddeb80539178fbe6430b7a9a", "--force" };
+		//string[] PullBug28Page = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "136f1a97ddeb80539178fbe6430b7a9a", "--force" };
 
-		 //string[] PullBug29Page = new[] { "pull", "-p", "d:\\databases\\LN-POWER2PEOPLE.COM.AU", "-o", "137f1a97ddeb806aa251e764a4608a98", "--force" };
+		//string[] PullBug29Page = new[] { "pull", "-p", "d:\\databases\\LN-POWER2PEOPLE.COM.AU", "-o", "137f1a97ddeb806aa251e764a4608a98", "--force" };
 
 		//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 		// string[] PullDatabase2 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b95bd225-9407-4eb6-a8bd-e309c236564b", "--force" };
@@ -1113,6 +1113,9 @@ $@"Local Notion Status:
 		//  string[] RenderBug43Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "12df1a97-ddeb-808c-a762-eba09fafb14b" };
 
 		//string[] RenderBug44Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "136f1a97ddeb80539178fbe6430b7a9a" };
+		//string[] RenderBug45Page = new[] { "render", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o",  "154f1a97-ddeb-806e-be57-d4f840ed3fa1" };
+		//string[] RenderBug46Page = new[] { "render", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o",  "136f1a97-ddeb-8091-94ad-e749f18ec320" };
+		
 
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
 		//		string[] RemoveBug2 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80", "47476668-4850-4290-a15a-a03e5e1f701d", "aa633dda-e13d-4a1e-8727-577051cd43b3", "0a932935-51c7-4ae8-ae5a-690a85c918b0", "7fd61738-3b6c-4df5-9eee-b257f1e13e20", "957e39ad-3a63-43a0-91f3-8e1e132696a5", "41c1973e-228e-46d1-9ece-ef0dc9ee913e", "64615900-e2b3-4cdf-9a5d-03a6f1d1744f" };
@@ -1137,7 +1140,7 @@ $@"Local Notion Status:
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
 		//if (args.Length == 0)
-		//	args = PullBug29Page;  // PullBug23Page   RenderBug36Page
+		//	args = RenderBug46Page;  // PullBug23Page   RenderBug36Page
 
 		//#endif
 
