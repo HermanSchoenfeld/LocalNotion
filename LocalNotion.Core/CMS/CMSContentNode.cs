@@ -62,6 +62,8 @@ public class CMSContentNode {
 
 	public string Summary => Content.FirstOrDefault(x => !x.CMSProperties.Summary.IsNullOrWhiteSpace())?.CMSProperties.Summary ?? string.Empty;
 
+	public int Sequence => Content.Min(x => x.CMSProperties.Sequence) ?? int.MaxValue;
+
 	public LocalNotionThumbnail Thumbnail => Content.FirstOrDefault(x => x.Thumbnail.Type != ThumbnailType.None)?.Thumbnail ?? LocalNotionThumbnail.None;
 
 	public IEnumerable<string> Keywords => Content.SelectMany(x => x.Keywords).Distinct();

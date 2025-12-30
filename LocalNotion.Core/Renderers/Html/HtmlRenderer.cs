@@ -93,7 +93,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			return RenderTemplate(
 				"embed_x",
 				new RenderTokens(block) {
-					["url"] = SanitizeUrl(block.Embed.Url),
+					["url"] = SanitizeUrl(block.Embed.Url.Replace("https://x.com", "https://twitter.com")),  // NOTE: X's own script is not working with x.com links
 					["caption"] = Render(block.Embed.Caption)
 				}
 			);

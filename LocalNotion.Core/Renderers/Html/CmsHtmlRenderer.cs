@@ -72,6 +72,9 @@ public class CmsHtmlRenderer : HtmlRenderer {
 				.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer, CMSPageType.Internal))
 				.GroupBy(x => Tools.Url.StripAnchorTag(x.CMSProperties.CustomSlug))
 				.Select(g => Repository.CMSDatabase.GetContent(g.Key))
+				.OrderBy(x => x.Sequence)
+				.ThenBy(x => x.CreatedOn)
+				.ThenByDescending(x => x.LastEditedOn)
 				.ToArray();
 		
 		// load framing
