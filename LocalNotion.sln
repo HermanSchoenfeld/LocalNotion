@@ -9,12 +9,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LocalNotion.CLI", "LocalNot
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CI-CD", "CI-CD", "{089C5118-2BC6-4C4D-8B05-3ED561CAB4FC}"
 	ProjectSection(SolutionItems) = preProject
-		Make-Version.ps1 = Make-Version.ps1
 		publish-all.bat = publish-all.bat
 		publish-win-x64.bat = publish-win-x64.bat
 	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{E6B1977E-AE9D-4177-8BBD-33B7E761D817}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notion.Client", "Notion.Client\Notion.Client.csproj", "{9E47ED98-200C-E88E-DE46-ADCA5D0D94E8}"
 EndProject
