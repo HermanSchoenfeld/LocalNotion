@@ -1,4 +1,4 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core;
@@ -129,7 +129,7 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 
 	#region Values
 
-	protected abstract TOutput Render(EmojiObject emojiObject);
+	protected abstract TOutput Render(EmojiPageIcon emojiObject);
 
 	protected abstract TOutput Render(Link link);
 

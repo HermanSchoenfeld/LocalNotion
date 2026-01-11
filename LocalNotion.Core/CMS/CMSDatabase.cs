@@ -1,5 +1,5 @@
 ﻿using AngleSharp.Text;
-using Hydrogen;
+using Sphere10.Framework;
 
 namespace LocalNotion.Core;
 
@@ -8,10 +8,10 @@ public class CMSDatabase : ICMSDatabase {
 
 	public CMSDatabase(ILocalNotionRepository repository) {
 		Guard.ArgumentNotNull(repository, nameof(repository));
-		Guard.Ensure(repository.CMSDatabaseID != null, "Repository must have a CMS database ID");
+		Guard.Ensure(repository.CMSDatabaseID != null, "Repository must have a CMS Database ID");
 		Repository = repository;
 		Repository.Changed += _ => FlushCache();
-		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => BuildContentHierarchy(CMSDatabaseID, true), keyComparer: StringComparer.InvariantCultureIgnoreCase);
+		_contentHierarchy = new BulkFetchActionCache<string, CMSContentNode>(() => BuildContentHierarchy(repository.CMSDatabaseID, true), keyComparer: StringComparer.InvariantCultureIgnoreCase);
 	}
 
 	public ILocalNotionRepository Repository { get; }
@@ -30,6 +30,7 @@ public class CMSDatabase : ICMSDatabase {
 		contentNode = _contentHierarchy[slug];
 		return contentNode != null;
 	}
+
 
 	private void FlushCache() {
 		_contentHierarchy?.Purge();

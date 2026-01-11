@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using ExtensionProperties;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
 namespace LocalNotion.Core;
 

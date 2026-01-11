@@ -1,5 +1,7 @@
-﻿using Hydrogen;
+﻿using JsonSubTypes;
+using LocalNotion.Core.DataObjects;
 using Notion.Client;
+using Sphere10.Framework;
 
 
 namespace LocalNotion.Core;
@@ -8,8 +10,13 @@ public static class IObjectExtensions {
 
 	public static string GetTitle(this IObject obj) 
 		=> obj switch {
-			Page page => page.GetTitle(),
-			Database database => database.GetTitle(),
+			Page page => page.GetTextTitle(),
+			Database database => database.GetTextTitle(),
+			DataSource dataSource => dataSource.GetTextTitle(),
+			Block block => block.GetTextTitle(),
+			User user => user.Name,
+			Comment comment => comment.GetTextTitle(),
+			FileUpload fileUpload => fileUpload.GetTextTitle(),
 			_ => throw new NotSupportedException($"{obj.GetType()}")
 		};
 
@@ -17,13 +24,17 @@ public static class IObjectExtensions {
 		=> obj switch {
 			Page page => page.LastEditedTime,
 			Database database => database.LastEditedTime,
+			DataSource dataSource => dataSource.LastEditedTime,
 			Block block => block.LastEditedTime,
+			User user => null,
+			Comment comment => comment.LastEditedTime,
+			FileUpload fileUpload => fileUpload.LastEditedTime,
 			_ => default
 		};
 
 	public static IEnumerable<string> GetTextContents(this IObject obj)
 		=> obj switch {
-			CreateCommentResponse createCommentResponse => createCommentResponse.RichText.Select(x => x.PlainText ?? string.Empty),
+			CreateCommentRequest createCommentRequest => createCommentRequest.RichText.Select(x => x.PlainText ?? string.Empty),
 			Comment comment => comment.RichText.Select(x => x.PlainText ?? string.Empty),
 			BookmarkBlock bookmarkBlock => bookmarkBlock.Bookmark.Caption.Select(x => x.PlainText ?? string.Empty),
 			BreadcrumbBlock breadcrumbBlock => Enumerable.Empty<string>(),
@@ -66,41 +77,49 @@ public static class IObjectExtensions {
 		};
 
 	public static bool HasFileAttachment(this IObject block)
-		=> block.GetType().IsIn(typeof(AudioBlock), typeof(FileBlock), typeof(ImageBlock), typeof(PDFBlock), typeof(VideoBlock), typeof(CalloutBlock)) && (block.GetFileAttachmentOrDefault() != null);
+		=> block switch {
+			AudioBlock audioBlock => true,
+			FileBlock fileBlock => true,
+			ImageBlock imageBlock => true,
+			VideoBlock videoBlock => true,
+			PDFBlock pdfBlock => true,
+			CalloutBlock { Callout.Icon: CustomEmojiPageIcon or FilePageIcon } => true,
+			_ => false
+		};
 
-	public static FileObject GetFileAttachment(this IObject @object) 
+	public static WrappedNotionFile GetFileAttachment(this IObject @object) 
 		=> @object.GetFileAttachmentOrDefault() ?? throw new InvalidOperationException("Object type does not have file attachment property");
 
-	public static FileObject GetFileAttachmentOrDefault(this IObject block)
+	public static WrappedNotionFile GetFileAttachmentOrDefault(this IObject block)
 		=> block switch {
-			AudioBlock audioBlock => audioBlock.Audio,
-			FileBlock fileBlock => fileBlock.File,
-			ImageBlock imageBlock => imageBlock.Image,
-			VideoBlock videoBlock => videoBlock.Video,
-			PDFBlock pdfBlock => pdfBlock.PDF,
-			CalloutBlock calloutBlock => calloutBlock.Callout.Icon as FileObject,
+			AudioBlock audioBlock => new WrappedNotionFile(audioBlock.Audio),
+			FileBlock fileBlock => new WrappedNotionFile(fileBlock.File),
+			ImageBlock imageBlock => new WrappedNotionFile(imageBlock.Image),
+			VideoBlock videoBlock => new WrappedNotionFile(videoBlock.Video),
+			PDFBlock pdfBlock => new WrappedNotionFile(pdfBlock.PDF),
+			CalloutBlock { Callout.Icon: CustomEmojiPageIcon or FilePageIcon } calloutBlock => new WrappedNotionFile(calloutBlock.Callout.Icon),
 			_ => default
 		};
 
-	public static IParent GetParent(this IObject obj) 
+	public static ParentObject GetParent(this IObject obj) 
 		=> TryGetParent(obj, out var parent) ? parent : throw new InvalidOperationException($"{nameof(IObject)} of type {obj.GetType().Name} does not have a parent");
 
-	public static bool TryGetParent(this IObject obj, out IParent parent) {
+	public static bool TryGetParent(this IObject obj, out ParentObject parent) {
 		switch (obj) {
 			case Comment comment:
-				parent = comment.Parent as IParent;
+				parent = new(comment.Parent);
 				return true;
 
 			case Database database:
-				parent = database.Parent;
+				parent = new(database.Parent);
 				return true;
 
 			case IBlock block:
-				parent = block.Parent;
+				parent = new(block.Parent);
 				return true;
 
 			case Page page:
-				parent = page.Parent;
+				parent = new(page.Parent);
 				return true;
 
 			case PartialUser partialUser:

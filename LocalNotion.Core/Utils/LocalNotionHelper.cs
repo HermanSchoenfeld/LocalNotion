@@ -2,8 +2,9 @@
 using System.Runtime.CompilerServices;
 using System.Text;
 using CommandLine;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
+using AngleSharp.Common;
 
 namespace LocalNotion.Core;
 
@@ -56,24 +57,26 @@ public class LocalNotionHelper {
 		localNotionPage.LastSyncedOn = DateTime.UtcNow;
 		localNotionPage.LastEditedOn = notionPage.LastEditedTime;
 		localNotionPage.CreatedOn = notionPage.CreatedTime;
-		localNotionPage.Title = notionPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		localNotionPage.Title = notionPage.GetTextTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		localNotionPage.Name = CalculatePageName(notionPage.Id, localNotionPage.Title); // note: this is made unique by NotionSyncOrchestrator
-		localNotionPage.Cover = notionPage.Cover != null ? ParseFileUrl(notionPage.Cover, out _) : null;
+		localNotionPage.Cover = notionPage.Cover != null ? ParseCoverUrl(notionPage.Cover, out _) : null;
 		localNotionPage.Keywords = Array.Empty<string>();
 		if (notionPage.Icon != null) {
 			localNotionPage.Thumbnail = new() {
 				Type = notionPage.Icon switch {
 					null => ThumbnailType.None,
-					EmojiObject => ThumbnailType.Emoji,
-					FileObject => ThumbnailType.Image,
-					CustomEmojiObject => ThumbnailType.Image,
+					EmojiPageIcon => ThumbnailType.Emoji,
+					FilePageIcon => ThumbnailType.Image,
+					ExternalPageIcon => ThumbnailType.Image,
+					CustomEmojiPageIcon => ThumbnailType.Image,
 					_ => throw new ArgumentOutOfRangeException()
 				},
 
 				Data = notionPage.Icon switch {
-					EmojiObject emojiObject => emojiObject.Emoji,
-					FileObject fileObject => ParseFileUrl(fileObject, out _),
-					CustomEmojiObject customEmojiObject => customEmojiObject.Emoji.Url,
+					EmojiPageIcon emojiPageIcon => emojiPageIcon.Emoji,
+					FilePageIcon filePageIcon => filePageIcon.File.Url,
+					ExternalPageIcon externalPageIcon => externalPageIcon.External.Url,
+					CustomEmojiPageIcon customEmojiPageIcon => customEmojiPageIcon.CustomEmoji.Url,
 					_ => throw new ArgumentOutOfRangeException()
 				}
 			};
@@ -81,48 +84,53 @@ public class LocalNotionHelper {
 
 	}
 	
-	public static LocalNotionDatabase ParseDatabase(Database notionDatabase) {
+	public static LocalNotionDatabase ParseDatabase(Database notionDatabase, DataSource notionPrimaryDataSource) {
 		var result = new LocalNotionDatabase();
-		ParseDatabase(notionDatabase, result);
+		ParseDatabase(notionDatabase, notionPrimaryDataSource, result);
 		return result;
 	}
 
-	public static void ParseDatabase(Database notionDatabase, LocalNotionDatabase localNotionDatabase) {
+	public static void ParseDatabase(Database notionDatabase, DataSource notionPrimaryDataSource, LocalNotionDatabase localNotionDatabase) {
 		localNotionDatabase.ID = notionDatabase.Id;
 		localNotionDatabase.LastSyncedOn = DateTime.UtcNow;
 		localNotionDatabase.LastEditedOn = notionDatabase.LastEditedTime;
 		localNotionDatabase.CreatedOn = notionDatabase.CreatedTime;
-		localNotionDatabase.Title = notionDatabase.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		localNotionDatabase.Title = notionDatabase.GetTextTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		localNotionDatabase.Name = CalculatePageName(notionDatabase.Id, localNotionDatabase.Title); // note: this is made unique by NotionSyncOrchestrator
-		localNotionDatabase.Cover = notionDatabase.Cover != null ? ParseFileUrl(notionDatabase.Cover, out _) : null;
+		localNotionDatabase.Cover = notionDatabase.Cover != null ? ParseCoverUrl(notionDatabase.Cover, out _) : null;
 		localNotionDatabase.Keywords = Array.Empty<string>();
-		if (notionDatabase.Icon != null) {
+		if (notionPrimaryDataSource.Icon != null) {
 			localNotionDatabase.Thumbnail = new() {
 				Type = notionDatabase.Icon switch {
 					null => ThumbnailType.None,
-					EmojiObject => ThumbnailType.Emoji,
-					FileObject => ThumbnailType.Image,
+					EmojiPageIcon => ThumbnailType.Emoji,
+					FilePageIcon => ThumbnailType.Image,
+					ExternalPageIcon => ThumbnailType.Image,
+					CustomEmojiPageIcon => ThumbnailType.Image,
 					_ => throw new ArgumentOutOfRangeException()
 				},
 
-				Data = notionDatabase.Icon switch {
-					EmojiObject emojiObject => emojiObject.Emoji,
-					FileObject fileObject => ParseFileUrl(fileObject, out _),
+				Data = notionPrimaryDataSource.Icon switch {
+					EmojiPageIcon emojiPageIcon => emojiPageIcon.Emoji,
+					FilePageIcon filePageIcon => filePageIcon.File.Url,
+					ExternalPageIcon externalPageIcon => externalPageIcon.External.Url,
+					CustomEmojiPageIcon customEmojiPageIcon => customEmojiPageIcon.CustomEmoji.Url,
 					_ => throw new ArgumentOutOfRangeException()
 				}
 			};
 		} else localNotionDatabase.Thumbnail = LocalNotionThumbnail.None;
-		localNotionDatabase.Description = notionDatabase.Description.ToPlainText();
-		var properties = notionDatabase.Properties.Reverse().ToList();
+		localNotionDatabase.PrimaryDataSourceID = notionDatabase.DataSources?.FirstOrDefault()?.DataSourceId;
+		localNotionDatabase.Description = notionPrimaryDataSource.Description.ToPlainText();
+		var properties = notionPrimaryDataSource.Properties.Reverse().ToList();
 		MoveToBeginning<TitleProperty>(properties);
 		MoveToEnd<LastEditedByProperty>(properties);
 		MoveToEnd<LastEditedTimeProperty>(properties);
 		MoveToEnd<CreatedByProperty>(properties);
 		MoveToEnd<CreatedTimeProperty>(properties);
-		notionDatabase.Properties = properties.ToDictionary();
-		localNotionDatabase.Properties = notionDatabase.Properties;
+		//notionDatabase.Properties = properties.ToDictionary();
+		localNotionDatabase.Properties = properties.ToDictionary();
 
-		void MoveToBeginning<T>(List<KeyValuePair<string, Property>> list) where T : Property {
+		void MoveToBeginning<T>(List<KeyValuePair<string, DataSourcePropertyConfig>> list) where T : Property {
 			var ix = list.FindIndex(x => x.Value is T);
 			if (ix >= 0) {
 				var item = list[ix];
@@ -131,7 +139,7 @@ public class LocalNotionHelper {
 			}
 		}
 
-		void MoveToEnd<T>(List<KeyValuePair<string, Property>> list) where T : Property {
+		void MoveToEnd<T>(List<KeyValuePair<string, DataSourcePropertyConfig>> list) where T : Property {
 			var ix = list.FindIndex(x => x.Value is T);
 			if (ix >= 0) {
 				var item = list[ix];
@@ -139,7 +147,15 @@ public class LocalNotionHelper {
 				list.Add(item);
 			}
 		}
+	}
 
+	public static string ParseCoverUrl(IPageCover cover, out string fileName) {
+		fileName = Constants.DefaultResourceTitle;
+		return cover switch {
+			FilePageCover fileCover => TryParseNotionFileUrl(fileCover.File.Url, out _, out fileName) ? fileCover.File.Url : fileCover.File.Url,
+			ExternalPageCover externalCover => externalCover.External.Url,
+			_ => throw new ArgumentOutOfRangeException(nameof(cover), cover, null)
+		};
 	}
 
 	public static string ParseFileUrl(FileObject notionFile, out string fileName) {
@@ -239,6 +255,9 @@ public class LocalNotionHelper {
 	public static string CalculateFeatureImageID(LocalNotionDatabase localDatabase, Database database, NotionObjectGraph objectGraph) 
 		=> null;
 
+	public static bool IsNotionFileObject(object x)
+		=> x is FileObject || x is FileObjectWithName || x is CustomEmojiPageIcon || x is FilePageIcon;
+	
 	public static IEnumerable<LocalNotionEditableResource> FilterRenderableResources(IEnumerable<LocalNotionResource> resources)
 		=> resources.Where(x => x is LocalNotionEditableResource).Cast<LocalNotionEditableResource>().Distinct();
 

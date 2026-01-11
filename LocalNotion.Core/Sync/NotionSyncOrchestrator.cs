@@ -2,8 +2,8 @@
 
 using System.Text;
 using System.Xml.Schema;
-using Hydrogen;
-using Hydrogen.Application;
+using Sphere10.Framework;
+using Sphere10.Framework.Application;
 using LocalNotion.Core.DataObjects;
 using Notion.Client;
 
@@ -37,20 +37,34 @@ public class NotionSyncOrchestrator {
 		Guard.ArgumentNotNull(databaseID, nameof(databaseID));
 		options ??= DownloadOptions.Default;
 		databaseID = LocalNotionHelper.SanitizeObjectID(databaseID);
+		string datasourceID = null;
 		var downloadedResources = new List<LocalNotionResource>();
 		var processedPages = new List<Page>();
 		await using (Repository.EnterUpdateScope()) {
 
 			// Track the database objects
 			Database notionDatabase = null;
+			DataSource notionPrimaryDataSource = null;
 			IList<Page> notionChildPages = null;
+			var needHeader = false;
 
 			// Nested method used to fetch notion page (if required, the logic herein
 			// tries to avoid calling this)
 			async Task FetchNotionDatabase() {
-				Logger.Info($"Fetching database: '{databaseID}'");
+				Logger.Info($"Fetching database header: {databaseID}");
 				notionDatabase = await FetchDatabaseHeader(databaseID, cancellationToken);
+				datasourceID = notionDatabase.DataSources.FirstOrDefault()?.DataSourceId;
+				if (datasourceID is not null) {
+					Logger.Info($"Fetching datasource header: {datasourceID}");
+					notionPrimaryDataSource = await FetchDatasourceHeader(datasourceID, cancellationToken);
+				} else {
+					Logger.Info($"No datasource identified");
+				}
+			
+				//if (notionDatabase.Id == Repository.CMSDataSourceID)
+				//	Repository.IdentifyPrimaryDataSourceID( notionDatabase.DataSources.FirstOrDefault()?.DataSourceId);
 				knownNotionLastEditTime = notionDatabase.LastEditedTime;
+				needHeader = false;
 			}
 
 			// Fetch page, we need to know last edit tie on notion
@@ -58,96 +72,107 @@ public class NotionSyncOrchestrator {
 				await FetchNotionDatabase();
 
 			var containsDatabase = Repository.TryGetDatabase(databaseID, out var localDatabase);
+			if (containsDatabase)
+				datasourceID = localDatabase.PrimaryDataSourceID;
 			var preDownloadLocalRows = Repository.GetChildResources(databaseID).ToArray();
 			var databaseDifferent = containsDatabase && localDatabase.LastEditedOn != knownNotionLastEditTime;
 			var wasPrematurelySynced = containsDatabase && !databaseDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localDatabase.LastSyncedOn - localDatabase.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
 			var shouldDownload = !containsDatabase || databaseDifferent || options.ForceRefresh || wasPrematurelySynced;
 			var lastKnownParent = localDatabase?.ParentResourceID;
+			needHeader = shouldDownload || !containsDatabase;
 
-			// Fetch child page headers (will be needed)
-			Logger.Info($"Fetching database rows: '{databaseID}'");
-			notionChildPages = await FetchDatabasePagesAsync(databaseID, null, cancellationToken).ToListAsync(cancellationToken);
+			// If we need the dataosourceid, fetch it
+			if (needHeader)
+				await FetchNotionDatabase();
+
+			// Fetch child page headers (always needed)
+			notionChildPages = await FetchDatabasePagesAsync(datasourceID, null, cancellationToken).ToListAsync(cancellationToken);
 
 			if (shouldDownload) {
 
-				// fetch database if not already
-				await FetchNotionDatabase();
+				// fetch database/datasource if not already
+				if (needHeader)
+					await FetchNotionDatabase();
 
-				// Remove local database (if applicable)				
-				if (containsDatabase)
-					Repository.RemoveResource(databaseID, false);  // dangling child resources removed when fetching rows below
+				if (datasourceID != null) {
 
-				// Hydrate the fetched database from notion
-				localDatabase = LocalNotionHelper.ParseDatabase(notionDatabase);
+					// Remove local database (if applicable)				
+					if (containsDatabase)  
+						Repository.RemoveResource(databaseID, false);  // dangling child resources removed when fetching rows below
 
-				// Ensure page name is unique (resolve conflicts)
-				localDatabase.Name = CalculateUniqueResourceName(localDatabase.Name);
+					// Hydrate the fetched database from notion
+					localDatabase = LocalNotionHelper.ParseDatabase(notionDatabase, notionPrimaryDataSource);
 
-				// Fetch page graph from notion
-				Logger.Info($"Fetching database graph for '{notionDatabase.GetTitle()}' ({notionDatabase.Id})");
-				
-				// Determine the parent page
-				localDatabase.ParentResourceID = CalculateResourceParent(localDatabase.ID); // note: it's parent, if it has one, will be in the Repository at this point
+					// Ensure page name is unique (resolve conflicts)
+					localDatabase.Name = CalculateUniqueResourceName(localDatabase.Name);
 
-				// Save notion objects
-				if (Repository.ContainsObject(notionDatabase.Id))
-					Repository.RemoveObject(notionDatabase.Id);
-				Repository.SaveObject(notionDatabase);
+					// Fetch page graph from notion
+					Logger.Info($"Fetching database graph for '{notionDatabase.GetTextTitle()}' ({notionDatabase.Id})");
 
-				// Save the page graph (json file describing the object graph)
-				var databaseGraph = new NotionObjectGraph {
-					ObjectID = databaseID,
-					Children = notionChildPages.Select(x => new NotionObjectGraph { ObjectID = x.Id } ).Reverse().ToArray()
-				};
+					// Determine the parent page
+					localDatabase.ParentResourceID = CalculateResourceParent(localDatabase.ID); // note: it's parent, if it has one, will be in the Repository at this point
 
-				// Determine feature image
-				localDatabase.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localDatabase, notionDatabase, databaseGraph);
+					// Save notion objects
+					if (Repository.ContainsObject(notionDatabase.Id))
+						Repository.RemoveObject(notionDatabase.Id);
+					Repository.SaveObject(notionDatabase);
 
-				Repository.SavePageGraph(databaseGraph);
+					// Save the page graph (json file describing the object graph)
+					var databaseGraph = new NotionObjectGraph {
+						ObjectID = databaseID,
+						Children = notionChildPages.Select(x => new NotionObjectGraph { ObjectID = x.Id }).Reverse().ToArray()
+					};
 
-				// Save local notion page resource 
-				Repository.AddResource(localDatabase);
+					// Determine feature image
+					localDatabase.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localDatabase, notionDatabase, databaseGraph);
 
-				// Track this resource for rendering below
-				downloadedResources.Add(localDatabase);
+					Repository.SavePageGraph(databaseGraph);
 
-				// In order to support cyclic references between parent -> child pages in the case where
-				// no object-id folders are used, we generate blank stub at download time. This is because trying to predict
-				// the render as ILinkGenerator's do is unreliable due to potential for conflicting filenames.
-				// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
-				// issue.
-				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Database))
-					Repository.ImportBlankResourceRender(notionDatabase.Id, options.RenderType);
+					// Save local notion page resource 
+					Repository.AddResource(localDatabase);
 
-				var linkGenerator = LinkGeneratorFactory.Create(Repository);
-				// Download cover
-				if (localDatabase.Cover != null && ShouldDownloadFile(localDatabase.Cover)) {
-					// Cover is a Notion file
-					var file = await DownloadFileAsync(localDatabase.Cover, notionDatabase.Id, options.ForceRefresh, cancellationToken);
-					if (file != null) {
-						localDatabase.Cover = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
-						// update notion object with url (this is a component object and saved with page)
-						notionDatabase.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
+					// Track this resource for rendering below
+					downloadedResources.Add(localDatabase);
 
-						// track new file
-						downloadedResources.Add(file);
+					// In order to support cyclic references between parent -> child pages in the case where
+					// no object-id folders are used, we generate blank stub at download time. This is because trying to predict
+					// the render as ILinkGenerator's do is unreliable due to potential for conflicting filenames.
+					// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
+					// issue.
+					if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Database))
+						Repository.ImportBlankResourceRender(notionDatabase.Id, options.RenderType);
+
+					var linkGenerator = LinkGeneratorFactory.Create(Repository);
+					// Download cover
+					if (localDatabase.Cover != null && ShouldDownloadFile(localDatabase.Cover)) {
+						// Cover is a Notion file
+						var file = await DownloadFileAsync(localDatabase.Cover, notionDatabase.Id, options.ForceRefresh, cancellationToken);
+						if (file != null) {
+							localDatabase.Cover = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
+							// update notion object with url (this is a component object and saved with page)
+							notionDatabase.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
+
+							// track new file
+							downloadedResources.Add(file);
+						}
 					}
-				}
 
-				// Download thumbnail
-				if (localDatabase.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localDatabase.Thumbnail.Data)) {
-					// Thumbnail is a Notion file
-					var file = await DownloadFileAsync(localDatabase.Thumbnail.Data, notionDatabase.Id, options.ForceRefresh, cancellationToken);
-					if (file != null) {
-						localDatabase.Thumbnail.Data = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
-						// update notion object with url (this is a component object and saved with page)
-						notionDatabase.Icon.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
+					// Download thumbnail
+					if (localDatabase.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localDatabase.Thumbnail.Data)) {
+						// Thumbnail is a Notion file
+						var file = await DownloadFileAsync(localDatabase.Thumbnail.Data, notionDatabase.Id, options.ForceRefresh, cancellationToken);
+						if (file != null) {
+							localDatabase.Thumbnail.Data = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
+							// update notion object with url (this is a component object and saved with page)
+							notionDatabase.Icon.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
 
-						// track new file
-						downloadedResources.Add(file);
+							// track new file
+							downloadedResources.Add(file);
+						}
 					}
+				} else {
+					Logger.Info($"Database had no datasources, skipped");
 				}
-
 			}
 
 			// Fetch updated database pages
@@ -282,7 +307,7 @@ public class NotionSyncOrchestrator {
 				localPage.Name = CalculateUniqueResourceName(localPage.Name);
 
 				// Fetch page graph from notion
-				Logger.Info($"Fetching page graph for '{notionPage.GetTitle()}' ({notionPage.Id})");
+				Logger.Info($"Fetching page graph for '{notionPage.GetTextTitle()}' ({notionPage.Id})");
 				pageObjects = new Dictionary<string, IObject>();
 				pageObjects.Add(notionPage.Id, notionPage);    // optimization: pre-add Page root object to avoid expensive fetch
 				pageGraph = await NotionClient.Blocks.GetObjectGraphAsync(notionPage.Id, pageObjects, cancellationToken);
@@ -370,8 +395,8 @@ public class NotionSyncOrchestrator {
 						.VisitAll()
 						.Where(x => pageObjects[x.ObjectID].HasFileAttachment())
 						.Select(x => pageObjects[x.ObjectID].GetFileAttachment())
-						.Where(x => x is FileObject || x is FileObjectWithName || x is CustomEmojiObject)
-						.Select(x => new WrappedNotionFile(x))
+						//.Where(LocalNotionHelper.IsNotionFileObject)
+						//.Select(x => new WrappedNotionFile(x))
 						.Union(
 							notionPage
 								.Properties
@@ -624,11 +649,16 @@ public class NotionSyncOrchestrator {
 		return await NotionClient.Databases.RetrieveAsync(databaseID, cancellationToken);
 	}
 
-	public IAsyncEnumerable<Page> FetchDatabasePagesAsync(string databaseID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
-		Logger.Info($"Fetching updated pages for database '{databaseID}'{(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
-		return NotionClient.Databases.EnumerateAsync(
-			databaseID,
-			new DatabasesQueryParameters { Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null, },
+	public async Task<DataSource> FetchDatasourceHeader(string datasourceID, CancellationToken cancellationToken = default) {
+		return await NotionClient.DataSources.RetrieveAsync(datasourceID, cancellationToken);
+	}
+
+
+	public IAsyncEnumerable<Page> FetchDatabasePagesAsync(string dataSourceID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
+		Logger.Info($"Fetching updated pages from datasource {dataSourceID} {(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
+		return NotionClient.DataSources.EnumerateAsync(
+			dataSourceID,
+			new QueryDataSourceRequest { Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null, },
 			cancellationToken
 		);
 	}
@@ -663,15 +693,16 @@ public class NotionSyncOrchestrator {
 			visited.Add(objectID);
 			if (obj.TryGetParent(out var parent)) {
 				switch (parent.Type) {
-					case ParentType.DatabaseId:
-					case ParentType.PageId:
-					case ParentType.Workspace:
-						return parent.GetId();
-					case ParentType.Unknown:
-					case ParentType.BlockId:
+					case ParentObject.ParentType.DatabaseId:
+					case ParentObject.ParentType.PageId:
+					case ParentObject.ParentType.Workspace:
+					case ParentObject.ParentType.DatasourceId:
+						return parent.Id;
+					case ParentObject.ParentType.Unknown:
+					case ParentObject.ParentType.BlockId:
 					default:
 						// Parent is a block, so search for that block's parent until we find DB, WS or Page
-						objectID = parent.GetId();
+						objectID = parent.Id;
 						break;
 				}
 			}

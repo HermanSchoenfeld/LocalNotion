@@ -1,12 +1,12 @@
 ﻿using System.Xml.Schema;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core;
 
 public static class PageExtensions {
 
-	public static string GetTitle(this Page page) 
+	public static string GetTextTitle(this Page page) 
 		=> (page.Properties.Values.FirstOrDefault(x => x is TitlePropertyValue) as TitlePropertyValue)?.Title.ToPlainText() ?? string.Empty;
 
 	public static string GetPropertyDisplayValue(this Page page, string propertyName) {
@@ -39,7 +39,7 @@ public static class PageExtensions {
 			LastEditedTime = page.LastEditedTime,
 			HasChildren = true,
 			ChildPage = new ChildPageBlock.Info {
-				Title = page.GetTitle()
+				Title = page.GetTextTitle()
 			}
 		};
 }

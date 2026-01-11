@@ -1,4 +1,4 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -123,8 +123,8 @@ public class HtmlThemeManager : IThemeManager {
 	}
 	public static void ExtractEmbeddedThemes(string folder, bool overwrite, ILogger logger) {
 		Guard.ArgumentNotNull(folder, nameof(folder));
-		new ManifestEmbeddedFileProvider(Assembly.GetExecutingAssembly())
-			.ExtractDirectory("/Themes", folder, overwrite, logger);
+		var provider = new ManifestEmbeddedFileProvider(Assembly.GetExecutingAssembly());
+		provider.ExtractDirectory("/Themes", folder, overwrite, logger);
 	}
 
 }

@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core;
@@ -29,32 +29,32 @@ public class CMSHelper {
 		   database.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
 		   database.Properties.ContainsKey(Constants.EditedByPropertyName) &&
 		   database.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
-		   database.Properties[Constants.ThemesPropertyName] is MultiSelectProperty &&
-		   database.Properties[Constants.SequencePropertyName] is NumberProperty;
+		   database.Properties[Constants.ThemesPropertyName] is MultiSelectDataSourcePropertyConfig &&
+		   database.Properties[Constants.SequencePropertyName] is NumberDataSourcePropertyConfig;
 
-	public static bool IsCMSDatabase(Database database)
-		=> database.Properties != null &&
-		   database.Properties.ContainsKey(Constants.PageTypePropertyName) &&
-		   database.Properties.ContainsKey(Constants.TitlePropertyName) &&
-		   database.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
-		   database.Properties.ContainsKey(Constants.StatusPropertyName) &&
-		   database.Properties.ContainsKey(Constants.ThemesPropertyName) &&
-		   database.Properties.ContainsKey(Constants.SlugPropertyName) &&
-		   database.Properties.ContainsKey(Constants.SequencePropertyName) &&
-		   database.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
-		   database.Properties.ContainsKey(Constants.Category1PropertyName) &&
-		   database.Properties.ContainsKey(Constants.Category2PropertyName) &&
-		   database.Properties.ContainsKey(Constants.Category3PropertyName) &&
-		   database.Properties.ContainsKey(Constants.Category4PropertyName) &&
-		   database.Properties.ContainsKey(Constants.Category5PropertyName) &&
-		   database.Properties.ContainsKey(Constants.TagsPropertyName) &&
-		   database.Properties.ContainsKey(Constants.SummaryPropertyName) &&
-		   database.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
-		   database.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
-		   database.Properties.ContainsKey(Constants.EditedByPropertyName) &&
-		   database.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
-		   database.Properties[Constants.ThemesPropertyName] is MultiSelectProperty &&
-		   database.Properties[Constants.SequencePropertyName] is NumberProperty;
+	public static bool IsCMSDatabase(DataSource dataSource)
+		=> dataSource.Properties != null &&
+		   dataSource.Properties.ContainsKey(Constants.PageTypePropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.TitlePropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.PublishOnPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.StatusPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.ThemesPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.SlugPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.SequencePropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.RootCategoryPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.Category1PropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.Category2PropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.Category3PropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.Category4PropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.Category5PropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.TagsPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.SummaryPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.CreatedByPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.CreatedOnPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.EditedByPropertyName) &&
+		   dataSource.Properties.ContainsKey(Constants.EditedOnPropertyName) &&
+		   dataSource.Properties[Constants.ThemesPropertyName] is MultiSelectDataSourcePropertyConfig &&
+		   dataSource.Properties[Constants.SequencePropertyName] is NumberDataSourcePropertyConfig;
 
 	public static bool IsCMSPage(Page page)
 		=> page.Properties != null &&
@@ -144,7 +144,7 @@ public class CMSHelper {
 			result.Summary = string.Empty;
 			result.Tags = [];
 		}
-		var pageTitle =page.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		var pageTitle =page.GetTextTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 			
 
 		result.CustomSlug = CalculatePageSlug(pageTitle, result);
@@ -162,7 +162,7 @@ public class CMSHelper {
 		Guard.Argument(parentPage.CMSProperties != null, nameof(parentPage), "No CMS properties were defined on parent page");
 
 		var parentCMSProps = parentPage.CMSProperties;
-		var pageTitle = childPage.GetTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
+		var pageTitle = childPage.GetTextTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 		result.PageType = CMSPageType.Page;
 		result.PublishOn = parentCMSProps.PublishOn;
 		result.Status = parentCMSProps.Status;

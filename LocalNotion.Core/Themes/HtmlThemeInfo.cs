@@ -1,7 +1,7 @@
 ﻿using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
-using Hydrogen;
-using Hydrogen.Data;
+using Sphere10.Framework;
+using Sphere10.Framework.Data;
 using JsonSubTypes;
 using Newtonsoft.Json;
 

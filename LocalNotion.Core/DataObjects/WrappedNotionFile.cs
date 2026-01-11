@@ -1,4 +1,4 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core.DataObjects;
@@ -14,34 +14,24 @@ public class WrappedNotionFile {
 
 	public WrappedNotionFile(object obj) {
 		Guard.ArgumentNotNull(obj, nameof(obj));
+		Guard.Argument(LocalNotionHelper.IsNotionFileObject(obj), nameof(obj), $"Not a recognized notion file object type: {obj.GetType()}");
+	
 		switch (obj) {
-			case ExternalFile externalFile:
-				Init(externalFile);
+			case FileObject file:
+				Init(file);
 				break;
-			case UploadedFile uploadedFile:
-				Init(uploadedFile);
+			case FileObjectWithName namedFile:
+				Init(namedFile);
 				break;
-			case CustomEmojiObject customEmojiObject:
-				Init(customEmojiObject);
+			case CustomEmojiPageIcon customEmoji:
+				Init(customEmoji);
+				break;
+			case FilePageIcon customIcon:
+				Init(customIcon);
 				break;
 			default:
 				throw new NotSupportedException(obj.GetType().ToString());
 		}
-	}
-
-	public WrappedNotionFile(FileObject fileObject) {
-		Init(fileObject);
-	}
-
-	public WrappedNotionFile(FileObjectWithName fileObjectWithName) {
-		Init(fileObjectWithName);
-	}
-
-
-	public WrappedNotionFile(CustomEmojiObject customEmoji) {
-		_getUrlFunc = () => customEmoji.Emoji.Url;
-		_setUrlFunc  = v => customEmoji.Emoji.Url = v;
-		FileObject = customEmoji;
 	}
 
 	public void Init(FileObject fileObject) {
@@ -56,10 +46,16 @@ public class WrappedNotionFile {
 		FileObject = fileObjectWithName;
 	}
 
-	public void Init(CustomEmojiObject customEmoji) {
-		_getUrlFunc = () => customEmoji.Emoji.Url;
-		_setUrlFunc  = v => customEmoji.Emoji.Url = v;
+	public void Init(CustomEmojiPageIcon customEmoji) {
+		_getUrlFunc = () => customEmoji.CustomEmoji.Url;
+		_setUrlFunc = v => customEmoji.CustomEmoji.Url = v;
 		FileObject = customEmoji;
+	}
+
+	public void Init(FilePageIcon customFileIcon) {
+		_getUrlFunc = () => customFileIcon.File.Url;
+		_setUrlFunc = v => customFileIcon.File.Url = v;
+		FileObject = customFileIcon;
 	}
 
 	public string GetUrl() => _getUrlFunc();

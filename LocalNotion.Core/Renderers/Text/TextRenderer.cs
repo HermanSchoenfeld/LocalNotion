@@ -1,4 +1,4 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 using Notion.Client;
 using System.Runtime.Serialization;
 using System.Text.RegularExpressions;
@@ -16,7 +16,7 @@ public class TextRenderer : RecursiveRendererBase<string> {
 
 	#region Values
 
-	protected override string Render(EmojiObject emojiObject)
+	protected override string Render(EmojiPageIcon emojiObject)
 		 => emojiObject.Emoji;
 
 	protected override string Render(Link link) => string.Empty;
@@ -375,7 +375,7 @@ public class TextRenderer : RecursiveRendererBase<string> {
 	protected override string RenderNumberedList(IEnumerable<NotionObjectGraph> numberedListItems)
 		=> Merge(numberedListItems.Select((item, index) => Render(item, index + 1)));   // never call RenderNumberedItem directly to avoid infinite loop due to rendering stack
 
-	protected override string Render(PDFBlock block) => Render(block.PDF.Caption) + $"PDF: {Render(block.PDF)}";
+	protected override string Render(PDFBlock block) => Render(block.PDF.Caption) + $"PDF: {block.PDF}";
 
 	protected override string Render(ParagraphBlock block)
 		=> Render(block.Paragraph.RichText) + Environment.NewLine + (block.HasChildren ? RenderChildPageItems() : string.Empty);
@@ -469,8 +469,8 @@ public class TextRenderer : RecursiveRendererBase<string> {
 		return sb.ToString();
 	}
 
-	protected virtual string ToString(ParentType blockType)
-		=> $"[{blockType.GetAttribute<EnumMemberAttribute>().Value}]";
+	protected virtual string ToString(ParentObject.ParentType blockType)
+		=> $"[{blockType.ToString()}]";
 
 	protected virtual string ToString(BlockType blockType)
 		=> $"{blockType.GetAttribute<EnumMemberAttribute>().Value}";

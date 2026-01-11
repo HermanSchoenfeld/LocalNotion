@@ -1,5 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
 using Tools;
 
@@ -34,6 +34,8 @@ public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 
 	string CMSDatabaseID { get; }
 
+	//string CMSDataSourceID { get; }
+
 	IEnumerable<string> Objects { get; }
 
 	IEnumerable<string> Graphs { get; }
@@ -59,6 +61,8 @@ public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 	Task ClearAsync();
 
 	Task CleanAsync();
+
+	//void IdentifyPrimaryDataSourceID(string dataSourceID);
 
 	bool ContainsObject(string objectID);
 

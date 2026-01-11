@@ -1996,21 +1996,20 @@
 
 
 	<ItemGroup>
-		<PackageReference Include="AngleSharp" Version="1.1.2" />
-		<PackageReference Include="HtmlAgilityPack" Version="1.11.65" />
-		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
-		<PackageReference Include="System.Linq.Async" Version="6.0.1" />
+		<PackageReference Include="AngleSharp" Version="1.4.0" />
+		<PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="10.0.1" />
+		<PackageReference Include="Sphere10.Framework" Version="3.0.3" />
+		<PackageReference Include="Sphere10.Framework.Application" Version="3.0.3" />
+		<PackageReference Include="Sphere10.Framework.Data" Version="3.0.3" />
+		<PackageReference Include="System.Linq.Async" Version="7.0.0" />
 	</ItemGroup>
 
 	
 
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\notion-sdk-net\Src\Notion.Client\Notion.Client.csproj" />
-	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Application\Hydrogen.Application.csproj" />
-	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
-	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen.NET\Hydrogen.NET.csproj" />
-	  <ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
+	  <ProjectReference Include="..\Notion.Client\Notion.Client.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

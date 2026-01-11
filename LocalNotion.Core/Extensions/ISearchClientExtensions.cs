@@ -1,24 +1,24 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 using Notion.Client;
 using System.Runtime.CompilerServices;
 
 namespace LocalNotion.Core;
 
-public static class ISearchClientExtensions {
+public static class IDataSourceClientExtensions {
 
 	public static IAsyncEnumerable<Page> EnumeratePagesAsync(this ISearchClient searchClient)
 		=> searchClient
 		   .EnumerateAsync(new SearchRequest { Filter = new SearchFilter { Value = SearchObjectType.Page } })
 		   .Cast<Page>();
 
-	public static IAsyncEnumerable<Database> EnumerateDatabasesAsync(this ISearchClient searchClient)
+	public static IAsyncEnumerable<DataSource> EnumerateDataSourcesAsync(this ISearchClient searchClient)
 		=> searchClient
-		    .EnumerateAsync(new SearchRequest { Filter = new SearchFilter { Value = SearchObjectType.Database } })
-		    .Cast<Database>();
+		    .EnumerateAsync(new SearchRequest { Filter = new SearchFilter { Value = SearchObjectType.DataSource } })
+		    .Cast<DataSource>();
 
-	public static async IAsyncEnumerable<IObject> EnumerateAsync(this ISearchClient searchClient, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+	public static async IAsyncEnumerable<ISearchResponseObject> EnumerateAsync(this ISearchClient searchClient, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 		request ??= new SearchRequest();
-		PaginatedList<IObject> searchResult;
+		SearchResponse searchResult;
 		var cursor = request.StartCursor;
 		do {
 			cancellationToken.ThrowIfCancellationRequested();

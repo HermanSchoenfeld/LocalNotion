@@ -1,26 +1,30 @@
-﻿using System.Runtime.CompilerServices;
-using Hydrogen;
+using System.Runtime.CompilerServices;
+using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core;
 
-public static class IDatabasesClientExtensions {
+public static class IDataSourcesClientExtensions {
 
-	public static Task<Page[]> GetAllDatabaseRows(this IDatabasesClient databasesClient, string databaseId, DatabasesQueryParameters parameters = null, CancellationToken cancellationToken = default)
-		=> databasesClient.EnumerateAsync(databaseId, parameters, cancellationToken).ToArrayAsync(cancellationToken).AsTask();
+	public static Task<DataSource> RetrieveAsync(this IDataSourcesClient client, string datasourceID, CancellationToken cancellationToken = default)
+		=> client.RetrieveAsync(new RetrieveDataSourceRequest { DataSourceId = datasourceID }, cancellationToken);
 
-	public static async IAsyncEnumerable<Page> EnumerateAsync(this IDatabasesClient databasesClient, string databaseId, DatabasesQueryParameters parameters = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
-		DatabaseQueryResponse searchResult;
-		parameters ??= new DatabasesQueryParameters();
+	public static Task<Page[]> GetAllDatabaseRows(this IDataSourcesClient dataSourcesClient, string dataSourceId, QueryDataSourceRequest parameters = null, CancellationToken cancellationToken = default)
+		=> dataSourcesClient.EnumerateAsync(dataSourceId, parameters, cancellationToken).ToArrayAsync(cancellationToken).AsTask();
+
+	public static async IAsyncEnumerable<Page> EnumerateAsync(this IDataSourcesClient dataSourcesClient, string dataSourceId, QueryDataSourceRequest parameters = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+		QueryDataSourceResponse searchResult = null;
+		parameters ??= new QueryDataSourceRequest();
+		//parameters.Sorts = [ new Sort { Property = "Created time", Direction = Direction.Ascending }];
+		parameters.DataSourceId = dataSourceId;
 		var cursor = parameters.StartCursor;
 		do {
 			cancellationToken.ThrowIfCancellationRequested();
 			parameters.StartCursor = cursor;
-			searchResult = await databasesClient.QueryAsync(databaseId, parameters, cancellationToken);
-			foreach(var result in searchResult.Results)
+			searchResult = await dataSourcesClient.QueryAsync(parameters, cancellationToken);
+			foreach (var result in searchResult.Results)
 				yield return (Page)result;    // WARN: this cast is an assumption that database items are only pages
 			cursor = searchResult.NextCursor;
 		} while (searchResult.HasMore);
-	
 	}
 }

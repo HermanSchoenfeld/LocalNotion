@@ -1,6 +1,8 @@
-﻿using Hydrogen;
-using Hydrogen.Data;
+﻿using LocalNotion.Core.Repository;
 using Notion.Client;
+using Sphere10.Framework;
+using Sphere10.Framework.Data;
+using System.Linq;
 
 namespace LocalNotion.Core;
 
@@ -22,16 +24,14 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 	public event EventHandlerEx<object, LocalNotionResource> ResourceRemoved;
 	
 	protected LocalNotionRegistry Registry;
-	private GuidStringFileStore _objectStore;
-	private GuidStringFileStore _graphStore;
+	private ReverseGuidStringFileStore _objectStore;
+	private ReverseGuidStringFileStore _graphStore;
 	
 	private ICache<string, LocalNotionResource> _resourcesByNID;
 	private ICache<string, CachedSlug> _renderBySlug;
 	private ICache<string, LocalNotionEditableResource> _resourceByName;
 	private readonly MulticastLogger _logger;
 	private readonly string _registryPath;
-
-	
 
 	public LocalNotionRepository(string registryFile, ILogger logger = null) {
 		Guard.ArgumentNotNull(registryFile, nameof(registryFile));
@@ -84,6 +84,13 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 			return Registry.CMSDatabase;
 		}
 	}
+
+	//public string CMSDataSourceID {
+	//	get {
+	//		CheckLoaded();
+	//		return Registry.CMSPrimaryDataSource;
+	//	}
+	//}
 
 	public IEnumerable<string> Objects {
 		get {
@@ -270,6 +277,18 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		return repo;
 	}
 
+	//public void IdentifyPrimaryDataSourceID(string dataSourceID) {
+	//	if (string.IsNullOrWhiteSpace(Registry.CMSPrimaryDataSource)) {
+	//		Registry.CMSPrimaryDataSource = dataSourceID;
+	//		Logger.Info($"Identified CMS Datasource: {dataSourceID}");
+	//		RequiresSave = true;
+	//	} else if (dataSourceID == Registry.CMSPrimaryDataSource) {
+	//		// no-op
+	//	} else {
+	//		throw new ApplicationException($"Primary datasource cannot be changed to {dataSourceID} as it is already set to {Registry.CMSPrimaryDataSource}.");
+	//	}
+	//}
+
 	public async Task LoadAsync() {
 		CheckNotLoaded();
 		Guard.FileExists(_registryPath);
@@ -284,7 +303,24 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		Paths = new PathResolver(Path.GetFullPath(Registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), Registry.Paths);
 
 		// create the resource lookup table
-		_resourcesByNID = new BulkFetchActionCache<string, LocalNotionResource>( () => Registry.Resources.ToDictionary(x => x.ID));
+		_resourcesByNID = new BulkFetchActionCache<string, LocalNotionResource>( 
+			() => {
+				var cachedValues = new Dictionary<string, LocalNotionResource>();
+				foreach(var resource in Registry.Resources) {
+					if (cachedValues.ContainsKey(resource.ID))
+							throw new InvalidOperationException($"Duplicate resource ID found in repository: {resource.ID}");
+					cachedValues[resource.ID] = resource;
+
+					// We store the local notion database under the primary datasource id as well, as a hack
+					if (resource is LocalNotionDatabase lnd) {
+						if (cachedValues.ContainsKey(lnd.PrimaryDataSourceID))
+							throw new InvalidOperationException($"A conflicting resource was found for DataSourceID: {lnd.PrimaryDataSourceID}");
+						cachedValues[lnd.PrimaryDataSourceID] = resource;
+					} 					
+				}
+				return cachedValues;
+			}
+		);
 
 		// Create the slug lookup table
 		_renderBySlug = new BulkFetchActionCache<string, CachedSlug>( 
@@ -321,10 +357,10 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		SystemLog.RegisterLogger(_logger);
 
 		// Create object store
-		_objectStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Objects, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
+		_objectStore = new ReverseGuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Objects, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
 		
 		// Create graph store
-		_graphStore = new GuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Graphs, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
+		_graphStore = new ReverseGuidStringFileStore(Paths.GetInternalResourceFolderPath(InternalResourceType.Graphs, FileSystemPathType.Absolute), LocalNotionHelper.ObjectGuidToId, LocalNotionHelper.ObjectIdToGuid, fileExtension: ".json" );
 
 		// Create template manager (will extract missing templates on ctor)
 		HtmlThemeManager.ExtractEmbeddedThemes(Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute), false, _logger);
@@ -537,6 +573,10 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 			Guard.Ensure(!_resourceByName.ContainsCachedItem(lner.Name), $"Resource with name '{lner.Name}' already exists.");
 		}
 
+		if (resource is LocalNotionDatabase lnd) {
+			Guard.Against(_resourcesByNID.ContainsCachedItem(resource.ID), $"Resource '{lnd.PrimaryDataSourceID}' already registered (Data Source ID)");
+		}
+
 		NotifyResourceAdding(resource.ID);
 
 		var resourceFolder = Paths.GetResourceFolderPath(resource.Type, resource.ID, FileSystemPathType.Absolute);
@@ -661,7 +701,7 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		if (!TryGetObject(objectID, out var obj)) 
 			return false; 
 
-		var parentID = obj.GetParent()?.GetId();
+		var parentID = obj.GetParent()?.Id;
 		if (string.IsNullOrWhiteSpace(parentID)) 
 			return false;
 
@@ -781,6 +821,10 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 	}
 
 	protected async Task SaveInternal_PersistPhase(string registryFile) {
+		var dbO = Registry.Resources.FirstOrDefault(x => x is LocalNotionDatabase);
+		if (dbO is not null) { 
+			var xxx = Tools.Json.WriteToString(dbO);
+		}
 		var persistFile = registryFile + ".persist";
 		await Task.Run(() => Tools.Json.WriteToFile(persistFile, Registry));
 		var commitFile = registryFile + ".commit";

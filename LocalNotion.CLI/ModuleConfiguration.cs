@@ -16,7 +16,7 @@ using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using Sphere10.DRM;
 
-namespace Hydrogen.Application;
+namespace Sphere10.Framework.Application;
 
 
 public class ModuleConfiguration : ModuleConfigurationBase {

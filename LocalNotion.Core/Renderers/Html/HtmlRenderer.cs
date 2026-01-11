@@ -1,5 +1,5 @@
-﻿using Hydrogen;
-using Hydrogen.Data;
+﻿using Sphere10.Framework;
+using Sphere10.Framework.Data;
 using Notion.Client;
 using System.Runtime.Serialization;
 using System.Text;
@@ -106,7 +106,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		return RenderUnsupported(block);
 	}
 
-	protected override string Render(EmojiObject emojiObject)
+	protected override string Render(EmojiPageIcon emojiObject)
 		 => emojiObject.Emoji;
 
 	protected override string Render(Link link) =>
@@ -230,17 +230,21 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 					}
 				),
 
+			// For inline database rendering, we render rows using page properties directly
+			// since Database.Properties no longer exists in the new API
 			true => RenderTemplate(
 				"database",
 				new RenderTokens(database) {
-					["header"] = Merge(database.Properties.Select(x => RenderTemplate("database_header_cell", new RenderTokens(x) { ["contents"] =  Render(x.Key, x.Value) }))),
+					["header"] = rows.FirstOrDefault() != null 
+						? Merge(rows.First().Properties.Select(x => RenderTemplate("database_header_cell", new RenderTokens(x) { ["contents"] = Render(x.Key) })))
+						: string.Empty,
 					["contents"] = Merge(
 						rows.Select(page =>
 							RenderTemplate(
 								"database_row",
 								new RenderTokens(database) {
 									["contents"] = Merge(
-										database.Properties.Select(x => RenderTemplate("database_row_cell", new RenderTokens(x) { ["contents"] = Render(page, page.Properties[x.Key]) }))
+										page.Properties.Select(x => RenderTemplate("database_row_cell", new RenderTokens(x) { ["contents"] = Render(page, x.Value) }))
 									)
 								}
 							)
@@ -268,7 +272,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(FormulaProperty property) => RenderPropertyCommon(property, null, property.Name);
 	
 	protected override string Render(LastEditedByProperty property) => RenderPropertyCommon(property, null, property.Name);
-	
+
 	protected override string Render(LastEditedTimeProperty property) => RenderPropertyCommon(property, null, property.Name);
 	
 	protected override string Render(MultiSelectProperty property) => RenderPropertyCommon(property, null, property.Name);
@@ -704,7 +708,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			"audio",
 			new RenderTokens(block) {
 				["caption"] = Render(block.Audio.Caption),
-				["url"] = Render(block.Audio)
+				["url"] = GetFileUrl(block.Audio, out _)
 			}
 		);
 
@@ -729,14 +733,14 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 									   "icon_emoji",
 										new RenderTokens(block) {
 											["emoji"] = item.Data
-										}
+									   }
 								   ) :
 								   item.Traits.HasFlag(BreadCrumbItemTraits.HasImageIcon) ?
 									   RenderTemplate(
 										   "icon_image",
 											new RenderTokens(block) {
 												["url"] = item.Data
-											}
+										   }
 									   ) :
 									   string.Empty
 						  }
@@ -777,22 +781,28 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				"callout",
 				new RenderTokens(block) {
 					["icon"] = block.Callout.Icon switch {
-						EmojiObject emojiObject => RenderTemplate(
+						EmojiPageIcon emojiPageIcon => RenderTemplate(
 													"icon_emoji",
 													 new RenderTokens(block) {
-														 ["emoji"] = Render(emojiObject)
+														 ["emoji"] = emojiPageIcon.Emoji
 													 }
 												),
-						FileObject fileObject => RenderTemplate(
+						FilePageIcon filePageIcon => RenderTemplate(
 													"icon_image",
 													 new RenderTokens(block) {
-														 ["url"] = Render(fileObject)
+														 ["url"] = SanitizeUrl(filePageIcon.File.Url)
 													 }
 												),
-						CustomEmojiObject customEmojiObject => RenderTemplate(
+						ExternalPageIcon externalPageIcon => RenderTemplate(
+													"icon_image",
+													 new RenderTokens(block) {
+														 ["url"] = SanitizeUrl(externalPageIcon.External.Url)
+													 }
+												),
+						CustomEmojiPageIcon customEmojiPageIcon => RenderTemplate(
 							"icon_image",
 							new RenderTokens(block) {
-								["url"] = Render(customEmojiObject)
+								["url"] = customEmojiPageIcon.CustomEmoji.Url
 							}
 						),
 						null => string.Empty,
@@ -1049,7 +1059,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> RenderTemplate(
 				"image",
 				new RenderTokens(block) {
-					["url"] = Render(block.Image),
+					["url"] = GetFileUrl(block.Image, out _),
 					["caption"] = Render(block.Image.Caption)
 				}
 			);
@@ -1080,7 +1090,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			"pdf",
 			new RenderTokens(block) {
 				["caption"] = Render(block.PDF.Caption),
-				["url"] = Render(block.PDF)
+				["url"] = GetFileUrl(block.PDF, out _)
 			}
 		);
 
@@ -1270,10 +1280,10 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	protected override string Render(IPageIcon pageIcon)
 		=> pageIcon switch {
-			EmojiObject emojiObject => Render(emojiObject),
+			EmojiPageIcon emojiObject => Render(emojiObject),
 			ExternalFile externalFile => (string)(object)GetFileUrl(externalFile, out _),   // WARNING: ugly cast hack here
 			UploadedFile uploadedFile => (string)(object)GetFileUrl(uploadedFile, out _),   // WARNING: ugly cast hack here
-			CustomEmojiObject customEmojiObject => customEmojiObject.Emoji.Url,
+			CustomEmojiPageIcon customEmojiObject => customEmojiObject.CustomEmoji.Url,
 			_ => throw new NotSupportedException()
 		};
 
@@ -1431,8 +1441,8 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		return sb.ToString();
 	}
 
-	protected virtual string ToString(ParentType blockType)
-		=> $"[{blockType.GetAttribute<EnumMemberAttribute>().Value}]";
+	protected virtual string ToString(ParentObject.ParentType blockType)
+		=> $"[{blockType.ToString()}]";
 
 	protected virtual string ToString(BlockType blockType)
 		=> $"{blockType.GetAttribute<EnumMemberAttribute>().Value}";
@@ -1449,7 +1459,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected string SanitizeUrl(string url) {
 		// Resource link?
 		if (LocalNotionRenderLink.TryParse(url, out var link))  
-			return $"/{Resolver.Generate(RenderingContext.Resource, link.ResourceID, link.RenderType, out _)}";
+			return $"{Resolver.Generate(RenderingContext.Resource, link.ResourceID, link.RenderType, out _)}";
 
 		// Page link?
 		if (url.StartsWith("/")) {

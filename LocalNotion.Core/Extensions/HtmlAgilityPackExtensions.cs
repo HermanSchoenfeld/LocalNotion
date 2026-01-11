@@ -1,6 +1,6 @@
 ﻿using System.Text;
 using HtmlAgilityPack;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core;

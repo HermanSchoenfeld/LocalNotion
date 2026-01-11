@@ -1,4 +1,4 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 
 
 namespace LocalNotion.Core;
@@ -402,7 +402,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 		// Ensure slug has no anchor tag
 		slug =  Tools.Url.StripAnchorTag(cmsItemSlug);
 
-		// Get the CMS content code for slug
+		// Get the CMS content node for slug
 		if (!CMSDatabase.TryGetContent(slug, out var contentNode)) {
 			type = 0;
 			title = string.Empty;

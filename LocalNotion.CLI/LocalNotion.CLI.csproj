@@ -12,6 +12,12 @@
 		<TrimMode>partial</TrimMode>
 	</PropertyGroup>
 
+	<ItemGroup>
+	  <PackageReference Include="Sphere10.Framework" Version="3.0.3" />
+	  <PackageReference Include="Sphere10.Framework.Application" Version="3.0.3" />
+	  <PackageReference Include="Sphere10.Framework.Data" Version="3.0.3" />
+	</ItemGroup>
+
 	<!--<ItemGroup>
 		<TrimmerRootAssembly Include="System.Configuration.ConfigurationManager" />
 		<TrimmerRootAssembly Include="localnotion" />
@@ -24,9 +30,6 @@
 	</ItemGroup>-->
 	
 	<ItemGroup>
-		<ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Application\Hydrogen.Application.csproj" />
-		<ProjectReference Include="..\..\Hydrogen\src\Hydrogen.Data\Hydrogen.Data.csproj" />
-		<ProjectReference Include="..\..\Hydrogen\src\Hydrogen\Hydrogen.csproj" />
 		<ProjectReference Include="..\LocalNotion.Core\LocalNotion.Core.csproj" />
 	</ItemGroup>
 

@@ -1,4 +1,4 @@
-﻿using Hydrogen;
+﻿using Sphere10.Framework;
 
 namespace LocalNotion.Core;
 	public class ObjectNotFoundException : SoftwareException{

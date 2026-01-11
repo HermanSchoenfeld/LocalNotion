@@ -1,5 +1,5 @@
 ﻿using AngleSharp.Media.Dom;
-using Hydrogen;
+using Sphere10.Framework;
 using Notion.Client;
 
 namespace LocalNotion.Core;
