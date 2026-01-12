@@ -71,13 +71,13 @@ From the repository root:
 
 ```bash
 # Restore dependencies
-dotion restore
+dotnet restore
 
 # Debug build
-dotion build -c Debug
+dotnet build -c Debug
 
 # Release build
-dotion build -c Release
+dotnet build -c Release
 ```
 
 ### Run
@@ -217,6 +217,14 @@ Contributions are welcome!
 - Add/update tests where applicable.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+
+## Credits
+
+**Author:** Herman Schoenfeld (<herman@sphere10.com>)
+
+**Website:** [https://sphere10.com/products/localnotion](https://sphere10.com/products/localnotion)
+
+**Copyright:** © Herman Schoenfeld 2018 - Present. All rights reserved.
 
 ## License
 
