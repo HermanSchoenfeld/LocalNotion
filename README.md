@@ -218,6 +218,13 @@ Contributions are welcome!
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
+## License
+
+This project is licensed under the **GNU GPL v3.0** (or later).
+
+- See [`LICENSE`](LICENSE)
+- Copyright details: [`COPYRIGHT`](COPYRIGHT)
+
 ## Credits
 
 **Author:** Herman Schoenfeld (<herman@sphere10.com>)
@@ -225,10 +232,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 **Website:** [https://sphere10.com/products/localnotion](https://sphere10.com/products/localnotion)
 
 **Copyright:** © Herman Schoenfeld 2018 - Present. All rights reserved.
-
-## License
-
-This project is licensed under the **GNU GPL v3.0** (or later).
-
-- See [`LICENSE`](LICENSE)
-- Copyright details: [`COPYRIGHT`](COPYRIGHT)
