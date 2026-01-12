@@ -71,13 +71,13 @@ From the repository root:
 
 ```bash
 # Restore dependencies
-dotnet restore
+dotion restore
 
 # Debug build
-dotnet build -c Debug
+dotion build -c Debug
 
 # Release build
-dotnet build -c Release
+dotion build -c Release
 ```
 
 ### Run
@@ -222,5 +222,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 This project is licensed under the **GNU GPL v3.0** (or later).
 
-- See [`LICENSE.txt`](LICENSE.txt)
-- Copyright details: [`COPYRIGHT.txt`](COPYRIGHT.txt)
+- See [`LICENSE`](LICENSE)
+- Copyright details: [`COPYRIGHT`](COPYRIGHT)
