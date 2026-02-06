@@ -588,9 +588,9 @@ $@"Local Notion Status:
 			// List workspace level
 			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
 			var searchParameters = new SearchRequest { Query = arguments.Filter };
-			var results = client.Search.EnumerateAsync(searchParameters, cancellationToken);
+			var results = client.EnumerateAllWorkspaceObjectsAsync(searchParameters, cancellationToken);
 			if (!arguments.All) 
-				results = results.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent));
+				results = results.Where(IsWorkspaceRoot);
 			
 			await foreach(var obj in results.WithCancellation(cancellationToken))
 				PrintObject(obj);
@@ -618,6 +618,11 @@ $@"Local Notion Status:
 
 				};
 			}
+		}
+
+		bool IsWorkspaceRoot(IObject obj) {
+			var parent = obj.GetParent();
+			return parent.Type == ParentObject.ParentType.Workspace;
 		}
 
 		void PrintObject(IObject obj) {

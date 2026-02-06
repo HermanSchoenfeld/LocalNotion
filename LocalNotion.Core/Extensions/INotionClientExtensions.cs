@@ -6,13 +6,14 @@
 //
 // This notice must not be removed when duplicating this file or its contents, in whole or in part.
 
+using Notion.Client;
+using Sphere10.Framework;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using Sphere10.Framework;
-using Notion.Client;
 
 namespace LocalNotion.Core;
 public static class INotionClientExtensions {
@@ -21,16 +22,55 @@ public static class INotionClientExtensions {
 		if (!LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _))
 			return (default, default);
 
-		var block = await client.Blocks.RetrieveAsync(objectID, cancellationToken);
-		if (block == null) {
+		// Use Notion's Search API to find the object by ID
+		// The search API will return the object with its proper type
+		var searchRequest = new SearchRequest { 
+			Query = objectID  // Search for the specific object ID
+		};
+
+		var searchResult = await client.Search.SearchAsync(searchRequest, cancellationToken);
+	
+		// The search API returns results with their Object property set correctly
+		var result = searchResult.Results.FirstOrDefault();
+	
+		if (result == null)
 			return (default, default(DateTime?));
-		}
-		return block.Type switch {
-			BlockType.ChildDatabase => (LocalNotionResourceType.Database, block.LastEditedTime),
-			BlockType.ChildPage => (LocalNotionResourceType.Page, block.LastEditedTime),
+
+		// Check the object type from the search result
+		return result switch {
+			Page page => (LocalNotionResourceType.Page, page.LastEditedTime),
+			Database database => (LocalNotionResourceType.Database, database.LastEditedTime),
+			DataSource dataSource => (LocalNotionResourceType.Database, dataSource.LastEditedTime),
 			_ => (default, default(DateTime?))
 		};
 	}
+	
+		public static async IAsyncEnumerable<IObject> EnumerateAllWorkspaceObjectsAsync(this INotionClient client, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+		var seenDatabases = new HashSet<string>();
 
+		// Step 1: Enumerate all Pages and DataSources from Search
+		await foreach(var obj in client.Search.EnumerateAsync(request, cancellationToken)) {  // Use 'request' parameter
+    
+			// Step 2: If it's a DataSource, fetch its parent Database (if not already seen)
+			if (obj is DataSource dataSource) {
+				var databaseId = dataSource.Parent switch {
+					DatabaseParent dbParent => dbParent.DatabaseId,
+					DatasourceParent dsParent => dsParent.DatabaseId,  // Nested DataSources also have DatabaseId
+					_ => null
+				};
+        
+				if (databaseId != null && seenDatabases.Add(databaseId)) {
+					// Fetch the Database header
+					var database = await client.Databases.RetrieveAsync(databaseId, cancellationToken);
+					yield return database;
+				}
+        
+				yield return dataSource;
+			} 
+			else {
+				yield return obj; // Page or other object
+			}
+		}
+	}
 }
 

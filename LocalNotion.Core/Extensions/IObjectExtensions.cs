@@ -122,6 +122,10 @@ public static class IObjectExtensions {
 				parent = new(database.Parent);
 				return true;
 
+			case DataSource datasource:
+				parent = new(datasource.Parent);
+				return true;
+
 			case IBlock block:
 				parent = new(block.Parent);
 				return true;
