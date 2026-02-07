@@ -16,41 +16,44 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace LocalNotion.Core;
-public static class INotionClientExtensions {
 
+public static class INotionClientExtensions {
 	public static async Task<(LocalNotionResourceType?, DateTime?)> QualifyObjectAsync(this INotionClient client, string objectID, CancellationToken cancellationToken = default) {
 		if (!LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _))
 			return (default, default);
 
-		// Use Notion's Search API to find the object by ID
-		// The search API will return the object with its proper type
-		var searchRequest = new SearchRequest { 
-			Query = objectID  // Search for the specific object ID
-		};
+		// Primary: Use GET /v1/blocks/{id} — Notion's universal retrieve-by-ID endpoint.
+		// Pages return as ChildPageBlock, databases as ChildDatabaseBlock.
+		try {
+			var block = await client.Blocks.RetrieveAsync(objectID, cancellationToken);
+			switch (block?.Type) {
+				case BlockType.ChildPage:
+					return (LocalNotionResourceType.Page, block.LastEditedTime);
+				case BlockType.ChildDatabase:
+					return (LocalNotionResourceType.Database, block.LastEditedTime);
+			}
+		} catch (NotionApiException) {
+			// Not a block — fall through to other object types
+		}
 
-		var searchResult = await client.Search.SearchAsync(searchRequest, cancellationToken);
-	
-		// The search API returns results with their Object property set correctly
-		var result = searchResult.Results.FirstOrDefault();
-	
-		if (result == null)
-			return (default, default(DateTime?));
+		// Fallback: Try as a DataSource
+		try {
+			var dataSource = await client.DataSources.RetrieveAsync(objectID, cancellationToken);
+			if (dataSource != null)
+				return (LocalNotionResourceType.Database, dataSource.LastEditedTime);
+		} catch (NotionApiException) {
+			// Not a datasource — fall through
+		}
 
-		// Check the object type from the search result
-		return result switch {
-			Page page => (LocalNotionResourceType.Page, page.LastEditedTime),
-			Database database => (LocalNotionResourceType.Database, database.LastEditedTime),
-			DataSource dataSource => (LocalNotionResourceType.Database, dataSource.LastEditedTime),
-			_ => (default, default(DateTime?))
-		};
+		return (default, default(DateTime?));
 	}
-	
-		public static async IAsyncEnumerable<IObject> EnumerateAllWorkspaceObjectsAsync(this INotionClient client, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+
+	public static async IAsyncEnumerable<IObject> EnumerateAllWorkspaceObjectsAsync(this INotionClient client, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 		var seenDatabases = new HashSet<string>();
 
 		// Step 1: Enumerate all Pages and DataSources from Search
-		await foreach(var obj in client.Search.EnumerateAsync(request, cancellationToken)) {  // Use 'request' parameter
-    
+		await foreach (var obj in client.Search.EnumerateAsync(request, cancellationToken)) {  // Use 'request' parameter
+
 			// Step 2: If it's a DataSource, fetch its parent Database (if not already seen)
 			if (obj is DataSource dataSource) {
 				var databaseId = dataSource.Parent switch {
@@ -58,16 +61,15 @@ public static class INotionClientExtensions {
 					DatasourceParent dsParent => dsParent.DatabaseId,  // Nested DataSources also have DatabaseId
 					_ => null
 				};
-        
+
 				if (databaseId != null && seenDatabases.Add(databaseId)) {
 					// Fetch the Database header
 					var database = await client.Databases.RetrieveAsync(databaseId, cancellationToken);
 					yield return database;
 				}
-        
+
 				yield return dataSource;
-			} 
-			else {
+			} else {
 				yield return obj; // Page or other object
 			}
 		}
