@@ -48,7 +48,7 @@ public class CmsHtmlRenderer : HtmlRenderer {
 
 	protected virtual string RenderPage(CMSItem cmsItem)  {
 		// load framing (no cms header for normal pages, rely on page header)
-		var ambientTokens = FetchFramingTokens(string.Empty, cmsItem.MenuID, cmsItem.FooterID, cmsItem.InternalID);
+		var ambientTokens = FetchFramingTokens(cmsItem.HeaderID, cmsItem.MenuID, cmsItem.FooterID, cmsItem.InternalID);
 		return RenderCmsItemPart(cmsItem.Parts[0], CMSPageType.Page, ambientTokens);
 	}
 

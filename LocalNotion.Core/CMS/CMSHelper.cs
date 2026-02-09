@@ -89,7 +89,10 @@ public class CMSHelper {
 		   page.Properties[Constants.SequencePropertyName] is NumberPropertyValue;
 
 	public static bool IsPublicContent(LocalNotionPage page) 
-		=> page.CMSProperties is { Status: CMSPageStatus.Published } && (page.CMSProperties.PublishOn == null || page.CMSProperties.PublishOn <= DateTime.UtcNow);
+		=> page.CMSProperties != null 
+			&& page.CMSProperties.PageType != CMSPageType.Internal 
+			&& page.CMSProperties.Status == CMSPageStatus.Published 
+			&& (page.CMSProperties.PublishOn == null || page.CMSProperties.PublishOn <= DateTime.UtcNow);
 
 	public static CMSProperties ParseCMSProperties(string pageName, Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
