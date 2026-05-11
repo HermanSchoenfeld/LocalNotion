@@ -48,10 +48,11 @@ public class CMSDatabase : ICMSDatabase {
 		var allNodes = new Dictionary<string, CMSContentNode>(StringComparer.InvariantCultureIgnoreCase);
 		var cmsItems = Repository
 						.Resources
-						.Where(r => r is LocalNotionPage { CMSProperties: not null })
+						.Where(r => r is LocalNotionPage { 
+CMSProperties: not null })
 						.Cast<LocalNotionPage>()
 						.Where(r => cmsDatabaseID.IsIn(Repository.GetResourceAncestry(r).Select(a => a.ID)))
-						.Where(x =>  !publishedOnly || CMSHelper.IsPublicContent(x))
+						.Where(x => !publishedOnly || CMSHelper.IsPublicContent(x) || CMSHelper.IsFramingContent(x))
 						.ToArray();
 
 

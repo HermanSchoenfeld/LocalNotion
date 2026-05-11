@@ -94,6 +94,12 @@ public class CMSHelper {
 			&& page.CMSProperties.Status == CMSPageStatus.Published 
 			&& (page.CMSProperties.PublishOn == null || page.CMSProperties.PublishOn <= DateTime.UtcNow);
 
+	public static bool IsFramingContent(LocalNotionPage page) 
+		=> page.CMSProperties != null && IsFramingContent(page.CMSProperties.PageType);
+
+	public static bool IsFramingContent(CMSPageType pageType) 
+		=> pageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer, CMSPageType.Internal);
+
 	public static CMSProperties ParseCMSProperties(string pageName, Page page) {
 		Guard.ArgumentNotNull(page, nameof(page));
 		var result = new CMSProperties();

@@ -362,8 +362,9 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 		}
 	}
 	
-	private void AddOrUpdateCmsItem(CMSItemType itemType, string slug, string title, string description, string image, string[] parts, string[] keywords) 
-		=> AddOrUpdateCMSItem(new CMSItem {
+	private void AddOrUpdateCmsItem(CMSItemType itemType, string slug, string title, string description, string image, string[] parts, string[] keywords) {
+		var contentSlug = CMSDatabase.GetContent(slug);
+		AddOrUpdateCMSItem(new CMSItem {
 			Slug = slug,
 			ItemType = itemType,
 			Title = title ?? string.Empty,
@@ -371,14 +372,15 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 			Keywords = keywords,
 			Image =  image ?? string.Empty,
 			Author = string.Empty,
-			HeaderID = CMSDatabase.GetContent(slug).Header?.ID,
-			MenuID = CMSDatabase.GetContent(slug).NavBar?.ID,
-			FooterID = CMSDatabase.GetContent(slug).Footer?.ID,
-			InternalID = CMSDatabase.GetContent(slug).Internal?.ID,
+			HeaderID = contentSlug.Header?.ID,
+			MenuID = contentSlug.NavBar?.ID,
+			FooterID = contentSlug.Footer?.ID,
+			InternalID = contentSlug.Internal?.ID,
 			Parts = parts ?? [],
 			Dirty = true,
 			RenderPath = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderPath : null
 		});
+	}
 	
 	private void MarkAnyCmsItemWhichReferencesPageAsDirty(LocalNotionPage page) {
 		// Mark any cms render that references this page as dirty
@@ -391,10 +393,11 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 
 	private void RecalculateAllFraming() {
 		foreach (var render in CMSItems) {
-			var headerPageID = CMSDatabase.GetContent(render.Slug).Header?.ID;
-			var menuPageID = CMSDatabase.GetContent(render.Slug).NavBar?.ID;
-			var footerPageID = CMSDatabase.GetContent(render.Slug).Footer?.ID;
-			var internalID = CMSDatabase.GetContent(render.Slug).Internal?.ID;
+			var content = CMSDatabase.GetContent(render.Slug);
+			var headerPageID = content.Header?.ID;
+			var menuPageID = content.NavBar?.ID;
+			var footerPageID = content.Footer?.ID;
+			var internalID = content.Internal?.ID;
 
 			if (render.HeaderID != headerPageID || render.MenuID != menuPageID || render.FooterID != footerPageID || render.InternalID != internalID ) {
 				render.HeaderID = headerPageID;

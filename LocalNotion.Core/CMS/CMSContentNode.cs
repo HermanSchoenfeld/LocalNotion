@@ -86,7 +86,7 @@ public class CMSContentNode {
 
 	public List<LocalNotionPage> Content { get; } = [];
 
-	internal IEnumerable<LocalNotionPage> NonFramingContent => Content.Where(x => !x.CMSProperties.PageType.IsIn(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer, CMSPageType.Internal));
+	internal IEnumerable<LocalNotionPage> NonFramingContent => Content.Where(x => !CMSHelper.IsFramingContent(x.CMSProperties.PageType));
 
 	public List<CMSContentNode> Children { get; } = [];
 	
