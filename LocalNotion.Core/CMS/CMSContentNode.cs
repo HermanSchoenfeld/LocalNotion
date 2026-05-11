@@ -90,12 +90,18 @@ public class CMSContentNode {
 
 	public List<CMSContentNode> Children { get; } = [];
 	
-	public LocalNotionPage Header => 
-		!Tags.Contains(Constants.TagHideHeader) ?
-		Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.Header) ?? Parent?.Header :
-		default;
+	public LocalNotionPage Header {
+		get {
+			if (Tags.Contains(Constants.TagHideHeader))
+				return default;
 
+			if (Tags.Contains(Constants.TagUseParentHeader))
+				return  Parent?.Header;
 
+			return Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.Header) ?? default;
+		}
+	}
+		
 	public LocalNotionPage NavBar => 
 			!Tags.Contains(Constants.TagHideNavBar) ?
 			Content.FirstOrDefault(x => x.CMSProperties.PageType == CMSPageType.NavBar) ?? Parent?.NavBar :

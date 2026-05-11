@@ -1071,7 +1071,7 @@ $@"Local Notion Status:
 		//string[] PullBug29Page = new[] { "pull", "-p", "d:\\databases\\LN-POWER2PEOPLE.COM.AU", "-o", "137f1a97ddeb806aa251e764a4608a98", "--force" };
 
 		//string[] PullBug30Page = new[] { "pull", "-p", "d:\\databases\\LN-TECH4SENIORS.AU", "-o", "300f1a97-ddeb-8093-b542-d1af2d3ece05", "--force" };
-		string[] PullBug31Page = new[] { "pull", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o", "135f1a97-ddeb-80db-b979-f630bfd7e037", "--force" };
+		//string[] PullBug31Page = new[] { "pull", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o", "135f1a97-ddeb-80e9-9dcd-c564084fbf5b", "--force" };
 		
 		//		string[] PullDatabase1 = new[] { "pull", "-p", "d:\\databases\\test", "-o", "f3a971c5-c1c5-42cd-b769-251231510391", "--force" };
 		// string[] PullDatabase2 = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "b95bd225-9407-4eb6-a8bd-e309c236564b", "--force" };
@@ -1139,7 +1139,7 @@ $@"Local Notion Status:
 		//string[] RenderBug44Page = new[] { "render", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o",  "136f1a97ddeb80539178fbe6430b7a9a" };
 		//string[] RenderBug45Page = new[] { "render", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o",  "154f1a97-ddeb-806e-be57-d4f840ed3fa1" };
 		//string[] RenderBug46Page = new[] { "render", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o",  "136f1a97-ddeb-8091-94ad-e749f18ec320" };
-		string[] RenderBug47Page = new[] { "render", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o",   "135f1a97-ddeb-80db-b979-f630bfd7e037" };
+		//string[] RenderBug47Page = new[] { "render", "-p", "d:\\databases\\LN-TEAMTRUTHBRISBANE.COM", "-o",   "135f1a97-ddeb-80e9-9dcd-c564084fbf5b" };
 		//string[] RenderBug48Page = new[] { "render", "-p", "d:\\databases\\LN-TECH4SENIORS.AU", "-o",  "2fff1a97-ddeb-8113-af5a-e88dd08d930b" };
 
 		//		string[] RemoveBug1 = new[] { "remove", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "-o", "ae40c1d5-a225-4175-b1d1-b4472968fb80" };
@@ -1166,8 +1166,8 @@ $@"Local Notion Status:
 		// localnotion init -k YOUR_NOTION_API_KEY_HERE --cms 2dcb720f5ed6415091f6e83f42d6a44c -v
 		// string[] PullAll = new[] { "pull", "-p", "d:\\databases\\LN-STAGING.SPHERE10.COM", "--all" };
 
-		if (args.Length == 0)
-			args = PullBug31Page; //RenderBug47Page;  // PullBug23Page   RenderBug36Page
+		//if (args.Length == 0)
+		//	args = PullBug31Page; //RenderBug47Page;  // PullBug23Page   RenderBug36Page
 
 		////#endif
 		try {

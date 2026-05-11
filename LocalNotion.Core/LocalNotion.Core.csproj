@@ -1081,6 +1081,7 @@
 	  <EmbeddedResource Include="Themes\cms\resources\js\isotope.pkgd.min.js" />
 	  <EmbeddedResource Include="Themes\cms\resources\js\particles.min.js" />
 	  <EmbeddedResource Include="Themes\cms_header\carousel_pause.inc" />
+	  <EmbeddedResource Include="Themes\default\page_cover_title.html" />
 	  <EmbeddedResource Include="Themes\page_minimalist\.config.json" />
 	  <EmbeddedResource Include="Themes\default\header_link.html" />
 	  <EmbeddedResource Include="Themes\cms\text_link.html" />
@@ -1341,7 +1342,7 @@
 	  <EmbeddedResource Include="Themes\cms\h3_align.inc" />
 	  <EmbeddedResource Include="Themes\cms\h2_align.inc" />
 	  <EmbeddedResource Include="Themes\cms\h1_align.inc" />
-	  <EmbeddedResource Include="Themes\cms\color_text_aux.inc" />
+	  <EmbeddedResource Include="Themes\default\color_text_aux.inc" />
 	  <EmbeddedResource Include="Themes\cms\heading_1.html" />
 	  <EmbeddedResource Include="Themes\cms\heading_2.html" />
 	  <EmbeddedResource Include="Themes\cms\heading_3.html" />
@@ -1675,7 +1676,7 @@
 	  <EmbeddedResource Include="Themes\color_card_success\color_card.inc" />
 	  <EmbeddedResource Include="Themes\color_card_warning\.config.json" />
 	  <EmbeddedResource Include="Themes\color_card_warning\color_card.inc" />
-	  <EmbeddedResource Include="Themes\cms\color_aux.inc" />
+	  <EmbeddedResource Include="Themes\default\color_aux.inc" />
 	  <EmbeddedResource Include="Themes\badge\text_code.html" />
 	  <EmbeddedResource Include="Themes\color_aux_warning\.config.json" />
 	  <EmbeddedResource Include="Themes\color_aux_warning\color_aux.inc" />

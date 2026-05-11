@@ -632,14 +632,19 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	}
 
 
-	protected virtual string RenderPageContent(Page page)
-		=> RenderTemplate(
+	protected virtual string RenderPageContent(Page page) {
+		var isSubPage = this.Repository.GetResourceAncestry(RenderingContext.Resource).Skip(1).FirstOrDefault()?.Type == LocalNotionResourceType.Page;
+		var useCoverTitle = 
+			RenderingContext.Resource.CMSProperties.Tags.Contains(Constants.TagShowTitleOnBanner) || 
+			isSubPage && RenderingContext.Resource.CMSProperties.Tags.Contains(Constants.TagShowChildPageTitleOnBanner);
+		
+		return RenderTemplate(
 			"page_content",
 			new RenderTokens(page) {
 				["id"] = RenderingContext.Resource.ID,
 				["title"] = RenderingContext.Resource.Title,   
 				["page_name"] = RenderingContext.Resource.Name,
-				["page_title"] =  RenderTemplate("page_title", new() { ["text"] = RenderingContext.Resource.Title }),   // title on the page 
+				["page_title"] =  RenderTemplate("page_title", new() { ["text"] = !useCoverTitle ? RenderingContext.Resource.Title : string.Empty }),   // use empty title if we're showing the title on the cover (fixes layout)
 				["page_subtitle"] = string.Empty,
 				["page_cover"] = RenderingContext.Resource.Cover switch {
 					null => string.Empty,
@@ -647,6 +652,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 						"page_cover",
 						new RenderTokens {
 							["cover_url"] = SanitizeUrl(RenderingContext.Resource.Cover) ?? string.Empty,
+							["cover_title"] = useCoverTitle ? RenderTemplate("page_cover_title", new() { ["text"] = RenderingContext.Resource.Title }) : string.Empty,
 						}
 					)
 				},
@@ -671,7 +677,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 			}
 		);
-
+	}
 	protected override string Render(BreadcrumbBlock block)
 		=> Render(block, BreadCrumbGenerator.CalculateBreadcrumb(RenderingContext.Resource));
 

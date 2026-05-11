@@ -58,6 +58,7 @@ public static class Constants {
 	// LocalNotion CMS Tags
 	public const string TagShowChildPageTitleOnBanner = "@ShowChildPageTitleOnBanner";
 	public const string TagShowTitleOnBanner = "@ShowTitleOnBanner";
+	public const string TagUseParentHeader = "@UseParentHeader";
 	public const string TagHideHeader = "@HideHeader";
 	public const string TagHideNavBar = "@HideNavBar";
 	public const string TagHideFooter = "@HideFooter";
