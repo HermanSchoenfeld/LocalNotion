@@ -76,7 +76,12 @@ public class CMSContentNode {
 
 	public IEnumerable<string> Keywords => Content.SelectMany(x => x.Keywords).Distinct();
 
-	public IEnumerable<string> Tags => Content.SelectMany(x => x.CMSProperties.Tags).Distinct();
+	//public IEnumerable<string> Tags => Content.SelectMany(x => x.CMSProperties.Tags).Distinct();
+
+	public IEnumerable<string> Tags => Type switch {
+		CMSContentType.Gallery => this.Children.SelectMany(x => x.Tags).Concat(Content.SelectMany(x => x.CMSProperties.Categories).Distinct()),
+		_ => Content.SelectMany(x => x.CMSProperties.Tags).Distinct()
+	};
 
 	public IEnumerable<string> FeatureImageBlocks => Content.Where(x => !string.IsNullOrWhiteSpace(x.FeatureImageID)).Select(x => x.FeatureImageID);
 
