@@ -42,8 +42,6 @@ public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 
 	string CMSDatabaseID { get; }
 
-	//string CMSDataSourceID { get; }
-
 	IEnumerable<string> Objects { get; }
 
 	IEnumerable<string> Graphs { get; }
@@ -69,8 +67,6 @@ public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 	Task ClearAsync();
 
 	Task CleanAsync();
-
-	//void IdentifyPrimaryDataSourceID(string dataSourceID);
 
 	bool ContainsObject(string objectID);
 

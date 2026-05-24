@@ -46,8 +46,6 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 
 	public string CMSDatabaseID => InternalRepository.CMSDatabaseID;
 
-	//public string CMSDataSourceID => InternalRepository.CMSDataSourceID;
-
 	public virtual IEnumerable<string> Objects => InternalRepository.Objects;
 	
 	public virtual IEnumerable<string> Graphs => InternalRepository.Graphs;
@@ -64,8 +62,6 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual bool RequiresLoad => InternalRepository.RequiresLoad;
 
 	public virtual bool RequiresSave => InternalRepository.RequiresSave;
-
-	//public virtual void IdentifyPrimaryDataSourceID(string dataSourceID)  =>	InternalRepository.IdentifyPrimaryDataSourceID(dataSourceID);
 
 	public virtual Task LoadAsync() => InternalRepository.LoadAsync();
 

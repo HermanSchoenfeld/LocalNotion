@@ -7,9 +7,7 @@
 // This notice must not be removed when duplicating this file or its contents, in whole or in part.
 
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
-using CommandLine;
 using Sphere10.Framework;
 using Notion.Client;
 using AngleSharp.Common;
@@ -212,13 +210,6 @@ public class LocalNotionHelper {
 				.Select(Tools.Url.ToUrlSlug)
 				.ToDelimittedString("/");
 	}
-
-	//public static string SanitizeSlug(string slug) {
-	//	slug ??= string.Empty;
-	//	if (!slug.StartsWith("/"))
-	//		slug = "/" + slug;
-	//	return slug;
-	//}
 
 	/// <summary>
 	/// This calculates a UUID ID of a Page property so that it can be stored in the Local Notion Objects database. This is needed

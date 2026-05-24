@@ -93,13 +93,6 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		}
 	}
 
-	//public string CMSDataSourceID {
-	//	get {
-	//		CheckLoaded();
-	//		return Registry.CMSPrimaryDataSource;
-	//	}
-	//}
-
 	public IEnumerable<string> Objects {
 		get {
 			CheckLoaded();
@@ -284,18 +277,6 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		await repo.LoadAsync();
 		return repo;
 	}
-
-	//public void IdentifyPrimaryDataSourceID(string dataSourceID) {
-	//	if (string.IsNullOrWhiteSpace(Registry.CMSPrimaryDataSource)) {
-	//		Registry.CMSPrimaryDataSource = dataSourceID;
-	//		Logger.Info($"Identified CMS Datasource: {dataSourceID}");
-	//		RequiresSave = true;
-	//	} else if (dataSourceID == Registry.CMSPrimaryDataSource) {
-	//		// no-op
-	//	} else {
-	//		throw new ApplicationException($"Primary datasource cannot be changed to {dataSourceID} as it is already set to {Registry.CMSPrimaryDataSource}.");
-	//	}
-	//}
 
 	public async Task LoadAsync() {
 		CheckNotLoaded();
@@ -829,10 +810,6 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 	}
 
 	protected async Task SaveInternal_PersistPhase(string registryFile) {
-		var dbO = Registry.Resources.FirstOrDefault(x => x is LocalNotionDatabase);
-		if (dbO is not null) { 
-			var xxx = Tools.Json.WriteToString(dbO);
-		}
 		var persistFile = registryFile + ".persist";
 		await Task.Run(() => Tools.Json.WriteToFile(persistFile, Registry));
 		var commitFile = registryFile + ".commit";

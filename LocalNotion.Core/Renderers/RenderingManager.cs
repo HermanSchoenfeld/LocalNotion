@@ -6,7 +6,6 @@
 //
 // This notice must not be removed when duplicating this file or its contents, in whole or in part.
 
-using AngleSharp.Media.Dom;
 using Sphere10.Framework;
 using Notion.Client;
 
@@ -18,7 +17,7 @@ public class RenderingManager  {
 		Guard.ArgumentNotNull(repository, nameof(repository));
 
 		Repository = repository;
-		Logger = logger ?? new NoOpLogger(); ;
+		Logger = logger ?? new NoOpLogger();
 	}
 
 	protected ILocalNotionRepository Repository { get; }
@@ -39,23 +38,16 @@ public class RenderingManager  {
 		switch (@obj.Object) {
 			case ObjectType.Page:
 			case ObjectType.Database:
-				// Get the resource 
 				var tmpFile = Tools.FileSystem.GenerateTempFilename(".tmp");
 				string output;
 				try {
-					
-					// Get resource and it's visual graph + objcets for rendering
+					// Get resource and its visual graph + objects for rendering
 					var resource = (LocalNotionEditableResource)Repository.GetResource(resourceID);
 					var visualGraph = Repository.GetEditableResourceGraph(resource.ID);
 					var visualObjects = Repository.LoadObjects(visualGraph);
 
-					// Activate the html renderer
-					var themeManager = new HtmlThemeManager(Repository.Paths, Logger);
-					var urlGenerator = LinkGeneratorFactory.Create(Repository);
-					var breadcrumbGenerator = new BreadCrumbGenerator(Repository, urlGenerator);
-					var renderer = new HtmlRenderer(renderMode, Repository, themeManager, urlGenerator, breadcrumbGenerator, Logger);
-
 					// Render HTML to a text file
+					var renderer = CreateHtmlRenderer(renderMode);
 					var html = renderer.Render(resource, visualGraph, visualObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, resource.ID, FileSystemPathType.Absolute));
 					File.WriteAllText(tmpFile, html);
 					output = Repository.ImportResourceRender(resourceID, RenderType.HTML, tmpFile);
@@ -73,9 +65,7 @@ public class RenderingManager  {
 				} finally {
 					File.Delete(tmpFile);
 				}
-
 				return output;
-
 
 			default:
 				throw new InvalidOperationException($"Unable to render {@obj.Object} '{resourceID}' as it is not a top-level object");
@@ -83,20 +73,15 @@ public class RenderingManager  {
 	}
 
 	public void RenderCMSItem(CMSItem cmsItem) {
-		
 		if (Repository is not CMSLocalNotionRepository cmsRepo)
 			throw new InvalidOperationException("Unable to a CMS item as the repository is not a CMS-based repository");
 
-		// Activate the html renderer
-		var themeManager = new HtmlThemeManager(Repository.Paths, Logger);
-		var urlGenerator = LinkGeneratorFactory.Create(Repository);
-		var breadcrumbGenerator = new BreadCrumbGenerator(Repository, urlGenerator);
+		var (themeManager, urlGenerator, breadcrumbGenerator) = CreateRenderingComponents();
 		var cmsRenderer = new CmsHtmlRenderer(RenderMode.ReadOnly, cmsRepo, themeManager, urlGenerator, breadcrumbGenerator, Logger);
 
-		// TODO: need to set output path for links to be from /cms not /pages
 		DetermineCMSItemFilename(cmsItem, out var filePath);
 		Logger.Info($"Rendering CMS item '{cmsItem.RenderPath}'");
-		string htmlContent = HtmlRenderer.Format(cmsRenderer.RenderCmsItem(cmsItem));
+		var htmlContent = HtmlRenderer.Format(cmsRenderer.RenderCmsItem(cmsItem));
 		File.WriteAllText(filePath, htmlContent);
 		cmsItem.Dirty = false;
 		
@@ -119,6 +104,18 @@ public class RenderingManager  {
 		}
 	}
 
+	private HtmlRenderer CreateHtmlRenderer(RenderMode renderMode) {
+		var (themeManager, urlGenerator, breadcrumbGenerator) = CreateRenderingComponents();
+		return new HtmlRenderer(renderMode, Repository, themeManager, urlGenerator, breadcrumbGenerator, Logger);
+	}
+
+	private (HtmlThemeManager ThemeManager, ILinkGenerator UrlGenerator, IBreadCrumbGenerator BreadCrumbGenerator) CreateRenderingComponents() {
+		var themeManager = new HtmlThemeManager(Repository.Paths, Logger);
+		var urlGenerator = LinkGeneratorFactory.Create(Repository);
+		var breadcrumbGenerator = new BreadCrumbGenerator(Repository, urlGenerator);
+		return (themeManager, urlGenerator, breadcrumbGenerator);
+	}
+
 	private string GetResourceHtmlRenderContents(string resourceID) {
 		var resource = Repository.GetResource(resourceID);
 		var render = resource.GetRender(RenderType.HTML);
@@ -127,4 +124,3 @@ public class RenderingManager  {
 	}
 
 }
-

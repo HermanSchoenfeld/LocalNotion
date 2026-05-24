@@ -9,7 +9,6 @@
 #pragma warning disable CS8618
 
 using System.Text;
-using System.Xml.Schema;
 using Sphere10.Framework;
 using Sphere10.Framework.Application;
 using LocalNotion.Core.DataObjects;
@@ -69,8 +68,6 @@ public class NotionSyncOrchestrator {
 					Logger.Info($"No datasource identified");
 				}
 			
-				//if (notionDatabase.Id == Repository.CMSDataSourceID)
-				//	Repository.IdentifyPrimaryDataSourceID( notionDatabase.DataSources.FirstOrDefault()?.DataSourceId);
 				knownNotionLastEditTime = notionDatabase.LastEditedTime;
 				needHeader = false;
 			}
@@ -151,33 +148,7 @@ public class NotionSyncOrchestrator {
 						Repository.ImportBlankResourceRender(notionDatabase.Id, options.RenderType);
 
 					var linkGenerator = LinkGeneratorFactory.Create(Repository);
-					// Download cover
-					if (localDatabase.Cover != null && ShouldDownloadFile(localDatabase.Cover)) {
-						// Cover is a Notion file
-						var file = await DownloadFileAsync(localDatabase.Cover, notionDatabase.Id, options.ForceRefresh, cancellationToken);
-						if (file != null) {
-							localDatabase.Cover = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
-							// update notion object with url (this is a component object and saved with page)
-							notionDatabase.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
-
-							// track new file
-							downloadedResources.Add(file);
-						}
-					}
-
-					// Download thumbnail
-					if (localDatabase.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localDatabase.Thumbnail.Data)) {
-						// Thumbnail is a Notion file
-						var file = await DownloadFileAsync(localDatabase.Thumbnail.Data, notionDatabase.Id, options.ForceRefresh, cancellationToken);
-						if (file != null) {
-							localDatabase.Thumbnail.Data = linkGenerator.Generate(localDatabase, file.ID, RenderType.File, out _);
-							// update notion object with url (this is a component object and saved with page)
-							notionDatabase.Icon.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
-
-							// track new file
-							downloadedResources.Add(file);
-						}
-					}
+					await DownloadCoverAndThumbnailAsync(localDatabase, notionDatabase.Cover, notionDatabase.Icon, linkGenerator, downloadedResources, options.ForceRefresh, cancellationToken);
 				} else {
 					Logger.Info($"Database had no datasources, skipped");
 				}
@@ -214,42 +185,8 @@ public class NotionSyncOrchestrator {
 			}
 
 			// Render
-			if (options.Render) {
-				var renderer = new RenderingManager(Repository, Logger);
-				var renderableResources = LocalNotionHelper.FilterRenderableResources(downloadedResources).ToArray();
-				foreach (var resource in renderableResources) {
-					cancellationToken.ThrowIfCancellationRequested();
-					try {
-						renderer.RenderLocalResource(resource.ID, options.RenderType, options.RenderMode);
-					} catch (TaskCanceledException) {
-						throw;
-					} catch (Exception error) {
-						Logger.Error($"Failed to render resource '{resource.Title}' ({resource.ID})");
-						Logger.Exception(error);
-						if (!options.FaultTolerant)
-							throw;
-					}
-				}
+			RenderDownloadedResources(downloadedResources, options, cancellationToken);
 
-				// Render CMS items
-				var renderedResources = renderableResources.Select(x => x.ID).ToHashSet();
-				foreach (var cmsItem in Repository.CMSItems) {
-					if (cmsItem.ReferencesAnyResources(renderedResources)) {
-						try {
-							renderer.RenderCMSItem(cmsItem);
-						} catch (TaskCanceledException) {
-							throw;
-						} catch (Exception error) {
-							Logger.Error($"Failed to render CMS item '{cmsItem.Slug}'");
-							Logger.Exception(error);
-							if (!options.FaultTolerant)
-								throw;
-						}
-
-					}
-				}
-	
-			}
 			return downloadedResources.ToArray();
 		}
 	}
@@ -369,33 +306,7 @@ public class NotionSyncOrchestrator {
 				#region Download attached files
 
 				var linkGenerator = LinkGeneratorFactory.Create(Repository);
-				// Download cover
-				if (localPage.Cover != null && ShouldDownloadFile(localPage.Cover)) {
-					// Cover is a Notion file
-					var file = await DownloadFileAsync(localPage.Cover, notionPage.Id, options.ForceRefresh, cancellationToken);
-					if (file != null) {
-						localPage.Cover = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
-						// update notion object with url (this is a component object and saved with page)
-						notionPage.Cover.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
-
-						// track new file
-						downloadedResources.Add(file);
-					}
-				}
-
-				// Download thumbnail
-				if (localPage.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localPage.Thumbnail.Data)) {
-					// Thumbnail is a Notion file
-					var file = await DownloadFileAsync(localPage.Thumbnail.Data, notionPage.Id, options.ForceRefresh, cancellationToken);
-					if (file != null) {
-						localPage.Thumbnail.Data = linkGenerator.Generate(localPage, file.ID, RenderType.File, out _);
-						// update notion object with url (this is a component object and saved with page)
-						notionPage.Icon.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File)); // update the locally stored NotionObject with local url
-
-						// track new file
-						downloadedResources.Add(file);
-					}
-				}
+				await DownloadCoverAndThumbnailAsync(localPage, notionPage.Cover, notionPage.Icon, linkGenerator, downloadedResources, options.ForceRefresh, cancellationToken);
 
 				// Download uploaded files (and external files if applicable)
 				var uploadedFiles =
@@ -403,8 +314,6 @@ public class NotionSyncOrchestrator {
 						.VisitAll()
 						.Where(x => pageObjects[x.ObjectID].HasFileAttachment())
 						.Select(x => pageObjects[x.ObjectID].GetFileAttachment())
-						//.Where(LocalNotionHelper.IsNotionFileObject)
-						//.Select(x => new WrappedNotionFile(x))
 						.Union(
 							notionPage
 								.Properties
@@ -555,45 +464,7 @@ public class NotionSyncOrchestrator {
 
 			#region Render page and child-pages
 
-			if (options.Render) {
-				var renderer = new RenderingManager(Repository, Logger);
-				var renderableResources = LocalNotionHelper.FilterRenderableResources(downloadedResources).ToArray();
-
-				// render pages
-				foreach (var renderableResource in renderableResources) {
-					cancellationToken.ThrowIfCancellationRequested();
-					try {
-						renderer.RenderLocalResource(renderableResource.ID, options.RenderType, options.RenderMode);
-					} catch (ProductLicenseLimitException) {
-						throw;
-					} catch (TaskCanceledException) {
-						throw;
-					} catch (Exception error) {
-						Logger.Error($"Failed to render page '{renderableResource.Title}' ({renderableResource.ID}).");
-						Logger.Exception(error);
-						if (!options.FaultTolerant)
-							throw;
-					}
-				}
-
-				// Render CMS items
-				var renderedResources = renderableResources.Select(x => x.ID).ToHashSet();
-				foreach (var cmsItem in Repository.CMSItems) {
-					if (cmsItem.ReferencesAnyResources(renderedResources)) {
-						try {
-							renderer.RenderCMSItem(cmsItem);
-						} catch (TaskCanceledException) {
-							throw;
-						} catch (Exception error) {
-							Logger.Error($"Failed to render CMS item '{cmsItem.Slug}'");
-							Logger.Exception(error);
-							if (!options.FaultTolerant)
-								throw;
-						}
-
-					}
-				}
-			}
+			RenderDownloadedResources(downloadedResources, options, cancellationToken);
 
 			#endregion
 
@@ -718,12 +589,90 @@ public class NotionSyncOrchestrator {
 		return null;
 	}
 
+	/// <summary>
+	/// Downloads cover and thumbnail images for an editable resource, updating the local resource and notion object URLs.
+	/// </summary>
+	protected async Task DownloadCoverAndThumbnailAsync(
+		LocalNotionEditableResource localResource,
+		IPageCover notionCover,
+		IPageIcon notionIcon,
+		ILinkGenerator linkGenerator,
+		IList<LocalNotionResource> downloadedResources,
+		bool forceRefresh,
+		CancellationToken cancellationToken
+	) {
+		// Download cover
+		if (localResource.Cover != null && ShouldDownloadFile(localResource.Cover)) {
+			var file = await DownloadFileAsync(localResource.Cover, localResource.ID, forceRefresh, cancellationToken);
+			if (file != null) {
+				localResource.Cover = linkGenerator.Generate(localResource, file.ID, RenderType.File, out _);
+				notionCover?.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
+				downloadedResources.Add(file);
+			}
+		}
+
+		// Download thumbnail
+		if (localResource.Thumbnail.Type == ThumbnailType.Image && ShouldDownloadFile(localResource.Thumbnail.Data)) {
+			var file = await DownloadFileAsync(localResource.Thumbnail.Data, localResource.ID, forceRefresh, cancellationToken);
+			if (file != null) {
+				localResource.Thumbnail.Data = linkGenerator.Generate(localResource, file.ID, RenderType.File, out _);
+				notionIcon?.SetUrl(LocalNotionRenderLink.GenerateUrl(file.ID, RenderType.File));
+				downloadedResources.Add(file);
+			}
+		}
+	}
+
 	protected string CalculateUniqueResourceName(string resourceName) {
 		var nameCandidate = resourceName;
 		var attempt = 2;
 		while (Repository.ContainsResourceByName(nameCandidate))
 			nameCandidate = $"{resourceName}-{attempt++}";
 		return nameCandidate;
+	}
+
+	/// <summary>
+	/// Renders the specified downloaded resources and any affected CMS items.
+	/// </summary>
+	protected void RenderDownloadedResources(IList<LocalNotionResource> downloadedResources, DownloadOptions options, CancellationToken cancellationToken) {
+		if (!options.Render)
+			return;
+
+		var renderer = new RenderingManager(Repository, Logger);
+		var renderableResources = LocalNotionHelper.FilterRenderableResources(downloadedResources).ToArray();
+
+		// Render resources
+		foreach (var resource in renderableResources) {
+			cancellationToken.ThrowIfCancellationRequested();
+			try {
+				renderer.RenderLocalResource(resource.ID, options.RenderType, options.RenderMode);
+			} catch (ProductLicenseLimitException) {
+				throw;
+			} catch (TaskCanceledException) {
+				throw;
+			} catch (Exception error) {
+				Logger.Error($"Failed to render resource '{resource.Title}' ({resource.ID})");
+				Logger.Exception(error);
+				if (!options.FaultTolerant)
+					throw;
+			}
+		}
+
+		// Render affected CMS items
+		var renderedResources = renderableResources.Select(x => x.ID).ToHashSet();
+		foreach (var cmsItem in Repository.CMSItems) {
+			if (cmsItem.ReferencesAnyResources(renderedResources)) {
+				try {
+					renderer.RenderCMSItem(cmsItem);
+				} catch (TaskCanceledException) {
+					throw;
+				} catch (Exception error) {
+					Logger.Error($"Failed to render CMS item '{cmsItem.Slug}'");
+					Logger.Exception(error);
+					if (!options.FaultTolerant)
+						throw;
+				}
+			}
+		}
 	}
 
 }
