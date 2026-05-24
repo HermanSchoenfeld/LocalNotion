@@ -91,11 +91,8 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 				}
 			}
 
-			// TODO: when implementing databases, the check is
-			var parentIsCmsDatabase = item.ParentResourceID != null  && Repository.TryGetDatabase(item.ParentResourceID, out var database) && CMSHelper.IsCMSDatabase(database);   // note: properties can be null when only downloading pages
-			//var parentIsCmsDatabase = item.ParentResourceID.IsIn(Repository.CMSDatabaseID, Repository.CMSDataSourceID);
+			var parentIsCmsDatabase = item.ParentResourceID != null  && Repository.TryGetDatabase(item.ParentResourceID, out var database) && CMSHelper.IsCMSDatabase(database);
 			var repoContainsParentResource = item.ParentResourceID != null && Repository.ContainsResource(item.ParentResourceID);
-			//var parentIsCmsDatabase = item.ParentResourceID != null && !repoContainsParentResource;  // currently CMS database doesn't exist as a resource, but if it was page parent, it would
 			var parentIsPartial = 
 				repoContainsParentResource && 
 				Repository.TryGetResource(item.ParentResourceID, out var parentResource) && 

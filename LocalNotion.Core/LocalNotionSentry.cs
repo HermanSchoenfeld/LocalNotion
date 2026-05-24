@@ -32,9 +32,6 @@ public class LocalNotionSentry : ProcessSentry {
 	public new static Task<bool> CanRunAsync(CancellationToken cancellationToken = default)  
 		=> ProcessSentry.CanRunAsync(ExecutableFileName, cancellationToken);
 
-	//public async Task<bool> IsInstalledAsync(CancellationToken cancellationToken = default) 
-	//	=> await CanRunAsync(cancellationToken) && await RunAsync("version", cancellationToken) == 0;
-
 	public async Task<int> GetStatus(string path, TextWriter output, CancellationToken cancellationToken = default)  {
 		Guard.ArgumentNotNullOrEmpty(path, nameof(path));
 		Guard.DirectoryExists(path);

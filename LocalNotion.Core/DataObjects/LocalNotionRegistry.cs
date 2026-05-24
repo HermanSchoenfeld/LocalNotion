@@ -31,9 +31,6 @@ public class LocalNotionRegistry {
 	[JsonProperty("cms_database")]
 	public string CMSDatabase { get; set; } = null;
 
-	//[JsonProperty("cms_primary_datasource")]
-	//public string CMSPrimaryDataSource { get; set; } = null;
-
 	[JsonProperty("git", NullValueHandling = NullValueHandling.Ignore)]
 	public GitSettings GitSettings { get; set; } = GitSettings.Default;
 

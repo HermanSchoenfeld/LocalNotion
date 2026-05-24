@@ -15,50 +15,8 @@ using LocalNotion.Core;
 using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace LocalNotion.CLI;
-
-public class GitSentry : ProcessSentry {
-
-	private const string GitExecutable = "git";
-	private readonly StringBuilder _stringBuilder;
-	public GitSentry(string rootDir) : base(GitExecutable) {
-		_stringBuilder = new StringBuilder();
-		WorkingDirectory = rootDir;
-		OutputWriter = new StringWriter(_stringBuilder);
-	}
-
-	public string Output => _stringBuilder.ToString().Trim();
-
-	public async Task<bool> Init(CancellationToken cancellationToken = default) {
-		return (await base.RunAsync("init", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> AddAll(CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		return (await base.RunAsync("add --all", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> Commit(string message, CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		return (await base.RunAsync($"commit -m \"{message}\"", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> Push(CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		return (await base.RunAsync("push", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> TestGitInstalled(CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		try {
-			return (await base.RunAsync("help", cancellationToken)) == 0;
-		} catch {
-			return false;
-		}
-	}
-}
 
 public static partial class Program {
 
@@ -743,24 +701,18 @@ $@"Local Notion Status:
 	}
 
 	public static async Task<int> ExecuteSyncCommandAsync(SyncRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
-		// NOTE: FilterLastUpdateOn not requied since SyncOrchestrator intelligently determines 
-		// what to fetch
-
 		var consoleLogger = new ConsoleLogger { Options =  arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 	
 		Console.WriteLine($"Synchronizing every {arguments.PollFrequency} seconds (send Break or CTRL-C to stop)");
-		while(true) {
+		while (true) {
 			Console.WriteLine($"Synchronizing Updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-			//arguments.FilterLastUpdatedOn = DateTime.Now;
 			var result = await ExecutePullCommandAsync(arguments, cancellationToken);
 			if (result != Constants.ERRORCODE_OK && !arguments.FaultTolerant) 
 				return result;
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
-			//arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
 		}
-		return Constants.ERRORCODE_OK;
 	}
 
 	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {

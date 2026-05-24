@@ -72,8 +72,6 @@ public class MonitoredRepository : DisposableResource,  ICmsLocalNotionRepositor
 
 	public string CMSDatabaseID => InternalRepository.Value.CMSDatabaseID;
 
-	//public string CMSDataSourceID => InternalRepository.Value.CMSDataSourceID;
-
 	public CMSDatabase CMSDatabase => InternalRepository.Value.CMSDatabase;
 
 	public virtual IEnumerable<string> Objects => InternalRepository.Value.Objects;
@@ -93,8 +91,6 @@ public class MonitoredRepository : DisposableResource,  ICmsLocalNotionRepositor
 	public virtual bool RequiresLoad => InternalRepository.Value.RequiresLoad;
 
 	public virtual bool RequiresSave => InternalRepository.Value.RequiresSave;
-
-	//public virtual void IdentifyPrimaryDataSourceID(string dataSourceID) => InternalRepository.Value.IdentifyPrimaryDataSourceID(dataSourceID);
 
 	public virtual Task LoadAsync() => InternalRepository.Value.LoadAsync();
 
