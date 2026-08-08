@@ -17,6 +17,9 @@ public class CMSItem {
 	[JsonProperty("slug", Required = Required.Always)]
 	public string Slug { get; set; } 
 
+	[JsonProperty("auth")]
+	public string Auth { get; set; } 
+
 	[JsonProperty("type", NullValueHandling = NullValueHandling.Ignore)]
 	[JsonConverter(typeof(StringEnumConverter))]
 	public CMSItemType ItemType { get; set; }

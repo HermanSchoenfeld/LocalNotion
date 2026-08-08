@@ -269,17 +269,21 @@ public class LocalNotionHelper {
 	public static IEnumerable<LocalNotionEditableResource> FilterRenderableResources(IEnumerable<LocalNotionResource> resources)
 		=> resources.Where(x => x is LocalNotionEditableResource).Cast<LocalNotionEditableResource>().Distinct();
 
-	public static IEnumerable<(string Slug, string RelPath, string MimeType)> EnumerateWebHostableResources(ILocalNotionRepository repo) {
+	// make record for WebHostableResource with Slug, RelPath, MimeType
+	public record WebHostableResource(string Slug, string RelPath, string MimeType, string Authentication);
+
+	public static IEnumerable< WebHostableResource> EnumerateWebHostableResources(ILocalNotionRepository repo) {
 
 		// All CMS items
 		foreach(var item in repo.CMSItems.Where(x => !string.IsNullOrWhiteSpace(x.RenderPath))) {
-			yield return (item.Slug, item.RenderPath, "text/html");
+			yield return new WebHostableResource(item.Slug, item.RenderPath, "text/html",  item.Auth);
 		}
 
 		// All normally rendered resources if online
 		if (repo.Paths.Mode == LocalNotionMode.Online) {
 			foreach (var resource in repo.Resources) {
 				var slug = string.Empty;
+				var auth = string.Empty;
 				RenderEntry render;
 				string mimeType;
 				switch (resource) {
@@ -292,7 +296,9 @@ public class LocalNotionHelper {
 					case LocalNotionPage page:
 						if (!page.TryGetRender(RenderType.HTML, out render))
 							continue;
-						slug = render.Slug;
+						slug = render.Slug ?? string.Empty;
+						auth = page.CMSProperties.Authentication;
+
 						mimeType = "text/html";
 						break;
 					case LocalNotionFile file:
@@ -306,7 +312,7 @@ public class LocalNotionHelper {
 				}
 				var repoPath = repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
 				var fullPath = Path.GetFullPath(render.LocalPath, repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute));
-				yield return (slug, Path.GetRelativePath(repoPath, fullPath), mimeType);
+				yield return new WebHostableResource(slug, Path.GetRelativePath(repoPath, fullPath), mimeType, auth);
 
 			}
 		}
@@ -315,6 +321,42 @@ public class LocalNotionHelper {
 	public static IEnumerable<string> CombineMultiPageKeyWords(IEnumerable<IEnumerable<string>> pageKeyWords)
 		=> pageKeyWords.SelectMany(x => x).Distinct(StringComparer.InvariantCultureIgnoreCase).Take(50);
 
+	public static string CombineMultiPageAuthentication(IEnumerable<string> enumerable) {
 
+		// assume all are username:password formatted and aggergate into one gian username::password with ;  separator
+		var usernames = new List<string>();
+		var password = new List<string>();
+		foreach (var authentication in enumerable) {
+			if (TryExtractUsernamePasswordFromAuth(authentication, out var username, out var pwd)) {
+				usernames.Add(username);
+				password.Add(pwd);
+			}
+		}
+
+		usernames = usernames.Distinct().ToList();
+		password = password.Distinct().ToList();
+
+		if (usernames.Count == 0 || password.Count == 0)
+			return string.Empty;
+
+		return $"{usernames.ToDelimittedString(";")}:{password.ToDelimittedString(";")}";
+	}
+
+	public static bool TryExtractUsernamePasswordFromAuth(string auth, out string username, out string password) {
+		if (string.IsNullOrWhiteSpace(auth)) {
+			username = password = string.Empty;
+			return false;
+		}
+		auth = auth.Trim();
+		var parts = auth.Split(':', options: StringSplitOptions.RemoveEmptyEntries);
+		if (parts.Length != 2) {
+			username = auth;
+			password = auth;
+			return true;
+		}
+		username = parts[0].Trim();
+		password = parts[1].Trim();
+		return true;
+	}
 }
 

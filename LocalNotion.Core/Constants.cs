@@ -27,6 +27,7 @@ public static class Constants {
 	public const string Category5PropertyName = "Category5";
 	public const string TagsPropertyName = "Tags";
 	public const string SummaryPropertyName = "Summary";
+	public const string AuthenticationPropertyName = "Authentication";
 	public const string CreatedByPropertyName = "Created By";
 	public const string CreatedOnPropertyName = "Created On";
 	public const string EditedByPropertyName = "Edited By";
@@ -66,6 +67,7 @@ public static class Constants {
 	public const string TagUseCoverAsFeature = "@UseCoverAsFeature";
 	public const string TagUseThumbnailAsFeature = "@UseThumbnailAsFeature";
 	public const string TagUseFirstImageAsFeature = "@UseFirstImageAsFeature";
+	public const string TagPrivate = "@Private";
 
 	// if a file is synchronized too soon after it is edited, it is premature and resynced again later
 	// Notion API only keeps minute-level accuracy

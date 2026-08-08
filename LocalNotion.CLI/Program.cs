@@ -599,7 +599,7 @@ $@"Local Notion Status:
 			// Lists database contents
 			foreach(var @obj in arguments.Objects.Select(x => x.ToString())) {
 				switch(await client.QualifyObjectAsync(@obj, cancellationToken))  {
-					case (LocalNotionResourceType.Database, _): 
+					case (LocalNotionResourceType.Database, _, _): 
 						PrintObject(await client.Databases.RetrieveAsync(@obj, cancellationToken));
 						if (arguments.All) {
 							var searchParameters = new QueryDataSourceRequest();
@@ -609,7 +609,7 @@ $@"Local Notion Status:
 						}
 
 						break;
-					case (LocalNotionResourceType.Page, _): 
+					case (LocalNotionResourceType.Page, _, _): 
 						PrintObject(await client.Pages.RetrieveAsync(@obj, cancellationToken));
 						break;
 					default:
@@ -682,24 +682,28 @@ $@"Local Notion Status:
 				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				var downloads = Array.Empty<LocalNotionResource>();
 				switch (objType) {
-					case (null, _):
+					case (null, _, _):
 						consoleLogger.Info($"Unrecognized object: {@obj}");
 						break;
-					case (LocalNotionResourceType.Database, var lastEditedTime):
-						downloads = await syncOrchestrator.DownloadDatabaseAsync(
-							@obj,
-							lastEditedTime,
-							new DownloadOptions {
-								Render = arguments.Render, 
-								RenderType = arguments.RenderOutput, 
-								RenderMode = arguments.RenderMode,
-								ForceRefresh = arguments.Force,
-								FaultTolerant = arguments.FaultTolerant
-							},
-							cancellationToken
-						);
+					case (_, _, true): 
+						if (repo.ContainsResource(obj))
+							repo.RemoveResource(@obj, true);
 						break;
-					case (LocalNotionResourceType.Page, var lastEditTimeNotion):
+					case (LocalNotionResourceType.Database, var lastEditedTime, _):
+							downloads = await syncOrchestrator.DownloadDatabaseAsync(
+								@obj,
+								lastEditedTime,
+								new DownloadOptions {
+									Render = arguments.Render, 
+									RenderType = arguments.RenderOutput, 
+									RenderMode = arguments.RenderMode,
+									ForceRefresh = arguments.Force,
+									FaultTolerant = arguments.FaultTolerant
+								},
+								cancellationToken
+							);
+						break;
+					case (LocalNotionResourceType.Page, var lastEditTimeNotion, _):
 						downloads = await syncOrchestrator.DownloadPageAsync(
 							@obj, 
 							lastEditTimeNotion,

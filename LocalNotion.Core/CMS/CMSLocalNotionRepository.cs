@@ -6,6 +6,7 @@
 //
 // This notice must not be removed when duplicating this file or its contents, in whole or in part.
 
+using Notion.Client;
 using Sphere10.Framework;
 
 
@@ -345,27 +346,28 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 	}
 	
 	private void TouchSingularCmsItem(LocalNotionPage page) {
-		if (!CalculateCmsItem(page.CMSProperties.CustomSlug, out var slug, out var type, out var title, out var description, out var image, out var parts, out var keywords))
+		if (!CalculateCmsItem(page.CMSProperties.CustomSlug, out var slug, out var auth, out var type, out var title, out var description, out var image, out var parts, out var keywords))
 			throw new InvalidOperationException($"Not a valid CMS Item: {page.Title} ({page.ID})");
-		AddOrUpdateCmsItem(type, slug, title, description, image, parts, keywords);
+		AddOrUpdateCmsItem(type, slug, auth, title, description, image, parts, keywords);
 	}
 
 	private void TouchContainerCmsItem(string containerItemSlug) {
-		if (!CalculateCmsItem(containerItemSlug, out var slug, out var type, out var title, out var description, out var image, out var parts, out var keywords))
+		if (!CalculateCmsItem(containerItemSlug, out var slug, out var auth, out var type, out var title, out var description, out var image, out var parts, out var keywords))
 			throw new InvalidOperationException($"Not a valid container CMS Item: {containerItemSlug}");
 
 		if (parts.Length > 0) {
-			AddOrUpdateCmsItem(type, slug, title, description, image, parts, keywords);
+			AddOrUpdateCmsItem(type, slug, auth, title, description, image, parts, keywords);
 		} else {
 			if (ContainsCmsItem(slug))
 				RemoveCmsItem(slug);
 		}
 	}
 	
-	private void AddOrUpdateCmsItem(CMSItemType itemType, string slug, string title, string description, string image, string[] parts, string[] keywords) {
-		var contentSlug = CMSDatabase.GetContent(slug);
+	private void AddOrUpdateCmsItem(CMSItemType itemType, string slug, string auth, string title, string description, string image, string[] parts, string[] keywords) {
+		var contentSlug = CMSDatabase.GetContent(slug);	
 		AddOrUpdateCMSItem(new CMSItem {
 			Slug = slug,
+			Auth = auth,
 			ItemType = itemType,
 			Title = title ?? string.Empty,
 			Description = description ?? string.Empty,
@@ -409,26 +411,26 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 		}
 	}
 
-	private bool CalculateCmsItem(string cmsItemSlug, out string slug, out CMSItemType type, out string title, out string description, out string image, out string[] parts, out string[] keywords) {
+	private bool CalculateCmsItem(string cmsItemSlug, out string slug, out string auth, out CMSItemType type, out string title, out string description, out string image, out string[] parts, out string[] keywords) {
 		// Ensure slug has no anchor tag
 		slug =  Tools.Url.StripAnchorTag(cmsItemSlug);
+		
+		// Defaults
+		type = 0;
+		auth = string.Empty;
+		parts = Array.Empty<string>();
+		keywords = Array.Empty<string>();
+		title = string.Empty;
+		description = string.Empty;
+		image = string.Empty;
 
 		// Get the CMS content node for slug
-		if (!CMSDatabase.TryGetContent(slug, out var contentNode)) {
-			type = 0;
-			title = string.Empty;
-			description = string.Empty;
-			image = string.Empty;
-			parts = [];
-			keywords = [];
+		if (!CMSDatabase.TryGetContent(slug, out var contentNode)) 
 			return false;
-		}
 
 		title = contentNode.Title ?? string.Empty;
 		description = string.Empty;
 		image = string.Empty;
-		parts = [];
-		keywords = [];
 		LocalNotionPage[] pageParts;
 		switch (contentNode.Type) {
 			case CMSContentType.Book:
@@ -438,6 +440,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				pageParts = contentParts.Where(CMSHelper.IsPublicContent).ToArray();
 				if (pageParts.Any()) {
 					image = pageParts[0] is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? pageParts[0].Thumbnail.Data : string.Empty;
+					auth = LocalNotionHelper.CombineMultiPageAuthentication(pageParts.Select(x => x.CMSProperties?.Authentication));
 					keywords = LocalNotionHelper.CombineMultiPageKeyWords(pageParts.Select(x => x.Keywords)).ToArray();
 				} 
 				break;
@@ -445,6 +448,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				type = CMSItemType.GalleryPage;
 				pageParts = contentNode.Children.SelectMany(x => x.Content).Where(CMSHelper.IsPublicContent).ToArray();
 				if (pageParts.Any()) {
+					auth = LocalNotionHelper.CombineMultiPageAuthentication(pageParts.Select(x => x.CMSProperties?.Authentication));
 					keywords = pageParts.Select(x => x.Title.ToLowerInvariant()).ToArray();
 				}
 				break;
@@ -453,6 +457,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				pageParts = contentNode.Content.Where(CMSHelper.IsPublicContent).ToArray();
 				if (pageParts.Any()) {
 					var page = pageParts.First();
+					auth = page.CMSProperties?.Authentication;
 					description = page.CMSProperties?.Summary ?? page.Title;
 					image = page is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? page.Thumbnail.Data : string.Empty;
 					keywords = page.Keywords;
@@ -467,6 +472,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 					description = primaryPage.CMSProperties?.Summary ?? primaryPage.Title;
 					image = primaryPage is { CMSProperties: { }, Thumbnail.Type: ThumbnailType.Image } ? primaryPage.Thumbnail.Data : string.Empty;
 					keywords = LocalNotionHelper.CombineMultiPageKeyWords(pageParts.Select(x => x.Keywords)).ToArray();
+					auth = LocalNotionHelper.CombineMultiPageAuthentication(pageParts.Select(x => x.CMSProperties?.Authentication));
 				}
 				break;
 			case CMSContentType.None:
@@ -475,8 +481,8 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				title = string.Empty;
 				description = string.Empty;
 				image = string.Empty;
-				parts = [];
-				keywords = [];
+				parts = Array.Empty<string>();
+				keywords = Array.Empty<string>();
 				return false;
 				break;
 			case CMSContentType.File:

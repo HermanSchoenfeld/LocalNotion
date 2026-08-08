@@ -161,6 +161,7 @@ public class CMSHelper {
 			result.Summary = string.Empty;
 			result.Tags = [];
 		}
+		result.Authentication = page.GetPropertyDisplayValue(Constants.AuthenticationPropertyName)?.Trim().ToNullWhenWhitespace();
 		var pageTitle =page.GetTextTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
 			
 
@@ -193,6 +194,7 @@ public class CMSHelper {
 		result.Category5 = parentCMSProps.Category5;
 		result.Summary = null;
 		result.Tags = parentCMSProps.Tags; // child pages inherit parent page tags
+		result.Authentication = parentCMSProps.Authentication; // child pages inherit parent page authentication
 
 		// Process slug tokens if any
 		result.CustomSlug = ProcessSlugTokens(result.CustomSlug, childPage.Id, childPageName, result);

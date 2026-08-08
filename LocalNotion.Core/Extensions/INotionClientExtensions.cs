@@ -18,9 +18,12 @@ using System.Threading.Tasks;
 namespace LocalNotion.Core;
 
 public static class INotionClientExtensions {
-	public static async Task<(LocalNotionResourceType?, DateTime?)> QualifyObjectAsync(this INotionClient client, string objectID, CancellationToken cancellationToken = default) {
+
+	public record NotionObjectQualification(LocalNotionResourceType? ResourceType, DateTime? LastEditedTime, bool InTrash);
+
+	public static async Task<NotionObjectQualification> QualifyObjectAsync(this INotionClient client, string objectID, CancellationToken cancellationToken = default) {
 		if (!LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _))
-			return (default, default);
+			return new NotionObjectQualification(default, default, false);
 
 		// Primary: Use GET /v1/blocks/{id} — Notion's universal retrieve-by-ID endpoint.
 		// Pages return as ChildPageBlock, databases as ChildDatabaseBlock.
@@ -28,9 +31,9 @@ public static class INotionClientExtensions {
 			var block = await client.Blocks.RetrieveAsync(objectID, cancellationToken);
 			switch (block?.Type) {
 				case BlockType.ChildPage:
-					return (LocalNotionResourceType.Page, block.LastEditedTime);
+					return new NotionObjectQualification(LocalNotionResourceType.Page, block.LastEditedTime, block.InTrash);
 				case BlockType.ChildDatabase:
-					return (LocalNotionResourceType.Database, block.LastEditedTime);
+					return new NotionObjectQualification(LocalNotionResourceType.Database, block.LastEditedTime, block.InTrash);
 			}
 		} catch (NotionApiException) {
 			// Not a block — fall through to other object types
@@ -40,12 +43,12 @@ public static class INotionClientExtensions {
 		try {
 			var dataSource = await client.DataSources.RetrieveAsync(objectID, cancellationToken);
 			if (dataSource != null)
-				return (LocalNotionResourceType.Database, dataSource.LastEditedTime);
+				return new NotionObjectQualification(LocalNotionResourceType.Database, dataSource.LastEditedTime, false);
 		} catch (NotionApiException) {
 			// Not a datasource — fall through
 		}
 
-		return (default, default(DateTime?));
+		return new NotionObjectQualification(default, default, false);
 	}
 
 	public static async IAsyncEnumerable<IObject> EnumerateAllWorkspaceObjectsAsync(this INotionClient client, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {

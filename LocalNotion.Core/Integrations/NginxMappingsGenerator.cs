@@ -185,10 +185,19 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		#
 		# NOTE: ensure that the server root is configured to point to the folder containing this file
 
+		# Rule to route 401 errors to @auth location
+		error_page 401 @auth;
+
 		# Catch-all rule to remove trailing slash
 		location ~ (.+)/$ {
 		    return 301 $1;
 		}
+
+		# Basic auth sername/logon rule
+		location @auth {
+			add_header WWW-Authenticate 'Basic realm="Restricted Area"' always;
+			return 401;
+		}		
 
 		""";
 
@@ -201,6 +210,18 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 		""";
 
+		private const string ProtectedLocationTemplate =
+		"""
+		location = {slug} {
+			if ($http_authorization != "Basic {base64AuthCode}") {
+				return 401;
+			}
+
+			try_files {relPath} =404;
+			default_type {mimeType};
+		}
+
+		""";
 	private static readonly string[] ExemptFiles = ["sitemap.xml"];
 
 
@@ -250,11 +271,14 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 		// Generate entries for hostable resources
 		foreach (var hostableResource in LocalNotionHelper.EnumerateWebHostableResources(LocalNotionRepository)) {
-			var location = LocationTemplate.FormatWithDictionary(
+			var template = !string.IsNullOrWhiteSpace(hostableResource.Authentication) ? ProtectedLocationTemplate : LocationTemplate;
+			var location = 				
+				template.FormatWithDictionary(
 				new Dictionary<string, string> {
 					["slug"] = "/" + hostableResource.Slug,
 					["relPath"] = SanitizePath(hostableResource.RelPath),
-					["mimeType"] = hostableResource.MimeType
+					["mimeType"] = hostableResource.MimeType,
+					["base64AuthCode"] = hostableResource.Authentication?.ToBase64()
 				}, true
 			);
 			await writer.WriteLineAsync(location);
