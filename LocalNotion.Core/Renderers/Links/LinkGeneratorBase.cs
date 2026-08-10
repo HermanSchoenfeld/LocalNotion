@@ -55,4 +55,5 @@ public abstract class LinkGeneratorBase : ILinkGenerator {
 
 	public abstract bool TryGenerate(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource);
 
+	public virtual string Process(string url) => url;
 }

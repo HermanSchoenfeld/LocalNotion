@@ -21,6 +21,8 @@ public interface ILinkGenerator {
 	/// </summary>
 	bool TryGenerate(LocalNotionResource from, string toResourceID, RenderType? renderType, out string url, out LocalNotionResource toResource);
 
+	
+	string Process(string url);
 }
 
 public static class ILinkGeneratorExtensions {

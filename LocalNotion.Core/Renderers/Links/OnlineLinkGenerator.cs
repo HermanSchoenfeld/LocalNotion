@@ -70,5 +70,37 @@ public class OnlineLinkGenerator : LinkGeneratorBase {
 		return true;
 	}
 
+	public override string Process(string url) {
+		// When link starts with "/p" it can be of forms:
+		//  - /p/3b6f1a97ddeb80e6a155f247ff0c80e2#3b7f1a97ddeb80829bd1c2173655f6c5
+		// - or /p/3b7f1a97ddeb80deb226d8d66b12789a
+		// the first is a link to a page with an anchor to an object, the second is a link to a page.  In both cases we need to resolve the page and then generate a link to the page render.
+
+		if (string.IsNullOrWhiteSpace(url) || !url.StartsWith("/p/"))
+			return url;
+
+		// Split into page ID and optional anchor
+		var urlPart = url.Substring(3); // skip "/p/"
+		var splits = urlPart.Split('#', StringSplitOptions.RemoveEmptyEntries);
+		if (splits.Length == 0)
+			return url;
+
+		var pageID = LocalNotionHelper.SanitizeObjectID(splits[0]);
+		var anchor = splits.Length > 1 ? splits[1] : null;
+
+		// Resolve the page resource
+		if (!Repository.TryGetResource(pageID, out var toResource))
+			return url; // Unable to resolve, return original
+
+		// Generate URL to the page
+		if (!TryGenerate(null, pageID, RenderType.HTML, out var generatedUrl, out _))
+			return url; // Unable to generate, return original
+
+		// Append anchor if present
+		if (!string.IsNullOrWhiteSpace(anchor))
+			generatedUrl += $"#{anchor}";
+
+		return generatedUrl;
+	}
 
 }

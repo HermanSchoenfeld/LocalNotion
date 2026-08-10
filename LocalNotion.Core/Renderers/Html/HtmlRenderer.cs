@@ -65,8 +65,10 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		Guard.Ensure(RenderingContext is not null, "Rendering context was not defined");
 		Guard.Ensure(RenderingContext.RenderOutputPath is not null, "Rendering context did not specify render output path");
 
-		if (RenderingContext.Themes is null || RenderingContext.Themes.Length == 0) 
+		
+		if (RenderingContext.Themes is null || RenderingContext.Themes.Length == 0) {
 			RenderingContext.Themes = Repository.DefaultThemes;
+		}
 		
 		var themes = ThemeManager.FilterAvailableThemes(RenderingContext.Themes).Distinct().ToArray();
 		
@@ -582,16 +584,17 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 			}
 		);
 	
-	protected virtual string RenderLink(string url, string text, string icon, string indicator)
-		=> RenderTemplate(
+	protected virtual string RenderLink(string url, string text, string icon, string indicator) {
+		return RenderTemplate(
 			RenderingContext.RenderingStack.Select(x => Repository.GetObject(x.ObjectID)).Any(x => x is HeadingOneBlock or HeadingTwoBlock or HeadingThreeBlock) ? "header_link" : "text_link",
 			new RenderTokens {
-				["url"] = url,
+				["url"] = Resolver.Process(url),
 				["text"] = text,
 				["icon"] = icon,
 				["indicator"] = indicator
 			}
 		);
+	}
 
 	#endregion
 
@@ -1175,7 +1178,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string RenderText(string content, bool isUrl, bool isBold, bool isItalic, bool isStrikeThrough, bool isUnderline, bool isCode, Color color, (string Url, string Icon, string Indicator) urlInfo = default) {
 		if (isUrl) {
 			Guard.ArgumentNotNull(urlInfo, nameof(urlInfo));
-
+			
 			return RenderLink(
 				SanitizeUrl(urlInfo.Url ?? string.Empty),
 				RenderText(content, false, isBold, isItalic, isStrikeThrough, isUnderline, isCode, color),
