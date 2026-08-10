@@ -274,7 +274,7 @@ public class LocalNotionHelper {
 
 	public static IEnumerable< WebHostableResource> EnumerateWebHostableResources(ILocalNotionRepository repo) {
 
-		// All CMS items
+		// All CMS items (note: @Private content is still hosted, it's only excluded from sitemap.xml)
 		foreach(var item in repo.CMSItems.Where(x => !string.IsNullOrWhiteSpace(x.RenderPath))) {
 			yield return new WebHostableResource(item.Slug, item.RenderPath, "text/html",  item.Auth);
 		}
@@ -282,6 +282,10 @@ public class LocalNotionHelper {
 		// All normally rendered resources if online
 		if (repo.Paths.Mode == LocalNotionMode.Online) {
 			foreach (var resource in repo.Resources) {
+				// Gather ancestry for authentication inheritance
+				// (note: @Private ancestry does not exclude hosting, only sitemap inclusion)
+				var ancestry = repo.GetResourceAncestry(resource).ToArray();
+
 				var slug = string.Empty;
 				var auth = string.Empty;
 				RenderEntry render;
@@ -292,13 +296,20 @@ public class LocalNotionHelper {
 							continue;
 						slug = render.Slug;
 						mimeType = "text/html";
+						// Databases inherit auth from ancestor pages
+						auth = CombineMultiPageAuthentication(
+							ancestry.OfType<LocalNotionPage>()
+								.Select(x => x.CMSProperties?.Authentication)
+						);
 						break;
 					case LocalNotionPage page:
 						if (!page.TryGetRender(RenderType.HTML, out render))
 							continue;
 						slug = render.Slug ?? string.Empty;
-						auth = page.CMSProperties.Authentication;
-
+						// Combine page's own auth with any CMS ancestor auth
+						var pageAuthValues = new List<string> { page.CMSProperties?.Authentication };
+						pageAuthValues.AddRange(ancestry.OfType<LocalNotionPage>().Select(x => x.CMSProperties?.Authentication));
+						auth = CombineMultiPageAuthentication(pageAuthValues);
 						mimeType = "text/html";
 						break;
 					case LocalNotionFile file:
@@ -306,6 +317,11 @@ public class LocalNotionHelper {
 							continue;
 						slug = render.Slug;
 						mimeType = file.MimeType;
+						// Files inherit auth from ancestor pages
+						auth = CombineMultiPageAuthentication(
+							ancestry.OfType<LocalNotionPage>()
+								.Select(x => x.CMSProperties?.Authentication)
+						);
 						break;
 					default:
 						throw new InternalErrorException("387FA12E-6E67-4C06-8ED2-DAFC83CCB161");

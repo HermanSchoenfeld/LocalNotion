@@ -23,8 +23,8 @@ public class SitemapGenerator {
 
 		var siteMapXml = new SitemapXml();
 		foreach(var cmsItem in repo.CMSItems) {
-			// Never generate sitemap entries for pages tagged @Private
-			if (cmsItem.Parts.Any(part => repo.GetPage(part).CMSProperties?.Tags?.Contains(Constants.TagPrivate) == true))
+			// Never generate sitemap entries for private content (self or ancestor tagged @Private)
+			if (repo.CMSDatabase.TryGetContent(cmsItem.Slug, out var contentNode) && contentNode.IsPrivate)
 				continue;
 			var absUrl = !cmsItem.Slug.IsNullOrWhiteSpace() ? "/" + LocalNotionHelper.SanitizeSlug(cmsItem.Slug) : cmsItem.Slug;
 			DateTime? lastModified = cmsItem.Parts.Any() ? cmsItem.Parts.Max(x => repo.GetPage(x).LastEditedOn) : null;

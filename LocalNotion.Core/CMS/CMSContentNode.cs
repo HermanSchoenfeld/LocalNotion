@@ -89,6 +89,35 @@ public class CMSContentNode {
 
 	public CMSContentNode Parent { get; set; }
 
+	/// <summary>
+	/// Gets whether this node or any ancestor is tagged with @Private.
+	/// Private nodes should never be exposed in sitemaps, feeds, or public listings.
+	/// </summary>
+	public bool IsPrivate =>
+		Tags.Contains(Constants.TagPrivate) ||
+		(Parent?.IsPrivate ?? false);
+
+	/// <summary>
+	/// Gets whether this node or any ancestor requires authentication.
+	/// Authentication is inherited down the content hierarchy.
+	/// </summary>
+	public bool RequiresAuthentication =>
+		!string.IsNullOrWhiteSpace(Authentication) ||
+		(Parent?.RequiresAuthentication ?? false);
+
+	/// <summary>
+	/// Gets the authentication credentials for this node, combining with ancestors if needed.
+	/// </summary>
+	public string Authentication {
+		get {
+			var authValues = new List<string>();
+			authValues.AddRange(Content.Select(x => x.CMSProperties?.Authentication));
+			if (Parent != null)
+				authValues.Add(Parent.Authentication);
+			return LocalNotionHelper.CombineMultiPageAuthentication(authValues);
+		}
+	}
+
 	public List<LocalNotionPage> Content { get; } = [];
 
 	internal IEnumerable<LocalNotionPage> NonFramingContent => Content.Where(x => !CMSHelper.IsFramingContent(x.CMSProperties.PageType));
