@@ -304,6 +304,13 @@ public class CmsHtmlRenderer : HtmlRenderer {
 		};
 
 		var pageThemes = new[] { theme }.Union(page.CMSProperties.Themes ?? []).ToList();
+		// include ancestor page themes
+		var ancestry = this.Repository.GetResourceAncestry(page).ToList();
+		var isSubPage = ancestry.Skip(1).FirstOrDefault()?.Type == LocalNotionResourceType.Page;
+		if (isSubPage) {
+			pageThemes.AddRange(ancestry.Where(x => x is LocalNotionEditableResource{ CMSProperties.PageType: CMSPageType.Page, CMSProperties.Themes: not null }).Cast<LocalNotionEditableResource>().SelectMany(x => x.CMSProperties.Themes).Distinct());
+		}
+
 
 		// Ugly hack: return empty if has empty theme
 		if (pageThemes.Contains("empty"))

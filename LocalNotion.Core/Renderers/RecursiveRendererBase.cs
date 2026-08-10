@@ -25,15 +25,18 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 	protected PageRenderingContext RenderingContext { get; set; }
 
 	public virtual TOutput Render(LocalNotionEditableResource page, NotionObjectGraph pageGraph, IDictionary<string, IObject> notionObjects, string renderOutputPath) {
-		using (EnterRenderingContext(new PageRenderingContext {
+		using (EnterRenderingContext(CreatePageRenderingContext(page, pageGraph, notionObjects, renderOutputPath))) {
+			return Render(RenderingContext.PageGraph);
+		}
+	}
+
+	protected virtual PageRenderingContext CreatePageRenderingContext(LocalNotionEditableResource page, NotionObjectGraph pageGraph, IDictionary<string, IObject> notionObjects, string renderOutputPath) 
+			=> new PageRenderingContext {
 			Resource = page,
 			RenderOutputPath = renderOutputPath,
 			PageGraph = pageGraph,
 			PageObjects = notionObjects,
-		})) {
-			return Render(RenderingContext.PageGraph);
-		}
-	}
+		};
 
 	protected virtual void OnRenderingContextCreated() {
 	}
@@ -108,7 +111,6 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 	}
 
 	protected abstract TOutput Merge(IEnumerable<TOutput> outputs);
-
 
 	#region Base renderers
 
@@ -406,7 +408,6 @@ public abstract class RecursiveRendererBase<TOutput> : IRenderer<TOutput> {
 	protected abstract TOutput RenderUnsupported(object @object);
 
 	#endregion
-
 
 	#region Inner classes
 
