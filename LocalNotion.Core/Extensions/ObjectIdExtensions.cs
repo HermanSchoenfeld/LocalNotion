@@ -12,14 +12,30 @@ using Notion.Client;
 namespace LocalNotion.Core;
 
 public static class ObjectIdExtensions {
-	public static string GetObjectID(this Mention mention)
-		=> mention.Type switch {
-			"database" => mention.Database.Id,
-			"date" => null, // Date mentions don't have an Id
-			"link_preview" => null,
-			"page" => mention.Page.Id,
-			"template_mention" => null,
-			"user" => mention.User.Id,
-			_ => throw new InvalidOperationException($"Unrecognized mention type '{mention.Type}'")
-		};
+	/// <summary>
+	/// The object a mention points at, or null when it does not reference one. An unrecognized
+	/// type degrades to null with a warning rather than throwing -- Notion introduces mention
+	/// types without notice, and an unattended pull must not abort over one span of text.
+	/// </summary>
+	public static string GetObjectID(this Mention mention) {
+		switch (mention?.Type) {
+			case null:
+				return null;
+			case "database":
+				return mention.Database?.Id;
+			case "page":
+				return mention.Page?.Id;
+			case "user":
+				return mention.User?.Id;
+			case "custom_emoji":     // no referenced object
+			case "date":             // date mentions don't have an Id
+			case "link_mention":
+			case "link_preview":
+			case "template_mention":
+				return null;
+			default:
+				SystemLog.Warning($"Unrecognized mention type '{mention.Type}' - treating as having no object ID");
+				return null;
+		}
+	}
 }

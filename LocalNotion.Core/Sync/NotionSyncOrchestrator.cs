@@ -326,10 +326,20 @@ public class NotionSyncOrchestrator {
 				// Determine feature image
 				localPage.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localPage, notionPage, pageObjects, pageGraph);
 
-				// Parse keywords using a text renderer
-				var textRenderer = new TextRenderer(Logger);
-				var text = textRenderer.Render(localPage, pageGraph, pageObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, localPage.ID, FileSystemPathType.Absolute));
-				localPage.Keywords = RakeAlgorithm.Run([text], minCharLength: 2).Select(x => x.Key).Take(10).ToArray();
+				// Parse keywords using a text renderer. Keywords are cosmetic, but this runs inside
+				// the download phase where no fault-tolerance handler applies -- so a rendering
+				// fault here would abort the whole pull instead of costing one page its keywords.
+				localPage.Keywords = [];
+				try {
+					var textRenderer = new TextRenderer(Logger);
+					var text = textRenderer.Render(localPage, pageGraph, pageObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, localPage.ID, FileSystemPathType.Absolute));
+					localPage.Keywords = RakeAlgorithm.Run([text], minCharLength: 2).Select(x => x.Key).Take(10).ToArray();
+				} catch (TaskCanceledException) {
+					throw;
+				} catch (Exception error) {
+					Logger.Warning($"Failed to extract keywords for '{localPage.Title}' ({localPage.ID}) - continuing without them.");
+					Logger.Exception(error);
+				}
 				
 				// Determine child resources
 				childPages =

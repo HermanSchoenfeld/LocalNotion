@@ -558,16 +558,49 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				}
 			);
 
-	protected override string Render(RichTextMention text)
-		=> text.Mention.Type switch { 
-			"database" => RenderReference(text.Mention.Database.Id, true), 
-			"date" => Render(text.Mention.Date), // maybe a link to calendar here?
-			"link_preview" => Render(text.PlainText),   // TODO: implement
-			"page" => RenderReference(text.Mention.Page.Id, true), 
-			"template_mention" => Render(text.PlainText), // TODO: implement
-			"user" => Render(text.Mention.User),
-			_ => throw new InvalidOperationException($"Unrecognized mention type '{text.Mention.Type}'")
-		};
+	// Mentions degrade to plain text rather than throwing. Notion introduces mention
+	// types without notice (link_mention is undocumented but live), and this renderer also
+	// runs during the download phase for keyword extraction -- so a throw here aborts an
+	// entire scheduled mirror rather than spoiling one span of text.
+	protected override string Render(RichTextMention text) {
+		var mention = text.Mention;
+		if (mention is null)
+			return string.Empty;
+
+		switch (mention.Type) {
+			case "database":
+				if (mention.Database is not null)
+					return RenderReference(mention.Database.Id, true);
+				break;
+			case "page":
+				if (mention.Page is not null)
+					return RenderReference(mention.Page.Id, true);
+				break;
+			case "user":
+				if (mention.User is not null)
+					return Render(mention.User);
+				break;
+			case "date":
+				if (mention.Date is not null)
+					return Render(mention.Date);
+				break;
+			case "custom_emoji":
+			case "link_mention":
+			case "link_preview":     // TODO: render richly
+			case "template_mention": // TODO: render richly
+				return RenderMentionAsPlainText(text);
+			default:
+				Logger?.Warning($"Unrecognized mention type '{mention.Type}' - rendering as plain text");
+				return RenderMentionAsPlainText(text);
+		}
+
+		// Known mention type whose payload Notion did not populate.
+		Logger?.Warning($"Mention of type '{mention.Type}' had no payload - rendering as plain text");
+		return RenderMentionAsPlainText(text);
+	}
+
+	private string RenderMentionAsPlainText(RichTextMention text)
+		=> Render(text.PlainText ?? string.Empty);
 
 	protected override string Render(RichTextText text) {
 		var isUrl =  text.Text?.Link?.Url is not null;
