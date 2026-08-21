@@ -663,12 +663,15 @@ $@"Local Notion Status:
 			if (arguments.PullAll) {
 				if (repo.CMSDatabaseID is null) {
 					consoleLogger.Info("Querying Notion for objects to pull");
+					// Under API version 2025-09-03 Search returns Page and DataSource objects and never a
+					// Database, so a database sitting directly at the workspace root would never be seen.
+					// EnumerateAllWorkspaceObjectsAsync resolves each DataSource back to its parent Database
+					// and yields both, which restores those roots.
 					var rootItems = await client
-						.Search
-						.EnumerateAsync(new SearchRequest(), cancellationToken: cancellationToken)
-						.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent))
+						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), cancellationToken)
+						.Where(x => x is Database or Page && x.TryGetParent(out var parent) && parent.Type == ParentObject.ParentType.Workspace)
 						.Select(x => Guid.Parse(x.Id))
-						.ToArrayAsync();
+						.ToArrayAsync(cancellationToken);
 					arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
 				} else {
 					consoleLogger.Info($"Pulling from CMS database: {repo.CMSDatabaseID} ");
