@@ -611,7 +611,27 @@ public class NotionSyncOrchestrator {
 		return downloadedResources.ToArray();
 	}
 
+	/// <summary>
+	/// Downloads a single file, or returns null when it cannot be downloaded. Every caller tolerates
+	/// a null return. Failures are warnings rather than exceptions on purpose: with external content
+	/// enabled this walks arbitrary third-party urls, where dead links, 404s, DNS failures and
+	/// timeouts are routine, and one of them must not abort an entire unattended pull.
+	/// </summary>
 	public async Task<LocalNotionFile> DownloadFileAsync(string url, string parentResourceID, bool force = false, CancellationToken cancellationToken = default) {
+		try {
+			return await DownloadFileInternalAsync(url, parentResourceID, force, cancellationToken);
+		} catch (TaskCanceledException) {
+			throw;
+		} catch (ProductLicenseLimitException) {
+			throw;
+		} catch (Exception error) {
+			Logger.Warning($"Failed to download file from '{url}' (parent: {parentResourceID}) - skipping it.");
+			Logger.Exception(error);
+			return null;
+		}
+	}
+
+	private async Task<LocalNotionFile> DownloadFileInternalAsync(string url, string parentResourceID, bool force, CancellationToken cancellationToken) {
 		Guard.ArgumentNotNull(url, nameof(url));
 		await using (Repository.EnterUpdateScope()) {
 			if (!LocalNotionHelper.TryParseNotionFileUrl(url, out var resourceID, out var filename)) {
@@ -682,9 +702,18 @@ public class NotionSyncOrchestrator {
 	}
 
 	private bool ShouldDownloadFile(string url)
-		// We only download user files uploaded to notion (or everything is force download is on)
-		=> (Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsVideoSharingUrl(url)) ||
-		   LocalNotionHelper.TryParseNotionFileUrl(url, out _, out _);
+		// We only download user files uploaded to notion (or everything is force download is on).
+		// A blank or relative url is never downloadable: under the offline/website profiles the
+		// force-download clause would otherwise return true for the empty string, and for the
+		// relative paths Notion uses for its built-in app-package icons
+		// (e.g. '/images/app-packages/projects-icon.svg'), both of which fail deeper in.
+		// Note the scheme test: on Unix, Uri.TryCreate(UriKind.Absolute) accepts a leading-slash
+		// path as a 'file:' uri, so an absolute-uri check alone does not reject these.
+		=> !string.IsNullOrWhiteSpace(url) &&
+		   Uri.TryCreate(url, UriKind.Absolute, out var parsedUrl) &&
+		   (parsedUrl.Scheme == Uri.UriSchemeHttp || parsedUrl.Scheme == Uri.UriSchemeHttps) &&
+		   ((Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsVideoSharingUrl(url)) ||
+		    LocalNotionHelper.TryParseNotionFileUrl(url, out _, out _));
 
 	/// <summary>
 	/// This calculates a notion-like FileID for a file which is not part of notion but downloaded to Local Notion.
