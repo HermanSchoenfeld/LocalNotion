@@ -95,6 +95,11 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	#region Values
 
 	protected override string Render(EmbedBlock block) {
+		// An embed can carry a blank url (an embed that was never filled in); the url helpers
+		// below reject the empty string, so there is nothing to render.
+		if (string.IsNullOrWhiteSpace(block.Embed?.Url))
+			return RenderUnsupported(block);
+
 		var isXCom = 
 			block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase) ||
 			block.Embed.Url.Contains("x.com", StringComparison.InvariantCultureIgnoreCase);
@@ -603,7 +608,7 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 		=> Render(text.PlainText ?? string.Empty);
 
 	protected override string Render(RichTextText text) {
-		var isUrl =  text.Text?.Link?.Url is not null;
+		var isUrl = !string.IsNullOrWhiteSpace(text.Text?.Link?.Url);
 		var urlInfo = isUrl ? (Url: text.Text.Link.Url, Icon: string.Empty, Indicator: string.Empty ) : default;
 		return RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, isUrl, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, urlInfo);
 	}
@@ -1349,6 +1354,11 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(VideoBlock block) {
 		switch (block.Video) {
 			case ExternalFile externalFile: {
+				// A video block can carry a blank url (an embed that was never filled in).
+				// IsVideoSharingUrl rejects the empty string, so there is nothing to render.
+				if (string.IsNullOrWhiteSpace(externalFile.External?.Url))
+					return RenderUnsupported(block);
+
 				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url, out var platform, out var videoID)) 
 					return RenderSocialMediaVideo(block, platform, videoID, Render(block.Video.Caption));
 
