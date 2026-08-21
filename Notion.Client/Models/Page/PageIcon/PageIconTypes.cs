@@ -6,5 +6,6 @@ namespace Notion.Client
         public const string CustomEmoji = "custom_emoji";
         public const string File = "file";
         public const string External = "external";
+        public const string Icon = "icon";
     }
 }

@@ -822,6 +822,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 								["url"] = customEmojiPageIcon.CustomEmoji.Url
 							}
 						),
+						IconPageIcon iconPageIcon => RenderTemplate(
+													"icon_image",
+													 new RenderTokens(block) {
+														 ["url"] = SanitizeUrl(iconPageIcon.GetIconUrl())
+													 }
+												),
 						null => string.Empty,
 						_ => throw new ArgumentOutOfRangeException()
 					},
