@@ -667,12 +667,26 @@ $@"Local Notion Status:
 					// Database, so a database sitting directly at the workspace root would never be seen.
 					// EnumerateAllWorkspaceObjectsAsync resolves each DataSource back to its parent Database
 					// and yields both, which restores those roots.
-					var rootItems = await client
+					var visibleObjects = await client
 						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), cancellationToken)
-						.Where(x => x is Database or Page && x.TryGetParent(out var parent) && parent.Type == ParentObject.ParentType.Workspace)
-						.Select(x => Guid.Parse(x.Id))
+						.Where(x => x is Database or Page)
 						.ToArrayAsync(cancellationToken);
-					arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
+
+					bool IsWorkspaceRoot(IObject obj)
+						=> obj.TryGetParent(out var parent) && parent.Type == ParentObject.ParentType.Workspace;
+
+					// Workspace roots first, so page trees are pulled parent-before-child.
+					var rootItems = visibleObjects.Where(IsWorkspaceRoot).Select(x => Guid.Parse(x.Id));
+
+					// Then everything else Search can see. Recursion through the block tree cannot be
+					// relied on to reach every page: Notion reports some pages as having a block parent
+					// while that block returns has_children=false and lists no children, so the page is
+					// unreachable by any tree walk. Those pages are only discoverable through Search.
+					// Objects already pulled by recursion are unchanged by the time their own turn comes,
+					// so this sweep is cheap rather than duplicated work.
+					var nestedItems = visibleObjects.Where(x => !IsWorkspaceRoot(x)).Select(x => Guid.Parse(x.Id));
+
+					arguments.Objects = arguments.Objects.Union(rootItems).Union(nestedItems).ToArray();
 				} else {
 					consoleLogger.Info($"Pulling from CMS database: {repo.CMSDatabaseID} ");
 					arguments.Objects = arguments.Objects.Union([Guid.Parse (repo.CMSDatabaseID)]).ToArray();
