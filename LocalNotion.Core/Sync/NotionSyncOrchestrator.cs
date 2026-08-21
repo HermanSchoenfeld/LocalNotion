@@ -80,7 +80,9 @@ public class NotionSyncOrchestrator {
 				await FetchNotionDatabase();
 
 			var containsDatabase = Repository.TryGetDatabase(databaseID, out var localDatabase);
-			if (containsDatabase)
+			// Only adopt the locally recorded data source: a registry entry written without one must
+			// not clobber an id we just resolved from Notion, or the row query below runs with null.
+			if (containsDatabase && !string.IsNullOrWhiteSpace(localDatabase.PrimaryDataSourceID))
 				datasourceID = localDatabase.PrimaryDataSourceID;
 			var preDownloadLocalRows = Repository.GetChildResources(databaseID).ToArray();
 			var databaseDifferent = containsDatabase && localDatabase.LastEditedOn != knownNotionLastEditTime;
@@ -93,8 +95,18 @@ public class NotionSyncOrchestrator {
 			if (needHeader)
 				await FetchNotionDatabase();
 
-			// Fetch child page headers (always needed)
-			notionChildPages = await FetchDatabasePagesAsync(datasourceID, null, cancellationToken).ToListAsync(cancellationToken);
+			// Fetch child page headers (always needed). The data source id may still be unknown here
+			// when the database was already local and its registry entry carries none, so resolve it
+			// from Notion before querying rather than passing null into the request.
+			if (string.IsNullOrWhiteSpace(datasourceID))
+				await FetchNotionDatabase();
+
+			if (!string.IsNullOrWhiteSpace(datasourceID)) {
+				notionChildPages = await FetchDatabasePagesAsync(datasourceID, null, cancellationToken).ToListAsync(cancellationToken);
+			} else {
+				Logger.Warning($"Database '{databaseID}' exposes no data source - skipping its rows.");
+				notionChildPages = new List<Page>();
+			}
 
 			if (shouldDownload) {
 
