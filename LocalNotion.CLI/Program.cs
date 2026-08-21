@@ -681,9 +681,16 @@ $@"Local Notion Status:
 			
 			// Pull explicitly specified objects if applicable
 			var itemsDownloaded = 0L;
+			var failedObjects = 0;
 			foreach (var @obj in arguments.Objects.Select(x => x.ToString())) {
-				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				var downloads = Array.Empty<LocalNotionResource>();
+				// One unusable root must not cost the whole mirror. The download phase reaches into
+				// parsing, CMS, rendering and repository code, each of which throws on data shapes
+				// Notion introduces without notice; the handlers inside the orchestrator cover the
+				// objects *within* a root, never the root itself. Without this, one bad root aborts
+				// every root after it.
+				try {
+				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				switch (objType) {
 					case (null, _, _):
 						consoleLogger.Info($"Unrecognized object: {@obj}");
@@ -724,9 +731,20 @@ $@"Local Notion Status:
 						consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
 						break; ;
 				}
+				} catch (TaskCanceledException) {
+					throw;
+				} catch (Exception error) {
+					failedObjects++;
+					consoleLogger.Error($"Failed to pull object '{@obj}'.");
+					consoleLogger.Exception(error);
+					if (!arguments.FaultTolerant)
+						throw;
+				}
 				itemsDownloaded += downloads.Length;
 			}
 			consoleLogger.Info($"Updated {itemsDownloaded} items");
+			if (failedObjects > 0)
+				consoleLogger.Error($"{failedObjects} of {arguments.Objects.Count()} requested objects failed to pull");
 			
 			// Generate nginx mapping if applicable
 			if (repo.NGinxSettings.Enabled) {
