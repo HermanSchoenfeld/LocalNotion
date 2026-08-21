@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using JsonSubTypes;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Notion.Client
 {
@@ -16,8 +15,10 @@ namespace Notion.Client
         [JsonProperty("data_source_id")]
         public string DataSourceId { get; set; }
 
+        // No StringEnumConverter here: Type is a string, and the converter casts its value to
+        // System.Enum when writing, which throws InvalidCastException on serialization. Any
+        // database carrying a relation property would otherwise be unserializable.
         [JsonProperty("type")]
-        [JsonConverter(typeof(StringEnumConverter))]
         public virtual string Type { get; set; }
 
         [JsonExtensionData]
