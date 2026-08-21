@@ -637,9 +637,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	protected virtual string RenderPageContent(Page page) {
 		var isSubPage = this.Repository.GetResourceAncestry(RenderingContext.Resource).Skip(1).FirstOrDefault()?.Type == LocalNotionResourceType.Page;
+		// CMSProperties is null outside CMS mode (and Tags is optional within it), so these banner
+		// tags must be looked up defensively -- this renderer is the plain page renderer as well.
+		var cmsTags = RenderingContext.Resource.CMSProperties?.Tags ?? [];
 		var useCoverTitle = 
-			RenderingContext.Resource.CMSProperties.Tags.Contains(Constants.TagShowTitleOnBanner) || 
-			isSubPage && RenderingContext.Resource.CMSProperties.Tags.Contains(Constants.TagShowChildPageTitleOnBanner);
+			cmsTags.Contains(Constants.TagShowTitleOnBanner) || 
+			isSubPage && cmsTags.Contains(Constants.TagShowChildPageTitleOnBanner);
 		
 		return RenderTemplate(
 			"page_content",
