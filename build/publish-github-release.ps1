@@ -144,8 +144,8 @@ if ($ValidateOnly) {
 
 if ($env:GITHUB_REPOSITORY -cne $repository) { throw "Publication is restricted to $repository." }
 if ([string]::IsNullOrWhiteSpace($env:GH_TOKEN)) { throw 'GH_TOKEN is required for publication.' }
-$gh = (Get-Command gh -CommandType Application -ErrorAction Stop).Source
-$docker = (Get-Command docker -CommandType Application -ErrorAction Stop).Source
+$gh = (Get-Command gh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+$docker = (Get-Command docker -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 
 function Get-GitHubJson {
     param([string] $Endpoint, [switch] $AllowNotFound)

@@ -54,7 +54,7 @@ function ConvertTo-ReleaseVersion {
 
 $requestedVersion = ConvertTo-ReleaseVersion -Value $Version -Name 'Version'
 $repositoryPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$gitExecutable = (Get-Command git -ErrorAction Stop).Source
+$gitExecutable = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 
 function Invoke-ReleaseGit {
     param(

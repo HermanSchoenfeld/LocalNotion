@@ -120,7 +120,7 @@ The [release workflow](../.github/workflows/release.yml) has four stages:
 1. **Resolve metadata.** The metadata job reads `Version.props`, checks the requested version or tag, resolves the exact commit, and assigns the workflow run number. It supplies one immutable identity and the matrix from `platforms.json` to all downstream jobs.
 2. **Build in parallel.** Eight native jobs publish and archive the CLI for their RIDs while the Docker job builds the `linux/amd64` image and Windows launcher bundle. Each job receives the same version, build number, and commit.
 3. **Test the deliverables.** Native jobs extract their archives and check metadata and execution; ARM32 runs under QEMU. Docker checks the candidate's version/help and Git ownership behavior. The workflow uploads all nine archive artifacts and saves the exact tested Docker image. A failed matrix or Docker check prevents the release job from running.
-4. **Publish after validation.** For a publishing run, the release job downloads those outputs, validates the archives and saved image, and creates or resumes a matching draft. It uploads the artifacts and metadata, pushes the matching versioned Docker image, and verifies anonymous registry access before making the release public. Only a newer stable version can update both GitHub's latest selection and Docker `latest`.
+4. **Publish after validation.** For a publishing run, the release job downloads those outputs, validates the archives and saved image, and creates or resumes a matching draft. It uploads the artifacts and metadata, pushes the matching versioned Docker image, and verifies anonymous registry access before making the release public. Only a newer stable version can update both GitHub's latest selection and Docker `latest`. If publisher code needs a fix after the build jobs passed, the recovery workflow below can run the fixed publisher against the original outputs and build identity.
 
 ### Triggers
 
@@ -130,6 +130,7 @@ The [release workflow](../.github/workflows/release.yml) has four stages:
 | Manual **Run workflow**, `publish: false` | Build and test the selected ref; optional version override; no publication |
 | Push of a `v*` tag | Publish only in `Sphere10/LocalNotion`, with a matching `Version.props` and a commit on the official default branch |
 | Manual **Run workflow**, `publish: true` | Publication is allowed only in `Sphere10/LocalNotion` from its default branch; the version and existing-release checks still apply |
+| Manual **Retry release publication** on the default branch | Validate a successful tagged build's original run ID and publish its saved outputs with the current publisher; no rebuild or retag |
 
 The normal release entry point below creates and pushes the tag that triggers automatic publication. The manually dispatched preview is useful before that tag exists.
 
@@ -175,8 +176,23 @@ The tag starts [.github/workflows/release.yml](../.github/workflows/release.yml)
 
 [publish-github-release.ps1](publish-github-release.ps1) validates the nine archives and saved Docker image, then publishes matching assets and image metadata. The version is immutable: an existing published release, a changed tag, or a conflicting versioned image is rejected. Do not move a published tag or reuse its version for changed binaries.
 
-If publication stops while a draft exists, rerun the failed jobs in the **same workflow run**. A matching draft can resume only when version, build number, commit, image identity, and existing asset hashes agree. A fresh dispatch has a different build number and cannot take over that draft. Inspect an uncertain push or publication result before retrying; the local helper retains its commit and tag after a failed atomic push.
+If publication stops while a draft exists, rerun the failed jobs in the **same workflow run**. A matching draft can resume only when version, build number, commit, image identity, and existing asset hashes agree. A fresh dispatch of the build workflow has a different build number and cannot take over that draft. The dedicated recovery workflow below instead preserves the original build identity when a publisher fix is needed. Inspect an uncertain push or publication result before retrying; the local helper retains its commit and tag after a failed atomic push.
 
-Stable releases update GitHub's latest release and Docker `latest` only when their semantic version is newer than the current stable selections. Prereleases and older stable releases retain explicit version tags without moving either latest pointer. Use the image digest in `release.json` or the workflow summary for immutable deployments.
+A stable release can become latest only if it is newer than GitHub's current latest release and does not precede Docker's current latest version. An equal Docker version is accepted only for the identical image, allowing recovery after Docker promotion succeeded but GitHub publication failed. Prereleases and older stable releases retain explicit version tags without moving either latest pointer. Use the image digest in `release.json` or the workflow summary for immutable deployments.
 
 Anonymous access to GHCR is checked before the draft is published. If organization policy prevents public packages, an owner must enable public package creation and make the package public; see the [Docker publishing and public-access guide](../docker/README.md#publishing-an-approved-image). Changing version tags does not resolve package visibility restrictions.
+
+## Recover publication after a publisher fix
+
+For a transient registry or GitHub failure, first use **Re-run failed jobs** on the original release run. This keeps the original artifacts and build number. If the publisher code itself needs a fix, rerunning that job uses the old checkout; use the dedicated [Retry release publication workflow](../.github/workflows/release-retry.yml) after the fix is merged to master.
+
+1. Open the original failed run under [Actions → Build and release Local Notion](https://github.com/Sphere10/LocalNotion/actions/workflows/release.yml). Confirm that its metadata job, all eight native jobs, and Docker job succeeded. Copy the numeric run ID from its URL: `https://github.com/Sphere10/LocalNotion/actions/runs/<run-id>`.
+2. Open [Actions → Retry release publication](https://github.com/Sphere10/LocalNotion/actions/workflows/release-retry.yml), choose **Run workflow**, and select **master** so the fixed publisher is used.
+3. Enter the original numeric run ID in **run_id**, then start the workflow. Supply the original tagged build's ID, not the ID of a later preview or recovery run.
+4. Follow the recovery run's validation and publication steps in Actions. Its logs and summary identify the original version, build number, commit, and image. Confirm the result on the release page and in the publication summary before treating the release as complete.
+
+The recovery workflow accepts only an original official `release.yml` run triggered by a `v<semantic-version>` tag push, with successful metadata, eight native, and Docker jobs. It downloads the nine original archives and saved tested Docker image by that run ID, and passes the original run number, source commit, and version to the current publisher. It uses the existing tag, performs the usual immutability checks, and does not rebuild binaries or create a replacement tag. The recovery workflow's own run number is not a new application build number.
+
+Recovery uses GitHub's automatic token. It needs `actions: read` to inspect the original run and download its artifacts, plus `contents: write` and `packages: write` in the publication job. It is restricted to the official repository's default branch; the existing registry access and public-visibility requirements still apply.
+
+Run recovery promptly: the saved Docker image is retained for **one day**, and native/launcher artifacts for **seven days**. Expired artifacts cannot be recovered by rebuilding different bytes under the same version. Both normal retries and this recovery path can resume only a matching draft; a published release, changed tag, or conflicting image/assets is refused. No new release is considered published merely because its build jobs passed.

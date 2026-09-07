@@ -50,6 +50,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Command resolution regression
+        run: ./tests/release-command-resolution.ps1
       - name: Resolve one version and build number
         id: version
         env:
