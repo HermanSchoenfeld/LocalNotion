@@ -158,10 +158,11 @@ function Get-GitHubJson {
 }
 
 function Assert-RemoteTag {
-    param([switch] $Require)
+    param([switch] $Require, [switch] $PassThru)
     $reference = Get-GitHubJson "repos/$repository/git/ref/tags/$tag" -AllowNotFound
     if ($null -eq $reference) {
         if ($Require) { throw "Release tag $tag was not created." }
+        if ($PassThru) { return $false }
         return
     }
     $target = $reference.object
@@ -169,6 +170,7 @@ function Assert-RemoteTag {
         $target = (Get-GitHubJson "repos/$repository/git/tags/$($target.sha)").object
     }
     if ($target.type -cne 'commit' -or $target.sha -cne $SourceRevisionId) { throw "Tag $tag does not point to $SourceRevisionId; tags are never moved." }
+    if ($PassThru) { return $true }
 }
 
 function Get-LocalImage {
@@ -211,7 +213,7 @@ function Get-LatestDecision {
 
 $repo = Get-GitHubJson "repos/$repository"
 if ($repo.full_name -cne $repository) { throw 'GitHub returned an unexpected repository.' }
-Assert-RemoteTag
+$tagExists = Assert-RemoteTag -PassThru
 $release = Get-GitHubJson "repos/$repository/releases/tags/$tag" -AllowNotFound
 $identity = "<!-- localnotion-release version=$Version build=$BuildNumber commit=$SourceRevisionId image=$imageId -->"
 if ($null -ne $release -and (-not $release.draft -or -not ([string]$release.body).Contains($identity))) {
@@ -267,7 +269,14 @@ $notes = @(
 ) -join [char]10
 [IO.File]::WriteAllText($notesPath, $notes + [char]10, [Text.UTF8Encoding]::new($false))
 if ($null -eq $release) {
-    $arguments = @('release', 'create', $tag, '--repo', $repository, '--target', $SourceRevisionId, '--title', "Local Notion $Version", '--draft', '--latest=false', '--notes-file', $notesPath)
+    $arguments = @('release', 'create', $tag, '--repo', $repository, '--title', "Local Notion $Version", '--draft', '--latest=false', '--notes-file', $notesPath)
+    if ($tagExists) {
+        # The verified tag already pins the exact source commit. Leaving the
+        # unused target unset lets draft metadata follow the default branch.
+        $arguments += '--verify-tag'
+    } else {
+        $arguments += @('--target', $SourceRevisionId)
+    }
     if ($prerelease) { $arguments += '--prerelease' }
     $null = Invoke-Tool $gh $arguments
     $release = Get-GitHubJson "repos/$repository/releases/tags/$tag"
