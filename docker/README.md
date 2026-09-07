@@ -22,7 +22,7 @@ Start Docker Desktop in **Linux containers** mode. The image targets **linux/amd
 
 ## Download a released image
 
-The [unified release workflow](../.github/workflows/release.yml) publishes the official **`ghcr.io/sphere10/local-notion`** image for **linux/amd64**, together with native archives and the Windows Docker installer bundle. Starting with the planned **1.5.0** release, successful stable releases promote the `latest` tag. Check [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases) for publication status before using these new tags and assets.
+The [unified release workflow](../.github/workflows/release.yml) publishes the official **`ghcr.io/sphere10/local-notion`** image for **linux/amd64**, together with native archives and the Windows Docker installer bundle. [Release 1.5.0](https://github.com/Sphere10/LocalNotion/releases/tag/v1.5.0) is public, including the `1.5.0` and `latest` image tags. Newer stable releases update `latest` automatically.
 
 ```powershell
 docker pull ghcr.io/sphere10/local-notion:latest

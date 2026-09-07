@@ -10,7 +10,7 @@ The official repository is [Sphere10/LocalNotion](https://github.com/Sphere10/Lo
 
 Use Docker to run Local Notion as a normal command or a background synchronization service. On Windows, start Docker Desktop in **Linux containers** mode. The official image targets **linux/amd64**.
 
-The unified release pipeline updates `ghcr.io/sphere10/local-notion:latest` after a successful stable release, starting with the planned **1.5.0** release. The commands and downloads below become available when that release is published; check [all releases](https://github.com/Sphere10/LocalNotion/releases) for availability.
+The official stable image is `ghcr.io/sphere10/local-notion:latest`. [Local Notion 1.5.0](https://github.com/Sphere10/LocalNotion/releases/tag/v1.5.0) is publicly available with all downloads below. Newer stable releases update `latest` automatically.
 
 ```powershell
 docker pull ghcr.io/sphere10/local-notion:latest
@@ -30,7 +30,7 @@ localnotion --version
 localnotion --help
 ```
 
-For repeatable deployments, select an explicit image version such as `ghcr.io/sphere10/local-notion:1.5.0` after publication. From a source checkout, `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` builds and installs the local image.
+For repeatable deployments, select an explicit image version such as `ghcr.io/sphere10/local-notion:1.5.0`. From a source checkout, `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` builds and installs the local image.
 
 The command uses your current folder, or the folder selected by `--path`. The background service keeps a separate repository under `.docker/data`. The [Docker guide](docker/README.md) covers both modes, token setup, importing data, updates, and [public registry access](docker/README.md#publishing-an-approved-image).
 
