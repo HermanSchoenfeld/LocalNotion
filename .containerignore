@@ -1,0 +1,27 @@
+# Build context exclusions.
+#
+# bin/ and obj/ are ~77 MB of host build output, and a stale obj/ carries host
+# absolute paths into the in-container restore. Both must stay out of the context.
+
+**/bin/
+**/obj/
+bin/
+obj/
+artifacts/
+
+.git/
+.gitignore
+.editorconfig
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# Windows-only publish helpers; the image publishes with explicit flags instead.
+publish-all.bat
+publish-linux-x64.bat
+publish-win-x64.bat
+
+Containerfile
+.containerignore

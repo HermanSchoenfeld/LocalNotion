@@ -77,6 +77,7 @@ public class LocalNotionHelper {
 					FilePageIcon => ThumbnailType.Image,
 					ExternalPageIcon => ThumbnailType.Image,
 					CustomEmojiPageIcon => ThumbnailType.Image,
+					IconPageIcon => ThumbnailType.Image,
 					_ => throw new ArgumentOutOfRangeException()
 				},
 
@@ -85,6 +86,7 @@ public class LocalNotionHelper {
 					FilePageIcon filePageIcon => filePageIcon.File.Url,
 					ExternalPageIcon externalPageIcon => externalPageIcon.External.Url,
 					CustomEmojiPageIcon customEmojiPageIcon => customEmojiPageIcon.CustomEmoji.Url,
+					IconPageIcon iconPageIcon => iconPageIcon.GetIconUrl(),
 					_ => throw new ArgumentOutOfRangeException()
 				}
 			};
@@ -115,6 +117,7 @@ public class LocalNotionHelper {
 					FilePageIcon => ThumbnailType.Image,
 					ExternalPageIcon => ThumbnailType.Image,
 					CustomEmojiPageIcon => ThumbnailType.Image,
+					IconPageIcon => ThumbnailType.Image,
 					_ => throw new ArgumentOutOfRangeException()
 				},
 
@@ -123,6 +126,7 @@ public class LocalNotionHelper {
 					FilePageIcon filePageIcon => filePageIcon.File.Url,
 					ExternalPageIcon externalPageIcon => externalPageIcon.External.Url,
 					CustomEmojiPageIcon customEmojiPageIcon => customEmojiPageIcon.CustomEmoji.Url,
+					IconPageIcon iconPageIcon => iconPageIcon.GetIconUrl(),
 					_ => throw new ArgumentOutOfRangeException()
 				}
 			};

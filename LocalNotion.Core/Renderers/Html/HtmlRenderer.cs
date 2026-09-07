@@ -95,6 +95,11 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	#region Values
 
 	protected override string Render(EmbedBlock block) {
+		// An embed can carry a blank url (an embed that was never filled in); the url helpers
+		// below reject the empty string, so there is nothing to render.
+		if (string.IsNullOrWhiteSpace(block.Embed?.Url))
+			return RenderUnsupported(block);
+
 		var isXCom = 
 			block.Embed.Url.Contains("twitter", StringComparison.InvariantCultureIgnoreCase) ||
 			block.Embed.Url.Contains("x.com", StringComparison.InvariantCultureIgnoreCase);
@@ -558,19 +563,52 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 				}
 			);
 
-	protected override string Render(RichTextMention text)
-		=> text.Mention.Type switch { 
-			"database" => RenderReference(text.Mention.Database.Id, true), 
-			"date" => Render(text.Mention.Date), // maybe a link to calendar here?
-			"link_preview" => Render(text.PlainText),   // TODO: implement
-			"page" => RenderReference(text.Mention.Page.Id, true), 
-			"template_mention" => Render(text.PlainText), // TODO: implement
-			"user" => Render(text.Mention.User),
-			_ => throw new InvalidOperationException($"Unrecognized mention type '{text.Mention.Type}'")
-		};
+	// Mentions degrade to plain text rather than throwing. Notion introduces mention
+	// types without notice (link_mention is undocumented but live), and this renderer also
+	// runs during the download phase for keyword extraction -- so a throw here aborts an
+	// entire scheduled mirror rather than spoiling one span of text.
+	protected override string Render(RichTextMention text) {
+		var mention = text.Mention;
+		if (mention is null)
+			return string.Empty;
+
+		switch (mention.Type) {
+			case "database":
+				if (mention.Database is not null)
+					return RenderReference(mention.Database.Id, true);
+				break;
+			case "page":
+				if (mention.Page is not null)
+					return RenderReference(mention.Page.Id, true);
+				break;
+			case "user":
+				if (mention.User is not null)
+					return Render(mention.User);
+				break;
+			case "date":
+				if (mention.Date is not null)
+					return Render(mention.Date);
+				break;
+			case "custom_emoji":
+			case "link_mention":
+			case "link_preview":     // TODO: render richly
+			case "template_mention": // TODO: render richly
+				return RenderMentionAsPlainText(text);
+			default:
+				Logger?.Warning($"Unrecognized mention type '{mention.Type}' - rendering as plain text");
+				return RenderMentionAsPlainText(text);
+		}
+
+		// Known mention type whose payload Notion did not populate.
+		Logger?.Warning($"Mention of type '{mention.Type}' had no payload - rendering as plain text");
+		return RenderMentionAsPlainText(text);
+	}
+
+	private string RenderMentionAsPlainText(RichTextMention text)
+		=> Render(text.PlainText ?? string.Empty);
 
 	protected override string Render(RichTextText text) {
-		var isUrl =  text.Text?.Link?.Url is not null;
+		var isUrl = !string.IsNullOrWhiteSpace(text.Text?.Link?.Url);
 		var urlInfo = isUrl ? (Url: text.Text.Link.Url, Icon: string.Empty, Indicator: string.Empty ) : default;
 		return RenderText(text.Text?.Content ?? text.PlainText ?? string.Empty, isUrl, text.Annotations.IsBold, text.Annotations.IsItalic, text.Annotations.IsStrikeThrough, text.Annotations.IsUnderline, text.Annotations.IsCode, text.Annotations.Color.Value, urlInfo);
 	}
@@ -637,9 +675,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 
 	protected virtual string RenderPageContent(Page page) {
 		var isSubPage = this.Repository.GetResourceAncestry(RenderingContext.Resource).Skip(1).FirstOrDefault()?.Type == LocalNotionResourceType.Page;
+		// CMSProperties is null outside CMS mode (and Tags is optional within it), so these banner
+		// tags must be looked up defensively -- this renderer is the plain page renderer as well.
+		var cmsTags = RenderingContext.Resource.CMSProperties?.Tags ?? [];
 		var useCoverTitle = 
-			RenderingContext.Resource.CMSProperties.Tags.Contains(Constants.TagShowTitleOnBanner) || 
-			isSubPage && RenderingContext.Resource.CMSProperties.Tags.Contains(Constants.TagShowChildPageTitleOnBanner);
+			cmsTags.Contains(Constants.TagShowTitleOnBanner) || 
+			isSubPage && cmsTags.Contains(Constants.TagShowChildPageTitleOnBanner);
 		
 		return RenderTemplate(
 			"page_content",
@@ -822,6 +863,12 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 								["url"] = customEmojiPageIcon.CustomEmoji.Url
 							}
 						),
+						IconPageIcon iconPageIcon => RenderTemplate(
+													"icon_image",
+													 new RenderTokens(block) {
+														 ["url"] = SanitizeUrl(iconPageIcon.GetIconUrl())
+													 }
+												),
 						null => string.Empty,
 						_ => throw new ArgumentOutOfRangeException()
 					},
@@ -1307,6 +1354,11 @@ public class HtmlRenderer : RecursiveRendererBase<string> {
 	protected override string Render(VideoBlock block) {
 		switch (block.Video) {
 			case ExternalFile externalFile: {
+				// A video block can carry a blank url (an embed that was never filled in).
+				// IsVideoSharingUrl rejects the empty string, so there is nothing to render.
+				if (string.IsNullOrWhiteSpace(externalFile.External?.Url))
+					return RenderUnsupported(block);
+
 				if (Tools.Url.IsVideoSharingUrl(externalFile.External.Url, out var platform, out var videoID)) 
 					return RenderSocialMediaVideo(block, platform, videoID, Render(block.Video.Caption));
 

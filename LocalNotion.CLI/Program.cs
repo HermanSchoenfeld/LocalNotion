@@ -663,13 +663,30 @@ $@"Local Notion Status:
 			if (arguments.PullAll) {
 				if (repo.CMSDatabaseID is null) {
 					consoleLogger.Info("Querying Notion for objects to pull");
-					var rootItems = await client
-						.Search
-						.EnumerateAsync(new SearchRequest(), cancellationToken: cancellationToken)
-						.WhereAwait(x => ValueTask.FromResult(x is Database or Page && x.GetParent() is WorkspaceParent))
-						.Select(x => Guid.Parse(x.Id))
-						.ToArrayAsync();
-					arguments.Objects = arguments.Objects.Union(rootItems).ToArray();
+					// Under API version 2025-09-03 Search returns Page and DataSource objects and never a
+					// Database, so a database sitting directly at the workspace root would never be seen.
+					// EnumerateAllWorkspaceObjectsAsync resolves each DataSource back to its parent Database
+					// and yields both, which restores those roots.
+					var visibleObjects = await client
+						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), cancellationToken)
+						.Where(x => x is Database or Page)
+						.ToArrayAsync(cancellationToken);
+
+					bool IsWorkspaceRoot(IObject obj)
+						=> obj.TryGetParent(out var parent) && parent.Type == ParentObject.ParentType.Workspace;
+
+					// Workspace roots first, so page trees are pulled parent-before-child.
+					var rootItems = visibleObjects.Where(IsWorkspaceRoot).Select(x => Guid.Parse(x.Id));
+
+					// Then everything else Search can see. Recursion through the block tree cannot be
+					// relied on to reach every page: Notion reports some pages as having a block parent
+					// while that block returns has_children=false and lists no children, so the page is
+					// unreachable by any tree walk. Those pages are only discoverable through Search.
+					// Objects already pulled by recursion are unchanged by the time their own turn comes,
+					// so this sweep is cheap rather than duplicated work.
+					var nestedItems = visibleObjects.Where(x => !IsWorkspaceRoot(x)).Select(x => Guid.Parse(x.Id));
+
+					arguments.Objects = arguments.Objects.Union(rootItems).Union(nestedItems).ToArray();
 				} else {
 					consoleLogger.Info($"Pulling from CMS database: {repo.CMSDatabaseID} ");
 					arguments.Objects = arguments.Objects.Union([Guid.Parse (repo.CMSDatabaseID)]).ToArray();
@@ -678,9 +695,16 @@ $@"Local Notion Status:
 			
 			// Pull explicitly specified objects if applicable
 			var itemsDownloaded = 0L;
+			var failedObjects = 0;
 			foreach (var @obj in arguments.Objects.Select(x => x.ToString())) {
-				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				var downloads = Array.Empty<LocalNotionResource>();
+				// One unusable root must not cost the whole mirror. The download phase reaches into
+				// parsing, CMS, rendering and repository code, each of which throws on data shapes
+				// Notion introduces without notice; the handlers inside the orchestrator cover the
+				// objects *within* a root, never the root itself. Without this, one bad root aborts
+				// every root after it.
+				try {
+				var objType = await client.QualifyObjectAsync(@obj, cancellationToken);
 				switch (objType) {
 					case (null, _, _):
 						consoleLogger.Info($"Unrecognized object: {@obj}");
@@ -721,9 +745,20 @@ $@"Local Notion Status:
 						consoleLogger.Info($"Synchronizing objects of type {objType} is not supported yet");
 						break; ;
 				}
+				} catch (TaskCanceledException) {
+					throw;
+				} catch (Exception error) {
+					failedObjects++;
+					consoleLogger.Error($"Failed to pull object '{@obj}'.");
+					consoleLogger.Exception(error);
+					if (!arguments.FaultTolerant)
+						throw;
+				}
 				itemsDownloaded += downloads.Length;
 			}
 			consoleLogger.Info($"Updated {itemsDownloaded} items");
+			if (failedObjects > 0)
+				consoleLogger.Error($"{failedObjects} of {arguments.Objects.Count()} requested objects failed to pull");
 			
 			// Generate nginx mapping if applicable
 			if (repo.NGinxSettings.Enabled) {

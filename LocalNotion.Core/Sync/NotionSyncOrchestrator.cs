@@ -80,7 +80,9 @@ public class NotionSyncOrchestrator {
 				await FetchNotionDatabase();
 
 			var containsDatabase = Repository.TryGetDatabase(databaseID, out var localDatabase);
-			if (containsDatabase)
+			// Only adopt the locally recorded data source: a registry entry written without one must
+			// not clobber an id we just resolved from Notion, or the row query below runs with null.
+			if (containsDatabase && !string.IsNullOrWhiteSpace(localDatabase.PrimaryDataSourceID))
 				datasourceID = localDatabase.PrimaryDataSourceID;
 			var preDownloadLocalRows = Repository.GetChildResources(databaseID).ToArray();
 			var databaseDifferent = containsDatabase && localDatabase.LastEditedOn != knownNotionLastEditTime;
@@ -93,8 +95,18 @@ public class NotionSyncOrchestrator {
 			if (needHeader)
 				await FetchNotionDatabase();
 
-			// Fetch child page headers (always needed)
-			notionChildPages = await FetchDatabasePagesAsync(datasourceID, null, cancellationToken).ToListAsync(cancellationToken);
+			// Fetch child page headers (always needed). The data source id may still be unknown here
+			// when the database was already local and its registry entry carries none, so resolve it
+			// from Notion before querying rather than passing null into the request.
+			if (string.IsNullOrWhiteSpace(datasourceID))
+				await FetchNotionDatabase();
+
+			if (!string.IsNullOrWhiteSpace(datasourceID)) {
+				notionChildPages = await FetchDatabasePagesAsync(datasourceID, null, cancellationToken).ToListAsync(cancellationToken);
+			} else {
+				Logger.Warning($"Database '{databaseID}' exposes no data source - skipping its rows.");
+				notionChildPages = new List<Page>();
+			}
 
 			if (shouldDownload) {
 
@@ -326,10 +338,20 @@ public class NotionSyncOrchestrator {
 				// Determine feature image
 				localPage.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localPage, notionPage, pageObjects, pageGraph);
 
-				// Parse keywords using a text renderer
-				var textRenderer = new TextRenderer(Logger);
-				var text = textRenderer.Render(localPage, pageGraph, pageObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, localPage.ID, FileSystemPathType.Absolute));
-				localPage.Keywords = RakeAlgorithm.Run([text], minCharLength: 2).Select(x => x.Key).Take(10).ToArray();
+				// Parse keywords using a text renderer. Keywords are cosmetic, but this runs inside
+				// the download phase where no fault-tolerance handler applies -- so a rendering
+				// fault here would abort the whole pull instead of costing one page its keywords.
+				localPage.Keywords = [];
+				try {
+					var textRenderer = new TextRenderer(Logger);
+					var text = textRenderer.Render(localPage, pageGraph, pageObjects, Repository.Paths.GetResourceFolderPath(LocalNotionResourceType.Page, localPage.ID, FileSystemPathType.Absolute));
+					localPage.Keywords = RakeAlgorithm.Run([text], minCharLength: 2).Select(x => x.Key).Take(10).ToArray();
+				} catch (TaskCanceledException) {
+					throw;
+				} catch (Exception error) {
+					Logger.Warning($"Failed to extract keywords for '{localPage.Title}' ({localPage.ID}) - continuing without them.");
+					Logger.Exception(error);
+				}
 				
 				// Determine child resources
 				childPages =
@@ -601,7 +623,27 @@ public class NotionSyncOrchestrator {
 		return downloadedResources.ToArray();
 	}
 
+	/// <summary>
+	/// Downloads a single file, or returns null when it cannot be downloaded. Every caller tolerates
+	/// a null return. Failures are warnings rather than exceptions on purpose: with external content
+	/// enabled this walks arbitrary third-party urls, where dead links, 404s, DNS failures and
+	/// timeouts are routine, and one of them must not abort an entire unattended pull.
+	/// </summary>
 	public async Task<LocalNotionFile> DownloadFileAsync(string url, string parentResourceID, bool force = false, CancellationToken cancellationToken = default) {
+		try {
+			return await DownloadFileInternalAsync(url, parentResourceID, force, cancellationToken);
+		} catch (TaskCanceledException) {
+			throw;
+		} catch (ProductLicenseLimitException) {
+			throw;
+		} catch (Exception error) {
+			Logger.Warning($"Failed to download file from '{url}' (parent: {parentResourceID}) - skipping it.");
+			Logger.Exception(error);
+			return null;
+		}
+	}
+
+	private async Task<LocalNotionFile> DownloadFileInternalAsync(string url, string parentResourceID, bool force, CancellationToken cancellationToken) {
 		Guard.ArgumentNotNull(url, nameof(url));
 		await using (Repository.EnterUpdateScope()) {
 			if (!LocalNotionHelper.TryParseNotionFileUrl(url, out var resourceID, out var filename)) {
@@ -672,9 +714,18 @@ public class NotionSyncOrchestrator {
 	}
 
 	private bool ShouldDownloadFile(string url)
-		// We only download user files uploaded to notion (or everything is force download is on)
-		=> (Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsVideoSharingUrl(url)) ||
-		   LocalNotionHelper.TryParseNotionFileUrl(url, out _, out _);
+		// We only download user files uploaded to notion (or everything is force download is on).
+		// A blank or relative url is never downloadable: under the offline/website profiles the
+		// force-download clause would otherwise return true for the empty string, and for the
+		// relative paths Notion uses for its built-in app-package icons
+		// (e.g. '/images/app-packages/projects-icon.svg'), both of which fail deeper in.
+		// Note the scheme test: on Unix, Uri.TryCreate(UriKind.Absolute) accepts a leading-slash
+		// path as a 'file:' uri, so an absolute-uri check alone does not reject these.
+		=> !string.IsNullOrWhiteSpace(url) &&
+		   Uri.TryCreate(url, UriKind.Absolute, out var parsedUrl) &&
+		   (parsedUrl.Scheme == Uri.UriSchemeHttp || parsedUrl.Scheme == Uri.UriSchemeHttps) &&
+		   ((Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsVideoSharingUrl(url)) ||
+		    LocalNotionHelper.TryParseNotionFileUrl(url, out _, out _));
 
 	/// <summary>
 	/// This calculates a notion-like FileID for a file which is not part of notion but downloaded to Local Notion.
