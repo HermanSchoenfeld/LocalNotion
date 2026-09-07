@@ -128,18 +128,36 @@ The **Other > Docker** solution folder contains the Docker configuration and Win
 
 ## CI/CD and publishing releases
 
-The [CI/CD and release guide](build/README.md) explains the build stages, supported platforms, test runs, permissions, release assets, and failure recovery. The pipeline lives in [.github/workflows/release.yml](.github/workflows/release.yml); its scripts and version settings are available in **Other → Build and Release** in Visual Studio.
+**You explicitly choose when to release and which version to publish.** Ordinary commits, branch pushes, pull-request merges, local builds, and edits to `Version.props` do not publish a release.
 
-`Version.props` holds the release version, starting at **1.5.0**. GitHub Actions supplies one build number for every artifact in a run; local builds default to `0`. The CLI's `--version` includes the release version, build number, and source commit.
+Publication starts when a maintainer pushes a `v*` release tag (normally through the command below), or explicitly runs the build workflow with **publish enabled** on the official default branch. After that choice, successful tests lead to automatic publication; there is no second manual approval prompt.
 
-From a clean checkout with PowerShell 7, publish the next version with:
+### Checklist for your next release
 
-```powershell
-.\build\release.ps1 -Version 1.5.1 -WhatIf
-.\build\release.ps1 -Version 1.5.1
-```
+1. **Prepare the source.** Review and test your changes, include the latest `master` changes, and commit everything intended for the release. Open PowerShell 7 in the official repository root. Run `git status --short`; it must show no pending changes or untracked files before releasing.
+2. **Choose an unused version.** For example, use `1.5.1` for the next patch release or `1.6.0` for the next minor release. Replace `1.5.1` below with your chosen version. The release command updates `Version.props` for you.
+3. **Preview the release action:**
 
-The command updates the version when needed, commits that change, and pushes the release tag. GitHub Actions builds and tests all packages, then publishes the downloads to GitHub Releases and the image to GHCR. Use the workflow's manual **Run workflow** option with **publish disabled** to test the pipeline before a release.
+   ```powershell
+   .\build\release.ps1 -Version 1.5.1 -WhatIf
+   ```
+
+   Review the proposed version, commit, and tag. This checks the release plan and may fetch remote branch information; it does not build, edit files, commit, tag, or push. For a full CI rehearsal, use [Run workflow](https://github.com/Sphere10/LocalNotion/actions/workflows/release.yml) with **publish disabled** and wait for the tests to pass.
+
+4. **When ready, start publishing:**
+
+   ```powershell
+   .\build\release.ps1 -Version 1.5.1
+   ```
+
+   This updates and commits `Version.props` when necessary, then pushes the current committed source to `master` together with the `v1.5.1` tag. GitHub Actions builds and tests all native packages and Docker before uploading the release assets.
+
+5. **Wait for completion.** Follow the Actions link printed by the command. A pushed tag means publishing has started; confirm the workflow succeeds and the version appears in [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases). Newer stable releases also update the official Docker `latest` tag.
+6. **If a run fails, check its logs.** Follow the [retry and recovery instructions](build/README.md#recover-publication-after-a-publisher-fix). Preserve existing release tags and published assets; use a new version for changed binaries.
+
+`Version.props` holds the shared release version. GitHub Actions assigns one build number to every artifact in a run, so you do not need to increment a counter yourself. Local builds default to build `0`; the CLI's `--version` includes the version, build number, and source commit.
+
+The [CI/CD and release guide](build/README.md) documents the complete pipeline, supported platforms, permissions, and recovery. The scripts and version settings are also available in **Other → Build and Release** in Visual Studio.
 
 ## Usage
 
