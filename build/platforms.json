@@ -1,0 +1,52 @@
+{
+  "include": [
+    {
+      "rid": "win-x64",
+      "runner": "windows-latest",
+      "archiveExtension": "zip",
+      "smoke": "native"
+    },
+    {
+      "rid": "win-x86",
+      "runner": "windows-latest",
+      "archiveExtension": "zip",
+      "smoke": "native"
+    },
+    {
+      "rid": "win-arm64",
+      "runner": "windows-11-arm",
+      "archiveExtension": "zip",
+      "smoke": "native"
+    },
+    {
+      "rid": "linux-x64",
+      "runner": "ubuntu-24.04",
+      "archiveExtension": "tar.gz",
+      "smoke": "native"
+    },
+    {
+      "rid": "linux-arm64",
+      "runner": "ubuntu-24.04-arm",
+      "archiveExtension": "tar.gz",
+      "smoke": "native"
+    },
+    {
+      "rid": "linux-arm",
+      "runner": "ubuntu-24.04",
+      "archiveExtension": "tar.gz",
+      "smoke": "qemu"
+    },
+    {
+      "rid": "osx-x64",
+      "runner": "macos-15-intel",
+      "archiveExtension": "tar.gz",
+      "smoke": "native"
+    },
+    {
+      "rid": "osx-arm64",
+      "runner": "macos-15",
+      "archiveExtension": "tar.gz",
+      "smoke": "native"
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+name: Build and release Local Notion
+run-name: Local Notion ${{ inputs.version || github.ref_name }} - build ${{ github.run_number }}
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version (blank uses Version.props)
+        type: string
+        default: ''
+      publish:
+        description: Publish tested binaries and Docker image
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'build/**'
+      - 'Version.props'
+      - 'Directory.Build.*'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'docker/**'
+      - 'LocalNotion.CLI/**'
+      - 'LocalNotion.Core/**'
+      - 'Notion.Client/**'
+      - 'tests/**'
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.event_name == 'pull_request' && github.ref || inputs.version || github.ref_name }}
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: pwsh
+jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      build_number: ${{ steps.version.outputs.build_number }}
+      sha: ${{ steps.version.outputs.sha }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      publish: ${{ steps.version.outputs.publish }}
+      matrix: ${{ steps.version.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve one version and build number
+        id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PUBLISH_REQUESTED: ${{ github.repository == 'Sphere10/LocalNotion' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) }}
+        run: |
+          $parameters = @{ BuildNumber = [int]$env:GITHUB_RUN_NUMBER }
+          if ($env:REQUESTED_VERSION) { $parameters.Version = $env:REQUESTED_VERSION }
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $parameters.Tag = $env:GITHUB_REF_NAME }
+          if ($env:PUBLISH_REQUESTED -eq 'true') { $parameters.Publish = $true }
+          ./build/ci-metadata.ps1 @parameters
+  native:
+    name: Package ${{ matrix.rid }}
+    needs: metadata
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.metadata.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+      BUILD_NUMBER: ${{ needs.metadata.outputs.build_number }}
+      SOURCE_REVISION: ${{ needs.metadata.outputs.sha }}
+      TARGET_RUNTIME: ${{ matrix.rid }}
+      ARCHIVE_EXTENSION: ${{ matrix.archiveExtension }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build complete self-contained package
+        run: |
+          ./build/package.ps1 -Runtime $env:TARGET_RUNTIME -Version $env:RELEASE_VERSION -BuildNumber $env:BUILD_NUMBER -SourceRevisionId $env:SOURCE_REVISION -OutputDirectory ./publish/artifacts
+      - name: Smoke-test extracted native package
+        if: matrix.smoke == 'native'
+        run: |
+          $archive = "./publish/artifacts/localnotion-$env:TARGET_RUNTIME.$env:ARCHIVE_EXTENSION"
+          ./build/test-package.ps1 -ArchivePath $archive -Runtime $env:TARGET_RUNTIME -Version $env:RELEASE_VERSION -BuildNumber $env:BUILD_NUMBER -SourceRevisionId $env:SOURCE_REVISION
+      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        if: matrix.smoke == 'qemu'
+        with:
+          platforms: arm
+      - name: Validate ARM32 package and executable
+        if: matrix.smoke == 'qemu'
+        run: |
+          ./build/test-package.ps1 -ArchivePath ./publish/artifacts/localnotion-linux-arm.tar.gz -Runtime linux-arm -Version $env:RELEASE_VERSION -BuildNumber $env:BUILD_NUMBER -SourceRevisionId $env:SOURCE_REVISION -SkipExecution -ExtractDirectory ./publish/arm-smoke
+          $mount = "type=bind,source=$((Resolve-Path ./publish/arm-smoke).Path),target=/app,readonly"
+          $result = & docker run --rm --network none --platform linux/arm/v7 --mount $mount mcr.microsoft.com/dotnet/runtime-deps:8.0-bookworm-slim /app/localnotion --version 2>&1
+          if ($LASTEXITCODE -ne 0) { throw ($result -join [Environment]::NewLine) }
+          $expected = "$env:RELEASE_VERSION+build.$env:BUILD_NUMBER.sha.$env:SOURCE_REVISION"
+          if (($result -join [Environment]::NewLine) -notlike "*$expected*") { throw 'ARM32 version does not match the release.' }
+          $result
+      - name: Repository path regression
+        if: matrix.rid == 'win-x64' || matrix.rid == 'linux-x64'
+        run: dotnet run --project tests/LocalNotion.PathCompatibility
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.rid }}
+          path: publish/artifacts/*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+  docker:
+    name: Build and test Docker
+    needs: metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+      BUILD_NUMBER: ${{ needs.metadata.outputs.build_number }}
+      SOURCE_REVISION: ${{ needs.metadata.outputs.sha }}
+      IMAGE: ghcr.io/sphere10/local-notion
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Build release candidate
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ghcr.io/sphere10/local-notion:${{ needs.metadata.outputs.version }}
+          build-args: |
+            VERSION=${{ needs.metadata.outputs.version }}
+            BUILD_NUMBER=${{ needs.metadata.outputs.build_number }}
+            VCS_REF=${{ needs.metadata.outputs.sha }}
+      - name: Smoke-test exact candidate and Git ownership regression
+        run: |
+          $image = "$($env:IMAGE):$env:RELEASE_VERSION"
+          $version = & docker run --rm --network none $image --version 2>&1
+          if ($LASTEXITCODE -ne 0) { throw ($version -join [Environment]::NewLine) }
+          $expected = "$env:RELEASE_VERSION+build.$env:BUILD_NUMBER.sha.$env:SOURCE_REVISION"
+          if (($version -join [Environment]::NewLine) -notlike "*$expected*") { throw 'Docker version does not match the release.' }
+          $version
+          $help = & docker run --rm --network none $image --help 2>&1
+          if ($LASTEXITCODE -notin @(0,254) -or ($help -join [Environment]::NewLine) -notmatch '\bpull\b') { throw 'Docker help smoke test failed.' }
+          $mount = "type=bind,source=$env:GITHUB_WORKSPACE/tests,target=/tests,readonly"
+          & docker run --rm --network none --user root --entrypoint /bin/sh -e LOCALNOTION_GIT_OWNERSHIP_TEST=1 --mount $mount $image /tests/docker-git-ownership.sh
+          if ($LASTEXITCODE -ne 0) { throw 'Docker Git ownership regression failed.' }
+      - name: Package Docker launcher and preserve tested image
+        run: |
+          ./build/package-docker-launcher.ps1 -Version $env:RELEASE_VERSION -BuildNumber $env:BUILD_NUMBER -SourceRevisionId $env:SOURCE_REVISION -OutputDirectory ./publish/artifacts
+          & docker save --output ./publish/docker-image.tar "$($env:IMAGE):$env:RELEASE_VERSION"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not save tested image.' }
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docker-launcher
+          path: publish/artifacts/*
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tested-docker-image
+          path: publish/docker-image.tar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+  release:
+    name: Publish GitHub release and Docker image
+    needs: [metadata, native, docker]
+    if: needs.metadata.outputs.publish == 'true' && github.repository == 'Sphere10/LocalNotion' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)))
+    concurrency:
+      group: localnotion-publication
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+      BUILD_NUMBER: ${{ needs.metadata.outputs.build_number }}
+      SOURCE_REVISION: ${{ needs.metadata.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: publish/artifacts
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docker-launcher
+          path: publish/artifacts
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tested-docker-image
+          path: publish
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Publish tested assets and matching image
+        run: |
+          ./build/publish-github-release.ps1 -Version $env:RELEASE_VERSION -BuildNumber $env:BUILD_NUMBER -SourceRevisionId $env:SOURCE_REVISION -ArtifactsDirectory ./publish/artifacts -DockerArchive ./publish/docker-image.tar

@@ -1,5 +1,8 @@
 # Only application source and the entrypoint belong in the build context.
 **
+!Version.props
+!Directory.Build.props
+!Directory.Build.targets
 !LocalNotion.CLI/
 !LocalNotion.CLI/**
 !LocalNotion.Core/

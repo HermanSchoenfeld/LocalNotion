@@ -1,0 +1,19 @@
+<Project>
+  <!-- The vendored Notion.Client keeps its upstream version and package identity. -->
+  <PropertyGroup>
+    <IsLocalNotionProduct Condition="'$(MSBuildProjectName)' == 'LocalNotion.CLI' Or '$(MSBuildProjectName)' == 'LocalNotion.Core'">true</IsLocalNotionProduct>
+  </PropertyGroup>
+
+  <Import Project="Version.props" Condition="'$(IsLocalNotionProduct)' == 'true'" />
+
+  <PropertyGroup Condition="'$(IsLocalNotionProduct)' == 'true'">
+    <Version>$(ReleaseVersion)</Version>
+    <PackageVersion>$(ReleaseVersion)</PackageVersion>
+    <_LocalNotionVersionPrefix>$([System.Text.RegularExpressions.Regex]::Match('$(ReleaseVersion)', '^[0-9]+\.[0-9]+\.[0-9]+').Value)</_LocalNotionVersionPrefix>
+    <AssemblyVersion>$(_LocalNotionVersionPrefix).$(BuildNumber)</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <InformationalVersion>$(ReleaseVersion)+build.$(BuildNumber)</InformationalVersion>
+    <!-- The shared target adds the commit with an explicit sha label exactly once. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+  </PropertyGroup>
+</Project>

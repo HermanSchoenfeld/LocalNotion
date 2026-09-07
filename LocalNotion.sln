@@ -11,8 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{089C5118
 	ProjectSection(SolutionItems) = preProject
 		COPYRIGHT = COPYRIGHT
 		LICENSE = LICENSE
-		publish-all.bat = publish-all.bat
-		publish-win-x64.bat = publish-win-x64.bat
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -21,7 +19,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docker", "Docker", "{A13B7225-0BAF-4908-A6D7-AA3785A20283}"
 	ProjectSection(SolutionItems) = preProject
 		.dockerignore = .dockerignore
-		.github\workflows\docker.yml = .github\workflows\docker.yml
 		compose.yaml = compose.yaml
 		Dockerfile = Dockerfile
 		docker\README.md = docker\README.md
@@ -30,6 +27,30 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docker", "Docker", "{A13B72
 		docker\LocalNotionDockerLauncher.cs = docker\LocalNotionDockerLauncher.cs
 		docker\localnotion-docker.ps1 = docker\localnotion-docker.ps1
 		docker\localnotion.ps1 = docker\localnotion.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build and Release", "Build and Release", "{049FF1F4-9A4D-49A5-9896-A3381800F3AA}"
+	ProjectSection(SolutionItems) = preProject
+		Version.props = Version.props
+		Directory.Build.props = Directory.Build.props
+		Directory.Build.targets = Directory.Build.targets
+		.github\workflows\release.yml = .github\workflows\release.yml
+		build\README.md = build\README.md
+		build\platforms.json = build\platforms.json
+		build\ci-metadata.ps1 = build\ci-metadata.ps1
+		build\package.ps1 = build\package.ps1
+		build\test-package.ps1 = build\test-package.ps1
+		build\package-docker-launcher.ps1 = build\package-docker-launcher.ps1
+		build\publish-github-release.ps1 = build\publish-github-release.ps1
+		build\release.ps1 = build\release.ps1
+		publish-all.bat = publish-all.bat
+		publish-win-x64.bat = publish-win-x64.bat
+		publish-linux-x64.bat = publish-linux-x64.bat
+		build\attachments\windows\install.ps1 = build\attachments\windows\install.ps1
+		build\attachments\windows\install.bat = build\attachments\windows\install.bat
+		build\attachments\windows\README.txt = build\attachments\windows\README.txt
+		build\attachments\unix\install.sh = build\attachments\unix\install.sh
+		build\attachments\unix\README.txt = build\attachments\unix\README.txt
 	EndProjectSection
 EndProject
 Global
@@ -55,6 +76,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{049FF1F4-9A4D-49A5-9896-A3381800F3AA} = {089C5118-2BC6-4C4D-8B05-3ED561CAB4FC}
 		{A13B7225-0BAF-4908-A6D7-AA3785A20283} = {089C5118-2BC6-4C4D-8B05-3ED561CAB4FC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

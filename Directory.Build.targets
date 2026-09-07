@@ -1,0 +1,41 @@
+<Project>
+  <Target Name="ValidateLocalNotionVersion"
+          BeforeTargets="PrepareForBuild;GetAssemblyVersion;GenerateNuspec"
+          Condition="'$(IsLocalNotionProduct)' == 'true'">
+    <!-- SemVer without build metadata: metadata is supplied by the build itself.
+         Numeric release components and the CI build number must fit assembly metadata. -->
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(ReleaseVersion)', '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$'))"
+           Text="ReleaseVersion must be a semantic version such as 1.5.0 or 1.5.0-rc.1, without build metadata, and each numeric release component must be between 0 and 65534." />
+    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(BuildNumber)', '^(0|[1-9][0-9]{0,4})$'))"
+           Text="BuildNumber must be an integer between 0 and 65534. CI supplies github.run_number; local builds default to 0." />
+    <Error Condition="$(BuildNumber) &gt; 65534"
+           Text="BuildNumber exceeds 65534, the assembly-version limit. Choose a new release build counter explicitly; build numbers are never silently wrapped." />
+    <Error Condition="$([System.Version]::Parse('$(_LocalNotionVersionPrefix)').Major) &gt; 65534 Or $([System.Version]::Parse('$(_LocalNotionVersionPrefix)').Minor) &gt; 65534 Or $([System.Version]::Parse('$(_LocalNotionVersionPrefix)').Build) &gt; 65534"
+           Text="Each numeric component of ReleaseVersion must be between 0 and 65534 to fit assembly metadata." />
+    <Error Condition="'$(SourceRevisionId)' != '' And !$([System.Text.RegularExpressions.Regex]::IsMatch('$(SourceRevisionId)', '^[0-9a-fA-F]{7,64}$'))"
+           Text="SourceRevisionId must be a hexadecimal Git commit ID (7 to 64 characters), or empty when source control information is unavailable." />
+  </Target>
+
+  <Target Name="SetLocalNotionInformationalVersion"
+          BeforeTargets="GetAssemblyAttributes"
+          DependsOnTargets="InitializeSourceControlInformation;ValidateLocalNotionVersion"
+          Condition="'$(IsLocalNotionProduct)' == 'true'">
+    <PropertyGroup>
+      <InformationalVersion>$(ReleaseVersion)+build.$(BuildNumber)</InformationalVersion>
+      <InformationalVersion Condition="'$(SourceRevisionId)' != ''">$(InformationalVersion).sha.$(SourceRevisionId)</InformationalVersion>
+    </PropertyGroup>
+  </Target>
+
+  <!-- CLI AssemblyInfo.cs owns attribution and custom product/license attributes.
+       Opt into only the SDK's version attributes, retaining its incremental generation. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'LocalNotion.CLI'">
+    <GenerateAssemblyVersionAttribute>true</GenerateAssemblyVersionAttribute>
+    <GenerateAssemblyFileVersionAttribute>true</GenerateAssemblyFileVersionAttribute>
+    <GenerateAssemblyInformationalVersionAttribute>true</GenerateAssemblyInformationalVersionAttribute>
+  </PropertyGroup>
+
+  <Target Name="GenerateLocalNotionVersionAttributes"
+          BeforeTargets="BeforeCompile;CoreCompile"
+          DependsOnTargets="PrepareForBuild;CoreGenerateAssemblyInfo"
+          Condition="'$(MSBuildProjectName)' == 'LocalNotion.CLI' And '$(GenerateAssemblyInfo)' != 'true'" />
+</Project>
