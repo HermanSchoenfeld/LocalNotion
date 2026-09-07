@@ -20,15 +20,41 @@ Both modes use `local-notion:latest` by default. Installing the command does not
 
 Start Docker Desktop in **Linux containers** mode. The image targets **linux/amd64**. The command launcher uses local Docker Desktop; it does not run against a remote Docker host. A separate Local Notion application or .NET SDK installation is not required.
 
-## Install the localnotion command
+## Download a released image
 
-From PowerShell at the root of this repository, run:
+Release **`1.4.0`** was built, smoke-tested, and uploaded by the [official release workflow](https://github.com/Sphere10/LocalNotion/actions/runs/34120123116). Download it and check the CLI version:
 
 ```powershell
-.\docker\install-cli.ps1
+docker pull ghcr.io/sphere10/local-notion:1.4.0
+docker run --rm ghcr.io/sphere10/local-notion:1.4.0 --version
 ```
 
-The installer prepares the local image if it is missing and installs the launcher under `%LOCALAPPDATA%\Sphere10\LocalNotion\bin`. It adds that directory to your user `PATH`; administrator access is not required. Open a **new terminal** after installation so it sees the updated path.
+The release targets **linux/amd64**. Use an explicit version tag: the official registry does not publish a `latest` tag. Package visibility is managed separately from publication; anonymous pulls require the package to be **Public** in GitHub. See [publishing and public access](#publishing-an-approved-image) if a pull is denied.
+
+To pin the exact `1.4.0` release independently of tags, use this image reference:
+
+```text
+ghcr.io/sphere10/local-notion@sha256:512381d24e6f0683ce8c6dc834390bc31d847a27527adc6214f2a3eeccb4b98c
+```
+
+## Install the localnotion command
+
+From PowerShell at the root of this cloned or downloaded repository, pull the released image first, then install the launcher with that image selected:
+
+```powershell
+docker pull ghcr.io/sphere10/local-notion:1.4.0
+.\docker\install-cli.ps1 -Image ghcr.io/sphere10/local-notion:1.4.0
+```
+
+For a local source build, use:
+
+```powershell
+.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage
+```
+
+On a first installation, running the installer without options selects `local-notion:latest` and builds it if missing. On later runs, it retains the configured image unless you pass `-Image`. Always pull a released image before selecting it; the installer builds from the checkout when the selected image is missing.
+
+The installer installs the launcher under `%LOCALAPPDATA%\Sphere10\LocalNotion\bin`. It adds that directory to your user `PATH`; administrator access is not required. Open a **new terminal** after installation so it sees the updated path.
 
 ```powershell
 Get-Command localnotion
@@ -36,7 +62,7 @@ localnotion --version
 localnotion --help
 ```
 
-The installer copies the launcher files into the installation directory, so running the command does not require the source checkout. Repository folders and token files must remain at their configured paths. Each invocation uses the existing local image; it does not download an image automatically.
+The installer copies the launcher files into the installation directory, so running the command does not require the source checkout. Repository folders and token files must remain at their configured paths. Each invocation uses the existing local image; it does not download an image automatically. Installing the released image for command mode does not change the background service's default `local-notion:latest` image or `local-notion` container name.
 
 ### How the Windows launcher is built
 
@@ -59,7 +85,7 @@ The C# wrapper preserves your arguments and current directory, starts the adjace
 
 In [LocalNotion.sln](../LocalNotion.sln), **Other > Docker** groups the launcher source, installer, Docker configuration, guide, and workflow as solution items. This is a virtual folder for browsing and editing; the files keep their existing locations on disk. Building the solution builds the application projects. Creating or updating the Windows launcher remains an explicit installer step, so ordinary cross-platform .NET builds do not install commands or change `PATH`.
 
-After editing the wrapper or launcher script, rerun `.\docker\install-cli.ps1` to compile and install the changes. It reuses an existing image. When the application source or Docker image definition changes, add `-BuildImage` to rebuild that image as well.
+After editing the wrapper or launcher script, rerun `.\docker\install-cli.ps1` to compile and install the changes. It reuses an existing image. When the application source or Docker image definition changes, run `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` to build and select the local source image.
 
 ### Run commands against a repository
 
@@ -101,7 +127,7 @@ The launcher checks saved paths before opening the repository and rejects absolu
 If you installed an earlier launcher, update both the launcher and application image from the current source checkout:
 
 ```powershell
-.\docker\install-cli.ps1 -BuildImage
+.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage
 ```
 
 To work with a separate copy, stop the background service and use the import workflow below. If the imported source had no saved token, run the service helper's `Configure` action. Then rerun `.\docker\install-cli.ps1` so it records the copied repository's token-file mapping, and run commands from this checkout's `.docker/data` folder. Keep the service stopped while using that same folder with `localnotion`.
@@ -116,13 +142,13 @@ The default `local-notion-state` volume stores the container user's home at `/va
 
 #### Create a Docker SSH identity
 
-Rebuild an older image from the source checkout first:
+Use release `1.4.0` or newer, or rebuild an older local image from the source checkout first:
 
 ```powershell
-.\docker\install-cli.ps1 -BuildImage
+.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage
 ```
 
-Open an interactive setup shell. This mounts only the state volume:
+Open an interactive setup shell. This mounts only the state volume. If you selected a released image, replace `local-notion:latest` in the direct Docker commands below with `ghcr.io/sphere10/local-notion:1.4.0` (or your selected version or digest):
 
 ```powershell
 docker run --rm -it --pull never --entrypoint sh `
@@ -300,10 +326,19 @@ To inspect generated output on Windows, open `.docker/data` in File Explorer. Th
 
 Stop synchronization before taking a consistent backup. In command mode, back up the repository folders you selected and their private token files. For the background service, back up `.docker/data`, the private `.docker/secrets` directory, and the named application-state volume. Keep an image version or image digest you can return to if an update fails.
 
+To update the installed command to a released image, pull the desired version and pass it to the installer from an updated checkout. For `1.4.0`:
+
+```powershell
+docker pull ghcr.io/sphere10/local-notion:1.4.0
+.\docker\install-cli.ps1 -Image ghcr.io/sphere10/local-notion:1.4.0
+```
+
+New `localnotion` commands use the selected image. The launcher does not automatically pull newer releases.
+
 To update the installed command and rebuild its image from an updated source checkout:
 
 ```powershell
-.\docker\install-cli.ps1 -BuildImage
+.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage
 ```
 
 New `localnotion` commands use the rebuilt image. This updates the command without starting the background sync service. Use `-Image` to select a different image name if needed.
@@ -324,8 +359,20 @@ The stop signal is `SIGINT`, with a 60-second grace period, so Local Notion can 
 
 The [Official Local Notion Docker workflow](../.github/workflows/docker.yml) builds and checks the CLI on pull requests that change Docker or application files. These checks do not publish images.
 
-The configured official public image name is **`ghcr.io/sphere10/local-notion`**. This is an explicit constant in the workflow, independent of the repository name. Publication is pending owner approval; no official image has been pushed by this setup. Approve the registry name and release tag before enabling publication. The local deployment can be tested without publishing anything.
+The official image name is **`ghcr.io/sphere10/local-notion`**. This is an explicit constant in the workflow, independent of the repository name. Release **`1.4.0`** was uploaded by [workflow run 34120123116](https://github.com/Sphere10/LocalNotion/actions/runs/34120123116). For subsequent releases, approve the release tag before running publication.
 
-After approval, run the workflow in **Sphere10/LocalNotion** on its default branch, set a release `version` such as `1.4.0`, and explicitly enable `publish`. The default is `publish: false`. A repository guard allows publication only from `Sphere10/LocalNotion`, through a manual run on its default branch; forks and the personal upstream cannot publish through this workflow. The workflow builds a candidate, smoke-tests that exact local image without credentials, authenticates with GitHub's automatic token, and pushes both the chosen version tag and `sha-<full-commit-id>`. It does not create or update a `latest` tag.
+After approval, run the workflow in **Sphere10/LocalNotion** on its default branch, set an unused release `version` such as `1.4.1`, and explicitly enable `publish`. The default is `publish: false`. A repository guard allows publication only from `Sphere10/LocalNotion`, through a manual run on its default branch; forks and the personal upstream cannot publish through this workflow. The workflow builds a candidate, smoke-tests that exact local image without credentials, authenticates with GitHub's automatic token, and pushes both the chosen version tag and `sha-<full-commit-id>`. It does not create or update a `latest` tag.
 
-Use the digest recorded in the workflow summary when you need to deploy that exact published image. Package visibility is managed separately in GitHub; publishing an image does not guarantee that anonymous users can pull it.
+Use the digest recorded in the workflow summary when you need to deploy that exact published image.
+
+On first publication, GHCR creates a **private** package. Linking it to a public repository inherits access permissions, but does not make the package public. An organization owner must open [Sphere10 → Packages](https://github.com/orgs/Sphere10/packages), select **local-notion**, then open **Package settings → Danger Zone → Change visibility → Public** and complete the confirmation. Once public, a package cannot be made private again. See [GitHub's package visibility documentation](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
+
+After changing visibility, verify a pull without stored registry credentials. In PowerShell, use a new empty Docker configuration directory for the check:
+
+```powershell
+$anonymousConfig = Join-Path $env:TEMP ('local-notion-anonymous-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $anonymousConfig | Out-Null
+docker --config $anonymousConfig pull ghcr.io/sphere10/local-notion:1.4.0
+```
+
+A successful anonymous pull confirms public access. Publishing the image or seeing it while signed in does not establish that access.

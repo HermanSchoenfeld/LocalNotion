@@ -32,10 +32,18 @@ Pre-built binaries are available for multiple platforms:
 
 Use the Docker image either as a normal `localnotion` command or as a background synchronization service. Docker Desktop must be running in Linux containers mode on Windows.
 
-Install the command for your Windows account from this repository:
+The released image is **`ghcr.io/sphere10/local-notion:1.4.0`**, built for **linux/amd64**. Releases use explicit version tags; there is no `latest` tag.
 
 ```powershell
-.\docker\install-cli.ps1
+docker pull ghcr.io/sphere10/local-notion:1.4.0
+docker run --rm ghcr.io/sphere10/local-notion:1.4.0 --version
+```
+
+To install it as a Windows command, open PowerShell at the root of this cloned or downloaded repository. Pull the image first, then select it when installing the launcher:
+
+```powershell
+docker pull ghcr.io/sphere10/local-notion:1.4.0
+.\docker\install-cli.ps1 -Image ghcr.io/sphere10/local-notion:1.4.0
 ```
 
 Open a new terminal, then run:
@@ -45,7 +53,9 @@ localnotion --version
 localnotion --help
 ```
 
-The command runs the container against your current folder, or the folder selected by `--path`. The background service uses its own repository under `.docker/data`. The [Docker guide](docker/README.md) explains both modes, token setup, importing data, updates, and publishing images after approval.
+To build and install from your local source checkout, run `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage`. The local image and background container retain the name `local-notion`.
+
+The command runs the container against your current folder, or the folder selected by `--path`. The background service uses its own repository under `.docker/data`. The [Docker guide](docker/README.md) explains both modes, token setup, importing data, updates, and releases. GHCR package visibility is configured separately from publication; see [public access setup](docker/README.md#publishing-an-approved-image) if an anonymous pull is denied.
 
 ## Screenshots
 
@@ -157,7 +167,8 @@ For a repository initialized with `--git`, Local Notion stages and commits local
 
 Local Notion passes `-c safe.directory=<selected-repository>` to each Git command. This trusts the explicitly selected repository for that command only, including when restored files, a different operating-system account, or a container mount gives the repository a different owner. It does not change global or system Git configuration or trust every repository. This behavior is shared by native Windows/Linux builds and Docker.
 
-Git's `detected dubious ownership` error is an ownership check, not a timeout or synchronization delay; it can stop staging before commit or push is reached. See [Git's safe.directory documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory). Update Local Notion to a build containing this fix; Docker installations can run `.\docker\install-cli.ps1 -BuildImage` from the source checkout.
+Git's `detected dubious ownership` error is an ownership check, not a timeout or synchronization delay; it can stop staging before commit or push is reached. See [Git's safe.directory documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory). Update Local Notion to a build containing this fix; Docker installations can use release `1.4.0` above or run `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` from the source checkout.
+
 ### Render Content
 
 ```bash
