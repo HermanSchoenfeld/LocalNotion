@@ -157,6 +157,25 @@ function Get-GitHubJson {
     throw "GitHub query $Endpoint failed: $($response.Text)"
 }
 
+function Get-ReleaseForTag {
+    param([switch] $Require)
+    # The tag endpoint serves published releases. Authenticated list responses
+    # also include drafts, which may not have a discoverable tag endpoint yet.
+    $published = Get-GitHubJson "repos/$repository/releases/tags/$tag" -AllowNotFound
+    if ($null -ne $published) { return $published }
+    $matchingReleases = [Collections.Generic.List[object]]::new()
+    for ($page = 1; ; $page++) {
+        $releases = @(Get-GitHubJson "repos/$repository/releases?per_page=100&page=$page")
+        foreach ($candidateRelease in $releases) {
+            if ($candidateRelease.tag_name -ceq $tag) { $matchingReleases.Add($candidateRelease) }
+        }
+        if ($releases.Count -lt 100) { break }
+    }
+    if ($matchingReleases.Count -gt 1) { throw "Multiple releases or drafts match $tag. Resolve the duplicate drafts before publishing." }
+    if ($matchingReleases.Count -eq 1) { return $matchingReleases[0] }
+    if ($Require) { throw "Could not find the release or draft for $tag." }
+    return $null
+}
 function Assert-RemoteTag {
     param([switch] $Require, [switch] $PassThru)
     $reference = Get-GitHubJson "repos/$repository/git/ref/tags/$tag" -AllowNotFound
@@ -214,7 +233,7 @@ function Get-LatestDecision {
 $repo = Get-GitHubJson "repos/$repository"
 if ($repo.full_name -cne $repository) { throw 'GitHub returned an unexpected repository.' }
 $tagExists = Assert-RemoteTag -PassThru
-$release = Get-GitHubJson "repos/$repository/releases/tags/$tag" -AllowNotFound
+$release = Get-ReleaseForTag
 $identity = "<!-- localnotion-release version=$Version build=$BuildNumber commit=$SourceRevisionId image=$imageId -->"
 if ($null -ne $release -and (-not $release.draft -or -not ([string]$release.body).Contains($identity))) {
     throw "Release $tag already exists and is not a matching resumable draft. Published releases are never overwritten."
@@ -279,7 +298,8 @@ if ($null -eq $release) {
     }
     if ($prerelease) { $arguments += '--prerelease' }
     $null = Invoke-Tool $gh $arguments
-    $release = Get-GitHubJson "repos/$repository/releases/tags/$tag"
+    $release = Get-ReleaseForTag -Require
+    if (-not $release.draft -or -not ([string]$release.body).Contains($identity)) { throw "Created release $tag is not the expected matching draft." }
 }
 
 # Retag from the captured image ID, since remote existence checks may have

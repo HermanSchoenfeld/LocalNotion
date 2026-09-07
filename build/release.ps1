@@ -188,7 +188,7 @@ try {
 }
 
 $releaseCommit = ((Invoke-ReleaseGit -GitArguments @('rev-parse', 'HEAD')).Output -join '').Trim()
-Write-Host "Published $tag at $releaseCommit. Follow the release workflow:"
+Write-Host "Pushed $tag at $releaseCommit. Follow the build and publication workflow:"
 Write-Host $workflowUrl
 [pscustomobject]@{
     Version = $Version

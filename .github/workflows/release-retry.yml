@@ -33,7 +33,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Command resolution regression
-        run: ./tests/release-command-resolution.ps1
+        run: |
+          ./tests/release-command-resolution.ps1
+          ./tests/release-draft-discovery.ps1
       - name: Verify original tagged build and all successful tests
         id: original
         run: |
