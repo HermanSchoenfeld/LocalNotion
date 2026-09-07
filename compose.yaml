@@ -1,0 +1,46 @@
+name: local-notion
+
+services:
+  local-notion:
+    container_name: local-notion
+    image: ${LOCALNOTION_IMAGE:-local-notion:latest}
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${LOCALNOTION_VERSION:-dev}
+        VCS_REF: ${LOCALNOTION_REVISION:-unknown}
+    init: true
+    command: ["docker-sync", "--all", "--poll-frequency", "${LOCALNOTION_SYNC_SECONDS:-60}"]
+    restart: unless-stopped
+    stop_signal: SIGINT
+    stop_grace_period: 60s
+    environment:
+      NOTION_API_KEY_FILE: /run/secrets/notion-token
+    volumes:
+      - type: bind
+        source: ./.docker/data
+        target: /repo
+        bind:
+          create_host_path: false
+      - local-notion-state:/var/lib/localnotion
+      - type: bind
+        source: ./.docker/secrets
+        target: /run/secrets
+        read_only: true
+        bind:
+          create_host_path: false
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  local-notion-state:
+    name: local-notion-state

@@ -18,6 +18,20 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other", "Other", "{089C5118
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Notion.Client", "Notion.Client\Notion.Client.csproj", "{9E47ED98-200C-E88E-DE46-ADCA5D0D94E8}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docker", "Docker", "{A13B7225-0BAF-4908-A6D7-AA3785A20283}"
+	ProjectSection(SolutionItems) = preProject
+		.dockerignore = .dockerignore
+		.github\workflows\docker.yml = .github\workflows\docker.yml
+		compose.yaml = compose.yaml
+		Dockerfile = Dockerfile
+		docker\README.md = docker\README.md
+		docker\entrypoint.sh = docker\entrypoint.sh
+		docker\install-cli.ps1 = docker\install-cli.ps1
+		docker\LocalNotionDockerLauncher.cs = docker\LocalNotionDockerLauncher.cs
+		docker\localnotion-docker.ps1 = docker\localnotion-docker.ps1
+		docker\localnotion.ps1 = docker\localnotion.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +53,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A13B7225-0BAF-4908-A6D7-AA3785A20283} = {089C5118-2BC6-4C4D-8B05-3ED561CAB4FC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B9202D58-E7A4-4F4A-ADD7-CBB52A9A9BC8}

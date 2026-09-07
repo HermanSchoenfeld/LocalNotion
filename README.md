@@ -1,34 +1,23 @@
 # Local Notion
 
-Local Notion brings your Notion workspace from the cloud to your local storage for backup, e-books, websites, and app integrations.
+**[Product page, downloads, and documentation](https://sphere10.com/products/localnotion)**
 
-This repository contains the source code for the Local Notion application.
+Local Notion is an open-source command-line tool for keeping Notion content on your own storage and using it for backups, offline reading, websites, and applications.
 
-## Why Local Notion?
-
-Notion is a powerful cloud-based tool for notes, databases, and collaboration. However, relying solely on the cloud means you don't truly own your data. Local Notion solves this by:
-
-- **Data Ownership**: Download and store all your Notion content locally
-- **Offline Access**: Access your content without an internet connection
-- **Integration Ready**: Use your Notion data in websites, e-books, and custom applications
-- **Version Control**: Track changes to your Notion workspace using Git
+The official repository is [Sphere10/LocalNotion](https://github.com/Sphere10/LocalNotion). The original [HermanSchoenfeld/LocalNotion](https://github.com/HermanSchoenfeld/LocalNotion) repository remains the upstream source.
 
 ## Features
 
-Based on the product description on [https://sphere10.com/products/localnotion](https://sphere10.com/products/localnotion):
+- **Local backups:** Download pages, databases, attachments, and underlying objects.
+- **Continuous synchronization:** Poll Notion for changes and update your local repository.
+- **HTML export:** Browse downloaded content without depending on Notion's renderer.
+- **Custom themes:** Control the appearance of exported pages and databases.
+- **Offline publications:** Create linked HTML for e-books, manuals, and other distributable content.
+- **Website content:** Use Notion as a CMS and generate HTML for a web server.
+- **Application integration:** Download and render content for users of your own backend.
+- **Git history:** Track changes to local content through Git.
 
-- **Backup Notion Workspace**: Download all your Notion pages, databases, files, and objects to local storage
-- **Render in HTML**: Render your pages, databases, and files in pure HTML without any dependency on Notion
-- **Custom Rendering**: Control how your pages and databases are rendered with customizable styling for websites and e-books
-- **Create Offline eBooks**: Generate interconnected HTML files for offline browsing (e-books, product manuals, etc.)
-- **Create Website Content**: Generate advanced websites using Notion as your CMS
-- **Auto-Sync**: Synchronize your Local Notion repository with your Notion workspace in real-time
-- **Command Line Interface**: Explore Notion with a Git-like interface. Pull what you want, when you want
-- **Total Privacy**: Only you access your data from your machines
-- **Multi-Tenant Capability**: Integrate Local Notion into your app backend and download/render your users' Notion data
-- **Git Version Control**: Track your Notion changes in real-time using Git version control
-- **Workspace Restore** *(coming soon)*: Restore your Notion backups to Notion
-- **Offline Editing** *(coming soon)*: Edit your Notion content offline and synchronize to Notion when online
+Workspace restore is listed as **coming soon** on the [Local Notion product page](https://sphere10.com/products/localnotion).
 
 ## Downloads
 
@@ -38,6 +27,25 @@ Pre-built binaries are available for multiple platforms:
 - **macOS**: [Download (x64)](https://sp10-downloads.s3.us-west-1.amazonaws.com/localnotion/1.3/localnotion-osx-x64-1.3.zip)
 - **Linux**: [Download (x64)](https://sp10-downloads.s3.us-west-1.amazonaws.com/localnotion/1.3/localnotion-linux-x64-1.3.zip)
 - **Other platforms**: [All Downloads](https://sphere10.com/products/localnotion/downloads)
+
+## Official Local Notion Docker
+
+Use the Docker image either as a normal `localnotion` command or as a background synchronization service. Docker Desktop must be running in Linux containers mode on Windows.
+
+Install the command for your Windows account from this repository:
+
+```powershell
+.\docker\install-cli.ps1
+```
+
+Open a new terminal, then run:
+
+```powershell
+localnotion --version
+localnotion --help
+```
+
+The command runs the container against your current folder, or the folder selected by `--path`. The background service uses its own repository under `.docker/data`. The [Docker guide](docker/README.md) explains both modes, token setup, importing data, updates, and publishing images after approval.
 
 ## Screenshots
 
@@ -49,11 +57,11 @@ Pre-built binaries are available for multiple platforms:
 
 ## Documentation & Resources
 
-Sphere10 provides additional end-user documentation and resources:
+Use the [Local Notion product page](https://sphere10.com/products/localnotion) for the product overview and downloads, and these guides for setup and operation:
 
-- [How Local Notion Works](https://sphere10.com/products/localnotion/how-local-notion-works)
-- [Getting Started](https://sphere10.com/products/localnotion/getting-started)
-- [Local Notion Manual](https://sphere10.com/products/localnotion/local-notion-manual)
+- [How Local Notion Works](https://sphere10.com/products/localnotion/how-local-notion-works): repositories, stored files, themes, and rendering profiles.
+- [Getting Started](https://sphere10.com/products/localnotion/getting-started): create a Notion integration and grant it access to your content.
+- [Local Notion Manual](https://sphere10.com/products/localnotion/local-notion-manual): installation, CLI commands, and rendering options.
 
 ## Build From Source
 
@@ -94,6 +102,8 @@ dotnet run --project LocalNotion.CLI/LocalNotion.CLI.csproj -c Debug -- --help
 2. Set `LocalNotion.CLI` as the startup project.
 3. Build with **Build > Build Solution**.
 4. Run with **Debug > Start Without Debugging**.
+
+The **Other > Docker** solution folder contains the Docker configuration and Windows launcher source, scripts, and guide. These are solution items for browsing and editing. Use the [launcher installer](docker/README.md#how-the-windows-launcher-is-built) to build and install the Docker-backed Windows command; a normal solution build builds the application projects.
 
 ## Usage
 
@@ -141,6 +151,13 @@ localnotion sync --all
 localnotion sync --all -f 10
 ```
 
+### Git change tracking
+
+For a repository initialized with `--git`, Local Notion stages and commits local changes after supported operations. With `--git-push`, it also pushes to the configured upstream. Git identity, remote configuration, and authentication must be available to the account running Local Notion.
+
+Local Notion passes `-c safe.directory=<selected-repository>` to each Git command. This trusts the explicitly selected repository for that command only, including when restored files, a different operating-system account, or a container mount gives the repository a different owner. It does not change global or system Git configuration or trust every repository. This behavior is shared by native Windows/Linux builds and Docker.
+
+Git's `detected dubious ownership` error is an ownership check, not a timeout or synchronization delay; it can stop staging before commit or push is reached. See [Git's safe.directory documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory). Update Local Notion to a build containing this fix; Docker installations can run `.\docker\install-cli.ps1 -BuildImage` from the source checkout.
 ### Render Content
 
 ```bash

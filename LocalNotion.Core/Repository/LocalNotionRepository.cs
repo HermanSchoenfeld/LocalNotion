@@ -164,6 +164,7 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 
 		// The registry file is computed from the profile
 		pathProfile ??= LocalNotionPathProfile.Default;
+		RepositoryFileSystemPaths.Normalize(pathProfile);
 
 		var registryFile = Path.GetFullPath(pathProfile.RegistryPathR, repoPath);
 		Guard.FileNotExists(registryFile);
@@ -246,6 +247,7 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		Guard.FileExists(registryPath);
 		logger ??= new NoOpLogger();
 		var registry = Tools.Json.ReadFromFile<LocalNotionRegistry>(registryPath);
+		RepositoryFileSystemPaths.Normalize(registry);
 		var pathResolver = new PathResolver(Path.GetFullPath(registry.Paths.RepositoryPathR, Path.GetDirectoryName(registryPath)), registry.Paths);
 		await RemoveInternal(pathResolver, logger);
 		
@@ -306,6 +308,7 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 
 		// load the registry
 		Registry = await Task.Run(() => Tools.Json.ReadFromFile<LocalNotionRegistry>(_registryPath));
+		RepositoryFileSystemPaths.Normalize(Registry);
 
 		// create path resolver
 		Paths = new PathResolver(Path.GetFullPath(Registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), Registry.Paths);
@@ -829,6 +832,7 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 	}
 
 	protected async Task SaveInternal_PersistPhase(string registryFile) {
+		RepositoryFileSystemPaths.Normalize(Registry);
 		var dbO = Registry.Resources.FirstOrDefault(x => x is LocalNotionDatabase);
 		if (dbO is not null) { 
 			var xxx = Tools.Json.WriteToString(dbO);

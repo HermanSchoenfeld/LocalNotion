@@ -4,40 +4,40 @@ dotnet build -c Release
 if %ERRORLEVEL% NEQ 0 goto Exit
 
 dotnet publish -c Release /p:PublishProfile=win-x64
-del y:\builds\LocalNotion\latest\win-x64\*.pdb
-del y:\builds\LocalNotion\latest\win-x64\*.dll
+del "%~dp0publish\win-x64\*.pdb"
+del "%~dp0publish\win-x64\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=win-x86
-del y:\builds\LocalNotion\latest\win-x86\*.pdb
-del y:\builds\LocalNotion\latest\win-x86\*.dll
+del "%~dp0publish\win-x86\*.pdb"
+del "%~dp0publish\win-x86\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=win-arm64
-del y:\builds\LocalNotion\latest\win-arm64\*.pdb
-del y:\builds\LocalNotion\latest\win-arm64\*.dll
+del "%~dp0publish\win-arm64\*.pdb"
+del "%~dp0publish\win-arm64\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=win-arm
-del y:\builds\LocalNotion\latest\win-arm\*.pdb
-del y:\builds\LocalNotion\latest\win-arm\*.dll
+del "%~dp0publish\win-arm\*.pdb"
+del "%~dp0publish\win-arm\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=osx-x64
-del y:\builds\LocalNotion\latest\osx-x64\*.pdb
-del y:\builds\LocalNotion\latest\osx-x64\*.dll
+del "%~dp0publish\osx-x64\*.pdb"
+del "%~dp0publish\osx-x64\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=osx-arm64
-del y:\builds\LocalNotion\latest\osx-arm64\*.pdb
-del y:\builds\LocalNotion\latest\osx-arm64\*.dll
+del "%~dp0publish\osx-arm64\*.pdb"
+del "%~dp0publish\osx-arm64\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=linux-x64
-del y:\builds\LocalNotion\latest\linux-x64\*.pdb
-del y:\builds\LocalNotion\latest\linux-x64\*.dll
+del "%~dp0publish\linux-x64\*.pdb"
+del "%~dp0publish\linux-x64\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=linux-arm64
-del y:\builds\LocalNotion\latest\linux-arm64\*.pdb
-del y:\builds\LocalNotion\latest\linux-arm64\*.dll
+del "%~dp0publish\linux-arm64\*.pdb"
+del "%~dp0publish\linux-arm64\*.dll"
 
 dotnet publish -c Release /p:PublishProfile=linux-arm
-del y:\builds\LocalNotion\latest\linux-arm\*.pdb
-del y:\builds\LocalNotion\latest\linux-arm\*.dll
+del "%~dp0publish\linux-arm\*.pdb"
+del "%~dp0publish\linux-arm\*.dll"
 
 :Exit
 pause

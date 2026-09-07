@@ -1,0 +1,24 @@
+# Only application source and the entrypoint belong in the build context.
+**
+!LocalNotion.CLI/
+!LocalNotion.CLI/**
+!LocalNotion.Core/
+!LocalNotion.Core/**
+!Notion.Client/
+!Notion.Client/**
+!docker/
+!docker/entrypoint.sh
+**/bin/
+**/obj/
+**/.git/
+**/.vs/
+**/.idea/
+**/.localnotion/
+**/.env
+**/.env.*
+**/*.user
+**/*.suo
+**/*.pfx
+**/*.pem
+**/*.key
+**/*.log

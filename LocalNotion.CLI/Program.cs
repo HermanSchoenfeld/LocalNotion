@@ -1,4 +1,4 @@
-﻿// Copyright (c) Herman Schoenfeld 2018 - Present. All rights reserved. (https://sphere10.com/products/localnotion)
+// Copyright (c) Herman Schoenfeld 2018 - Present. All rights reserved. (https://sphere10.com/products/localnotion)
 // Author: Herman Schoenfeld <herman@sphere10.com>
 //
 // Distributed under the GPLv3 software license, see the accompanying file LICENSE 
@@ -20,47 +20,6 @@ using System.Text;
 
 namespace LocalNotion.CLI;
 
-public class GitSentry : ProcessSentry {
-
-	private const string GitExecutable = "git";
-	private readonly StringBuilder _stringBuilder;
-	public GitSentry(string rootDir) : base(GitExecutable) {
-		_stringBuilder = new StringBuilder();
-		WorkingDirectory = rootDir;
-		OutputWriter = new StringWriter(_stringBuilder);
-	}
-
-	public string Output => _stringBuilder.ToString().Trim();
-
-	public async Task<bool> Init(CancellationToken cancellationToken = default) {
-		return (await base.RunAsync("init", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> AddAll(CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		return (await base.RunAsync("add --all", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> Commit(string message, CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		return (await base.RunAsync($"commit -m \"{message}\"", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> Push(CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		return (await base.RunAsync("push", cancellationToken)) == 0;
-	}
-
-	public async Task<bool> TestGitInstalled(CancellationToken cancellationToken = default) {
-		_stringBuilder.Clear();
-		try {
-			return (await base.RunAsync("help", cancellationToken)) == 0;
-		} catch {
-			return false;
-		}
-	}
-}
-
 public static partial class Program {
 
 	private static IProductLicenseProvider _licenseProvider = null;
@@ -75,6 +34,20 @@ public static partial class Program {
 
 	private static string GetDefaultRepoFolder() 
 		=> System.IO.Path.Combine(Environment.CurrentDirectory);
+
+	private static string? ResolveNotionApiKey(string? explicitKey, string? repositoryKey = null) {
+		if (!string.IsNullOrWhiteSpace(explicitKey))
+			return explicitKey;
+
+		var secretPath = Environment.GetEnvironmentVariable("NOTION_API_KEY_FILE");
+		if (!string.IsNullOrWhiteSpace(secretPath) && File.Exists(secretPath)) {
+			var secret = File.ReadAllText(secretPath).Trim();
+			if (!string.IsNullOrWhiteSpace(secret))
+				return secret;
+		}
+
+		return repositoryKey;
+	}
 
 	private static string ToFullPath(string userEnteredPath) {
 		if (Path.IsPathFullyQualified(userEnteredPath))
@@ -566,19 +539,14 @@ $@"Local Notion Status:
 	public static async Task<int> ExecuteListCommand(ListContentsCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		
-		string apiKey = default;
-
-		if (!string.IsNullOrWhiteSpace(arguments.APIKey)) {
-			apiKey = arguments.APIKey;
-		} else {
-			if (LocalNotionRepository.Exists(arguments.Path)) {
-				await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
-				apiKey = repo.DefaultNotionApiKey;
-			}
+		var apiKey = ResolveNotionApiKey(arguments.APIKey);
+		if (string.IsNullOrWhiteSpace(apiKey) && LocalNotionRepository.Exists(arguments.Path)) {
+			await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
+			apiKey = repo.DefaultNotionApiKey;
 		}
 		
 		if (string.IsNullOrWhiteSpace(apiKey)) {
-			consoleLogger.Info("No API key was specified in argument or registered in repository");
+			consoleLogger.Info("No API key was supplied by --key, NOTION_API_KEY_FILE, or the repository");
 			return Constants.ERRORCODE_COMMANDLINE_ERROR;
 		}
 
@@ -649,10 +617,10 @@ $@"Local Notion Status:
 		await using var repo = await OpenWithLicenseCheck(arguments.Path, consoleLogger);
 
 		await using (repo.EnterUpdateScope()) {
-			var apiKey = arguments.APIKey ?? repo.DefaultNotionApiKey;
+			var apiKey = ResolveNotionApiKey(arguments.APIKey, repo.DefaultNotionApiKey);
 
 			if (string.IsNullOrWhiteSpace(apiKey)) {
-				consoleLogger.Info("No API key was specified in argument or registered in repository");
+				consoleLogger.Info("No API key was supplied by --key, NOTION_API_KEY_FILE, or the repository");
 				return -1;
 			}
 			var client = CreateNotionClientWithLicenseCheck(apiKey);

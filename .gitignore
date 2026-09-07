@@ -200,3 +200,8 @@ project.lock.json
 
 # Local Batch files
 set-dev-path.bat
+# Docker instance data, credentials, build logs, and local configuration
+/.docker/
+/.env
+/.env.*
+!/.env.example
