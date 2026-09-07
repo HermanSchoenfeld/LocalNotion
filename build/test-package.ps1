@@ -73,6 +73,37 @@ function Invoke-SmokeCommand([string] $Executable, [string] $Argument, [string] 
     } finally { $process.Dispose() }
 }
 
+function Remove-SmokeExtraction([string] $ExtractionDirectory, [string] $SmokeRoot) {
+    # Antivirus/indexers can briefly retain the executable after its process exits.
+    # Retry only Windows sharing/lock violations, for at most 6.2 seconds in total.
+    $retryDelays = @(200, 400, 800, 1600, 3200)
+    for ($attempt = 0; ; $attempt++) {
+        if (-not (Test-Path -LiteralPath $ExtractionDirectory)) { return }
+        $resolvedRoot = (Resolve-Path -LiteralPath $SmokeRoot).ProviderPath.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+        $resolvedTarget = (Resolve-Path -LiteralPath $ExtractionDirectory).ProviderPath
+        $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
+        if (-not $resolvedTarget.StartsWith($resolvedRoot, $comparison) -or
+            ((Get-Item -LiteralPath $resolvedTarget).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+            throw "Refusing to clean an extraction path outside '$resolvedRoot': $resolvedTarget"
+        }
+        try {
+            Remove-Item -LiteralPath $resolvedTarget -Recurse -Force -ErrorAction Stop
+            return
+        } catch {
+            $sharingViolation = $false
+            for ($exception = $_.Exception; $null -ne $exception; $exception = $exception.InnerException) {
+                if ($exception -is [IO.IOException] -and ($exception.HResult -band 0xffff) -in @(32, 33)) {
+                    $sharingViolation = $true
+                    break
+                }
+            }
+            if (-not $IsWindows -or -not $sharingViolation -or $attempt -ge $retryDelays.Count) { throw }
+            Start-Sleep -Milliseconds $retryDelays[$attempt]
+        }
+    }
+}
+
+$smokeFailure = $null
 try {
     $executableName = if ($isWindowsPackage) { 'localnotion.exe' } else { 'localnotion' }
     if ($isWindowsPackage) {
@@ -134,15 +165,20 @@ try {
     }
     Write-Host "Validated $Runtime $Version build $BuildNumber from $archive"
     if ($keepExtraction) { Write-Host "Extracted to $extractionDirectory" }
+} catch {
+    $smokeFailure = $_
+    throw
 } finally {
-    if (-not $keepExtraction -and (Test-Path -LiteralPath $extractionDirectory)) {
-        $resolvedRoot = (Resolve-Path -LiteralPath $smokeRoot).ProviderPath.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
-        $resolvedTarget = (Resolve-Path -LiteralPath $extractionDirectory).ProviderPath
-        $comparison = if ($IsWindows) { [StringComparison]::OrdinalIgnoreCase } else { [StringComparison]::Ordinal }
-        if (-not $resolvedTarget.StartsWith($resolvedRoot, $comparison) -or
-            ((Get-Item -LiteralPath $resolvedTarget).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-            throw "Refusing to clean an extraction path outside '$resolvedRoot': $resolvedTarget"
+    if (-not $keepExtraction) {
+        try {
+            Remove-SmokeExtraction -ExtractionDirectory $extractionDirectory -SmokeRoot $smokeRoot
+        } catch {
+            if ($null -ne $smokeFailure) {
+                throw [AggregateException]::new(
+                    'The smoke test and extraction cleanup both failed.',
+                    [Exception[]] @($smokeFailure.Exception, $_.Exception))
+            }
+            throw
         }
-        Remove-Item -LiteralPath $resolvedTarget -Recurse -Force
     }
 }

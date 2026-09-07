@@ -20,7 +20,7 @@ docker run --rm ghcr.io/sphere10/local-notion:latest --version
 For a Windows `localnotion` command, download the [Docker launcher installer](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), extract the entire ZIP, and run this from its directory:
 
 ```powershell
-.\install.ps1
+.\install.bat
 ```
 
 The installer pulls the image version recorded in the bundle, installs the launcher for your user, and adds it to your user PATH. The bundle includes the launcher source and scripts; no repository checkout or separate .NET SDK is required. Open a new terminal, then run:

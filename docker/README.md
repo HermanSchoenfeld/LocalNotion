@@ -43,7 +43,7 @@ Use the image digest recorded in the release metadata or workflow summary when a
 Download the [Windows Docker installer bundle](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), extract the complete ZIP, and run this in PowerShell from the extracted directory:
 
 ```powershell
-.\install.ps1
+.\install.bat
 ```
 
 The bundle contains its own launcher source, scripts, and release metadata. Its installer pulls the bundled image version before invoking the launcher installer, so a repository checkout and a separate .NET SDK are not required.
@@ -335,7 +335,7 @@ To inspect generated output on Windows, open `.docker/data` in File Explorer. Th
 
 Stop synchronization before taking a consistent backup. In command mode, back up the repository folders you selected and their private token files. For the background service, back up `.docker/data`, the private `.docker/secrets` directory, and the named application-state volume. Keep an image version or image digest you can return to if an update fails.
 
-To update from release bundles, download and extract the desired [Windows Docker bundle](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), then run its `.\install.ps1`. It pulls and selects the image version in that bundle. From an updated source checkout, pull a published version and pass it to the installer; for example:
+To update from release bundles, download and extract the desired [Windows Docker bundle](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), then run its `.\install.bat`. It pulls and selects the image version in that bundle. From an updated source checkout, pull a published version and pass it to the installer; for example:
 
 ```powershell
 docker pull ghcr.io/sphere10/local-notion:1.5.0
