@@ -36,7 +36,7 @@ docker pull ghcr.io/sphere10/local-notion:1.5.0
 docker run --rm ghcr.io/sphere10/local-notion:1.5.0 --version
 ```
 
-Use the image digest recorded in the release metadata or workflow summary when an exact immutable image reference is needed. Package visibility is managed separately from publication; anonymous pulls require the package to be **Public**. See [publishing and public access](#publishing-an-approved-image) if a pull is denied.
+Use the image digest recorded in the release metadata or workflow summary when an exact immutable image reference is needed. The official image supports anonymous pulls. If a pull is denied, check the image name and tag; maintainers can check [registry access settings](../build/README.md#public-container-registry-access).
 
 ## Install the localnotion command
 
@@ -366,28 +366,4 @@ The stop signal is `SIGINT`, with a 60-second grace period, so Local Notion can 
 
 ## Publishing an approved image
 
-The [unified release workflow](../.github/workflows/release.yml) builds and validates Docker and all eight native platforms, creates the Windows Docker installer bundle, and publishes their assets together on [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases). The official image name remains **`ghcr.io/sphere10/local-notion`**. See the [build and release guide](../build/README.md) for prerequisites, local validation, and the full release process.
-
-[Version.props](../Version.props) defines the application release version, currently **1.5.0**. CI uses `github.run_number` as the build number; local builds default to **0**. Release metadata records the version, build number, commit, assets, and Docker image identity.
-
-From the repository root in PowerShell 7 or later, start the next release with:
-
-```powershell
-.\build\release.ps1 -Version 1.5.1
-```
-
-The release helper requires a clean checkout. It updates and commits Version.props when needed, creates the version tag, and atomically pushes the current commit to master with that tag to start the workflow. Successful stable releases publish the versioned image and promote `latest`; prereleases keep explicit version tags. Use an explicit version or the recorded image digest when a deployment must remain fixed. Native assets keep stable names such as `localnotion-win-x64.zip` and `localnotion-linux-x64.tar.gz`; the release also contains `localnotion-docker-windows.zip`, `SHA256SUMS.txt`, and `release.json`.
-
-On first publication, GHCR creates a private package. A public source repository does not automatically make its package public. An organization owner can open [Sphere10 Packages](https://github.com/orgs/Sphere10/packages), select **local-notion**, and use **Package settings → Danger Zone → Change visibility → Public**. A package made public cannot later be made private. See [GitHub's package visibility documentation](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
-
-If **Public** is disabled, an organization owner should check **Sphere10 → Settings → Packages → Package Creation** and enable **Public**, then return to the package's visibility settings. If an enterprise policy controls that setting, its administrator must allow public packages first. This is an organization permission setting; changing the image tags or republishing the package does not grant anonymous access. See [GitHub's organization package settings](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#package-creation-visibility-for-organization-members).
-
-After changing visibility, verify a pull without stored registry credentials. In PowerShell, use a new empty Docker configuration directory:
-
-```powershell
-$anonymousConfig = Join-Path $env:TEMP ('local-notion-anonymous-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $anonymousConfig | Out-Null
-docker --config $anonymousConfig pull ghcr.io/sphere10/local-notion:latest
-```
-
-A successful anonymous pull confirms public access. Seeing a package while signed in does not establish that access.
+For maintainers, the [release and deployment guide](../build/README.md) covers publishing official images, CI/CD, versioning, and [public registry access](../build/README.md#public-container-registry-access).

@@ -1,4 +1,33 @@
-# Build and release Local Notion
+# Maintainer release and deployment guide
+
+This guide is for maintainers publishing official Local Notion releases and Docker images. For installation and everyday use, see the [main README](../README.md) and [Docker user guide](../docker/README.md). The scripts and version settings are also available in **Other > Build and Release** in Visual Studio.
+
+**You explicitly choose when to release and which version to publish.** Ordinary commits, branch pushes, pull-request merges, local builds, and edits to `Version.props` do not publish a release.
+
+Publication starts when a maintainer pushes a `v*` release tag (normally through the release command below), or explicitly runs the build workflow with **publish enabled** on the official default branch. After that choice, successful tests lead to automatic publication; there is no second manual approval prompt.
+
+## Checklist for your next release
+
+1. **Prepare the source.** Review and test your changes, include the latest `master` changes, and commit everything intended for the release. Open PowerShell 7 in the official repository root. Run `git status --short`; it must show no pending changes or untracked files before releasing.
+2. **Choose an unused version.** For example, use `1.5.1` for the next patch release or `1.6.0` for the next minor release. Replace `1.5.1` below with your chosen version. The release command updates `Version.props` for you.
+3. **Preview the release action:**
+
+   ```powershell
+   .\build\release.ps1 -Version 1.5.1 -WhatIf
+   ```
+
+   Review the proposed version, commit, and tag. This checks the release plan and may fetch remote branch information; it does not build, edit files, commit, tag, or push. For a full CI rehearsal, use [Run workflow](https://github.com/Sphere10/LocalNotion/actions/workflows/release.yml) with **publish disabled** and wait for the tests to pass.
+
+4. **When ready, start publishing:**
+
+   ```powershell
+   .\build\release.ps1 -Version 1.5.1
+   ```
+
+   This updates and commits `Version.props` when necessary, then pushes the current committed source to `master` together with the `v1.5.1` tag. GitHub Actions builds and tests all native packages and Docker before uploading the release assets.
+
+5. **Wait for completion.** Follow the Actions link printed by the command. A pushed tag means publishing has started; confirm the workflow succeeds and the version appears in [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases). Newer stable releases also update the official Docker `latest` tag.
+6. **If a run fails, check its logs.** Follow the [retry and recovery instructions](#recover-publication-after-a-publisher-fix). Preserve existing release tags and published assets; use a new version for changed binaries.
 
 The build system lives in this repository. It does not require `Y:\builds`, the old SP10 PowerShell module, external attachment folders, signing certificates, or developer-machine paths. Build outputs, temporary packaging directories, and smoke-test extractions are kept under the Git-ignored `publish/` directory.
 
@@ -140,7 +169,7 @@ The local release helper uses your existing Git authentication to push to the of
 
 Workflow jobs start with `contents: read`. Only the final release job requests `contents: write` for GitHub releases and `packages: write` for GHCR. It passes GitHub's automatic token as `GH_TOKEN` to GitHub CLI and authenticates Docker to `ghcr.io` using that same token. Do not add a personal access token or signing certificate to package files. Organization Actions policy must permit the workflow and these requested token permissions.
 
-If the GHCR package already exists, its settings must allow this repository's workflow to write to it, either through inherited repository permissions or explicit **Manage Actions access**. For anonymous downloads, an organization owner must also make the package **Public**. A public repository alone does not change package visibility. See the [registry setup instructions](../docker/README.md#publishing-an-approved-image).
+If the GHCR package already exists, its settings must allow this repository's workflow to write to it, either through inherited repository permissions or explicit **Manage Actions access**. For anonymous downloads, an organization owner must also make the package **Public**. A public repository alone does not change package visibility. See the [registry setup instructions](#public-container-registry-access).
 
 ### Logs, artifacts, and failures
 
@@ -156,19 +185,7 @@ The preview builds and checks every package and the Docker candidate, and upload
 
 ## Publish a release
 
-Commit and review all intended changes first. From a clean official checkout, preview the next release action:
-
-```powershell
-./build/release.ps1 -Version 1.5.1 -WhatIf
-```
-
-`-WhatIf` validates the checkout and proposed version. It may query the official origin and fetch master, but does not edit files, commit, tag, or push.
-
-Publish with one command:
-
-```powershell
-./build/release.ps1 -Version 1.5.1
-```
+Use the [next-release checklist](#checklist-for-your-next-release) above to preview and start publication. The following checks apply to every release.
 
 The helper checks that fetch and push URLs both identify `Sphere10/LocalNotion`, the checkout is clean including untracked files, HEAD descends from `origin/master`, and the version does not downgrade. It refuses an existing local or remote `v<version>` tag. It updates and commits only `Version.props` when needed, creates an annotated tag, then atomically pushes HEAD to master and the tag together. Normal remote permissions and branch protection still apply; no force push is used.
 
@@ -182,7 +199,25 @@ If publication stops while a draft exists, rerun the failed jobs in the **same w
 
 A stable release can become latest only if it is newer than GitHub's current latest release and does not precede Docker's current latest version. An equal Docker version is accepted only for the identical image, allowing recovery after Docker promotion succeeded but GitHub publication failed. Prereleases and older stable releases retain explicit version tags without moving either latest pointer. Use the image digest in `release.json` or the workflow summary for immutable deployments.
 
-Anonymous access to GHCR is checked before the draft is published. If organization policy prevents public packages, an owner must enable public package creation and make the package public; see the [Docker publishing and public-access guide](../docker/README.md#publishing-an-approved-image). Changing version tags does not resolve package visibility restrictions.
+Anonymous access to GHCR is checked before the draft is published. If organization policy prevents public packages, an owner must enable public package creation and make the package public; see the [Docker publishing and public-access guide](#public-container-registry-access). Changing version tags does not resolve package visibility restrictions.
+
+## Public container registry access
+
+The official image is **`ghcr.io/sphere10/local-notion`**. The release workflow publishes version tags and promotes eligible stable releases to `latest`. Package visibility is configured separately.
+
+On first publication, GHCR creates a private package. A public source repository does not automatically make its package public. An organization owner can open [Sphere10 Packages](https://github.com/orgs/Sphere10/packages), select **local-notion**, and use **Package settings → Danger Zone → Change visibility → Public**. A package made public cannot later be made private. See [GitHub's package visibility documentation](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
+
+If **Public** is disabled, an organization owner should check **Sphere10 → Settings → Packages → Package Creation** and enable **Public**, then return to the package's visibility settings. If an enterprise policy controls that setting, its administrator must allow public packages first. This is an organization permission setting; changing the image tags or republishing the package does not grant anonymous access. See [GitHub's organization package settings](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#package-creation-visibility-for-organization-members).
+
+After changing visibility, verify a pull without stored registry credentials. In PowerShell, use a new empty Docker configuration directory:
+
+```powershell
+$anonymousConfig = Join-Path $env:TEMP ('local-notion-anonymous-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $anonymousConfig | Out-Null
+docker --config $anonymousConfig pull ghcr.io/sphere10/local-notion:latest
+```
+
+A successful anonymous pull confirms public access. Seeing a package while signed in does not establish that access.
 
 ## Recover publication after a publisher fix
 

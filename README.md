@@ -6,34 +6,6 @@ Local Notion is an open-source command-line tool for keeping Notion content on y
 
 The official repository is [Sphere10/LocalNotion](https://github.com/Sphere10/LocalNotion). The original [HermanSchoenfeld/LocalNotion](https://github.com/HermanSchoenfeld/LocalNotion) repository remains the upstream source.
 
-## Get started with Docker
-
-Use Docker to run Local Notion as a normal command or a background synchronization service. On Windows, start Docker Desktop in **Linux containers** mode. The official image targets **linux/amd64**.
-
-The official stable image is `ghcr.io/sphere10/local-notion:latest`. [Local Notion 1.5.0](https://github.com/Sphere10/LocalNotion/releases/tag/v1.5.0) is publicly available with all downloads below. Newer stable releases update `latest` automatically.
-
-```powershell
-docker pull ghcr.io/sphere10/local-notion:latest
-docker run --rm ghcr.io/sphere10/local-notion:latest --version
-```
-
-For a Windows `localnotion` command, download the [Docker launcher installer](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), extract the entire ZIP, and run this from its directory:
-
-```powershell
-.\install.bat
-```
-
-The installer pulls the image version recorded in the bundle, installs the launcher for your user, and adds it to your user PATH. The bundle includes the launcher source and scripts; no repository checkout or separate .NET SDK is required. Open a new terminal, then run:
-
-```powershell
-localnotion --version
-localnotion --help
-```
-
-For repeatable deployments, select an explicit image version such as `ghcr.io/sphere10/local-notion:1.5.0`. From a source checkout, `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` builds and installs the local image.
-
-The command uses your current folder, or the folder selected by `--path`. The background service keeps a separate repository under `.docker/data`. The [Docker guide](docker/README.md) covers both modes, token setup, importing data, updates, and [public registry access](docker/README.md#publishing-an-approved-image).
-
 ## Features
 
 - **Local backups:** Download pages, databases, attachments, and underlying objects.
@@ -124,41 +96,6 @@ dotnet run --project LocalNotion.CLI/LocalNotion.CLI.csproj -c Debug -- --help
 3. Build with **Build > Build Solution**.
 4. Run with **Debug > Start Without Debugging**.
 
-The **Other > Docker** solution folder contains the Docker configuration and Windows launcher source, scripts, and guide. These are solution items for browsing and editing. Use the [launcher installer](docker/README.md#how-the-windows-launcher-is-built) to build and install the Docker-backed Windows command; a normal solution build builds the application projects.
-
-## CI/CD and publishing releases
-
-**You explicitly choose when to release and which version to publish.** Ordinary commits, branch pushes, pull-request merges, local builds, and edits to `Version.props` do not publish a release.
-
-Publication starts when a maintainer pushes a `v*` release tag (normally through the command below), or explicitly runs the build workflow with **publish enabled** on the official default branch. After that choice, successful tests lead to automatic publication; there is no second manual approval prompt.
-
-### Checklist for your next release
-
-1. **Prepare the source.** Review and test your changes, include the latest `master` changes, and commit everything intended for the release. Open PowerShell 7 in the official repository root. Run `git status --short`; it must show no pending changes or untracked files before releasing.
-2. **Choose an unused version.** For example, use `1.5.1` for the next patch release or `1.6.0` for the next minor release. Replace `1.5.1` below with your chosen version. The release command updates `Version.props` for you.
-3. **Preview the release action:**
-
-   ```powershell
-   .\build\release.ps1 -Version 1.5.1 -WhatIf
-   ```
-
-   Review the proposed version, commit, and tag. This checks the release plan and may fetch remote branch information; it does not build, edit files, commit, tag, or push. For a full CI rehearsal, use [Run workflow](https://github.com/Sphere10/LocalNotion/actions/workflows/release.yml) with **publish disabled** and wait for the tests to pass.
-
-4. **When ready, start publishing:**
-
-   ```powershell
-   .\build\release.ps1 -Version 1.5.1
-   ```
-
-   This updates and commits `Version.props` when necessary, then pushes the current committed source to `master` together with the `v1.5.1` tag. GitHub Actions builds and tests all native packages and Docker before uploading the release assets.
-
-5. **Wait for completion.** Follow the Actions link printed by the command. A pushed tag means publishing has started; confirm the workflow succeeds and the version appears in [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases). Newer stable releases also update the official Docker `latest` tag.
-6. **If a run fails, check its logs.** Follow the [retry and recovery instructions](build/README.md#recover-publication-after-a-publisher-fix). Preserve existing release tags and published assets; use a new version for changed binaries.
-
-`Version.props` holds the shared release version. GitHub Actions assigns one build number to every artifact in a run, so you do not need to increment a counter yourself. Local builds default to build `0`; the CLI's `--version` includes the version, build number, and source commit.
-
-The [CI/CD and release guide](build/README.md) documents the complete pipeline, supported platforms, permissions, and recovery. The scripts and version settings are also available in **Other → Build and Release** in Visual Studio.
-
 ## Usage
 
 Local Notion is operated via a command-line interface that works similarly to Git.
@@ -211,7 +148,7 @@ For a repository initialized with `--git`, Local Notion stages and commits local
 
 Local Notion passes `-c safe.directory=<selected-repository>` to each Git command. This trusts the explicitly selected repository for that command only, including when restored files, a different operating-system account, or a container mount gives the repository a different owner. It does not change global or system Git configuration or trust every repository. This behavior is shared by native Windows/Linux builds and Docker.
 
-Git's `detected dubious ownership` error is an ownership check, not a timeout or synchronization delay; it can stop staging before commit or push is reached. See [Git's safe.directory documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory). Update Local Notion to a build containing this fix; Docker installations can select a current image from [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases) or run `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` from the source checkout.
+Git's `detected dubious ownership` error is an ownership check, not a timeout or synchronization delay; it can stop staging before commit or push is reached. See [Git's safe.directory documentation](https://git-scm.com/docs/git-config#Documentation/git-config.txt-safedirectory). Update Local Notion using the [native downloads](#native-downloads) or [Docker setup instructions](#get-started-with-docker).
 
 ### Render Content
 
@@ -290,6 +227,8 @@ Contributions are welcome!
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
+Maintainers: see the [release and deployment guide](build/README.md) for CI/CD, versioning, and the next-release checklist.
+
 ## License
 
 This project is licensed under the **GNU GPL v3.0** (or later).
@@ -304,3 +243,33 @@ This project is licensed under the **GNU GPL v3.0** (or later).
 **Website:** [https://sphere10.com/products/localnotion](https://sphere10.com/products/localnotion)
 
 **Copyright:** © Herman Schoenfeld 2018 - Present. All rights reserved.
+
+## Get started with Docker
+
+Use Docker to run Local Notion as a normal command or a background synchronization service. On Windows, start Docker Desktop in **Linux containers** mode. The official image targets **linux/amd64**.
+
+The official stable image is `ghcr.io/sphere10/local-notion:latest`. [Local Notion 1.5.0](https://github.com/Sphere10/LocalNotion/releases/tag/v1.5.0) is publicly available on GitHub Releases. Newer stable releases update `latest` automatically.
+
+```powershell
+docker pull ghcr.io/sphere10/local-notion:latest
+docker run --rm ghcr.io/sphere10/local-notion:latest --version
+```
+
+For a Windows `localnotion` command, download the [Docker launcher installer](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), extract the entire ZIP, and run this from its directory:
+
+```powershell
+.\install.bat
+```
+
+The installer pulls the image version recorded in the bundle, installs the launcher for your user, and adds it to your user PATH. The bundle includes the launcher source and scripts; no repository checkout or separate .NET SDK is required. Open a new terminal, then run:
+
+```powershell
+localnotion --version
+localnotion --help
+```
+
+For repeatable deployments, select an explicit image version such as `ghcr.io/sphere10/local-notion:1.5.0`. From a source checkout, `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` builds and installs the local image.
+
+The command uses your current folder, or the folder selected by `--path`. The background service keeps a separate repository under `.docker/data`. The [Docker guide](docker/README.md) covers both modes, token setup, importing data, updates, and Git authentication.
+
+The **Other > Docker** solution folder contains the Docker configuration and Windows launcher source, scripts, and guide. These are solution items for browsing and editing. Use the [launcher installer](docker/README.md#how-the-windows-launcher-is-built) to build and install the Docker-backed Windows command; a normal solution build builds the application projects.
