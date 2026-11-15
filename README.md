@@ -124,14 +124,25 @@ For a different source location, add
 avoid incrementing the checkouts' local build counters. The renderer uses the same Framework root and package version. See [renderer build modes](docs/renderer.md#building)
 to select an explicitly versioned renderer package instead.
 
-Package mode is retained for a **separately produced and verified clean package
-set**, without a source checkout. Set both
-`-p:UseSphere10FrameworkSource=false` and
-`-p:Sphere10FrameworkVersion=<exact-clean-version>` for restore, build and test.
-The selected version is exact, must be 3.1.3 or later, and must not be an Enterprise
-package. There is no fallback to 3.1.2 or an assumed public 3.1.3 package. Supply a
-NuGet source containing all three matching clean packages before using this mode;
-source-mode verification does not prove public-package availability.
+Package mode restores a **separately produced and verified clean package set**
+from the private Gitea NuGet registry, without a Framework source checkout.
+Configure its service-index URL and credentials in your user-level NuGet
+configuration under the source name `sphere10-gitea-private`. Keep credentials
+outside this repository. [NuGet.Config](NuGet.Config) maps Framework packages to
+that source and third-party packages to NuGet.org; source builds still need no
+private feed.
+
+Select one exact clean Framework version explicitly for restore, build and test:
+
+```bash
+dotnet build LocalNotion.sln -c Release -p:BuildNumber=0 -p:BuildRevision=0 -p:UseSphere10FrameworkSource=false -p:Sphere10FrameworkVersion=3.2.0-ci.160.43660265392.1
+dotnet test tests/LocalNotion.Core.Tests/LocalNotion.Core.Tests.csproj -c Release -p:BuildNumber=0 -p:BuildRevision=0 -p:UseSphere10FrameworkSource=false -p:Sphere10FrameworkVersion=3.2.0-ci.160.43660265392.1
+```
+
+The version must be 3.1.3 or later and provide all four matching Framework
+packages, including the visual renderer. No default version, Enterprise/DRM
+dependency or fallback to 3.1.2 is supplied. Package availability and compatibility
+must be verified independently of source-mode builds.
 
 ### Run
 
