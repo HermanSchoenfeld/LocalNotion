@@ -97,7 +97,6 @@ public class NotionSyncOrchestrator {
 			// not clobber an id we just resolved from Notion, or the row query below runs with null.
 			if (containsDatabase && !string.IsNullOrWhiteSpace(localDatabase.PrimaryDataSourceID))
 				datasourceID = localDatabase.PrimaryDataSourceID;
-			var preDownloadLocalRows = Repository.GetChildResources(databaseID).ToArray();
 			var databaseDifferent = containsDatabase && localDatabase.LastEditedOn != knownNotionLastEditTime;
 			var wasPrematurelySynced = containsDatabase && !databaseDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localDatabase.LastSyncedOn - localDatabase.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
 			var shouldDownload = !containsDatabase || databaseDifferent || options.ForceRefresh || wasPrematurelySynced;
@@ -113,6 +112,16 @@ public class NotionSyncOrchestrator {
 			// from Notion before querying rather than passing null into the request.
 			if (string.IsNullOrWhiteSpace(datasourceID))
 				await FetchNotionDatabase();
+
+			// Row pages retain native data-source parents. Reconcile only the queried source and
+			// legacy database parents; this operation cannot establish deletions in sibling sources.
+			var preDownloadLocalRows = string.IsNullOrWhiteSpace(datasourceID)
+				? Array.Empty<LocalNotionPage>()
+				: Repository.GetChildResources(databaseID)
+					.Concat(Repository.GetChildResources(datasourceID))
+					.OfType<LocalNotionPage>()
+					.DistinctBy(resource => resource.ID)
+					.ToArray();
 
 			if (!string.IsNullOrWhiteSpace(datasourceID)) {
 				notionChildPages = await FetchDatabasePagesAsync(datasourceID, null, cancellationToken).ToListAsync(cancellationToken);
@@ -310,16 +319,26 @@ public class NotionSyncOrchestrator {
 
 			#region Determine if Page should be fetched
 
-			// Fetch page, we need to know last edit tie on notion
-			if (knownNotionLastEditTime == null)
+			var containsPage = Repository.TryGetPage(pageID, out localPage);
+			// A move or property change can retain the edit time supplied by a parent query.
+			// Read the Page header, but keep the unchanged body/media fast path independent.
+			if (knownNotionLastEditTime == null || containsPage)
 				await FetchNotionPage();
 
-			var containsPage = Repository.TryGetPage(pageID, out localPage);
 			var oldChildResources = Repository.GetChildResources(pageID).ToArray();
 			var pageDifferent = containsPage && localPage.LastEditedOn != knownNotionLastEditTime;
 			var wasPrematurelySynced = containsPage && !pageDifferent && knownNotionLastEditTime.HasValue && Math.Abs((localPage.LastSyncedOn - localPage.LastEditedOn).TotalSeconds) <= Constants.PrematureSyncThreshholdSec;
-			var shouldDownload = !containsPage || pageDifferent || options.ForceRefresh || wasPrematurelySynced;
-			var lastKnownParent = localPage?.ParentResourceID;
+			// A cleared authored override needs the body for automatic derivation, even if
+			// its former cached graph is unavailable. Other cache decisions stay unchanged.
+			var clearedKeywordsNeedBody = containsPage && localPage.CMSProperties?.Keywords is { Length: > 0 } && notionPage != null &&
+				CMSHelper.ParseAuthoredKeywords(notionPage) is not { Length: > 0 } && !Repository.ContainsResourceGraph(pageID);
+			var shouldDownloadBody = !containsPage || pageDifferent || options.ForceRefresh || wasPrematurelySynced || clearedKeywordsNeedBody;
+			var metadataDifferent = containsPage && notionPage != null &&
+				(!Repository.TryGetObject(pageID, out var cachedRoot) || cachedRoot is not Page cachedPage ||
+				 !JToken.DeepEquals(PageMetadata(cachedPage), PageMetadata(notionPage)));
+			var shouldDownload = shouldDownloadBody || metadataDifferent;
+			var metadataOnly = shouldDownload && !shouldDownloadBody;
+			var previousPage = localPage;
 
 			#endregion
 
@@ -333,20 +352,29 @@ public class NotionSyncOrchestrator {
 					await FetchNotionPage();
 
 				// Remove local page (if applicable)				
-				if (containsPage)
+				if (containsPage && !metadataOnly)
 					Repository.RemoveResource(pageID, false);  // dangling child resources removed below
 
 				// Hydrate the fetched page from notion
 				localPage = LocalNotionHelper.ParsePage(notionPage);
 
 				// Ensure page name is unique (resolve conflicts)
-				localPage.Name = CalculateUniqueResourceName(localPage.Name);
+				localPage.Name = metadataOnly && previousPage.Title == localPage.Title
+					? previousPage.Name
+					: CalculateUniqueResourceName(localPage.Name);
 
-				// Fetch page graph from notion
-				Logger.Info($"Fetching page graph for '{notionPage.GetTextTitle()}' ({notionPage.Id})");
-				pageObjects = new Dictionary<string, IObject>();
-				pageObjects.Add(notionPage.Id, notionPage);    // optimization: pre-add Page root object to avoid expensive fetch
-				pageGraph = await NotionClient.Blocks.GetObjectGraphAsync(notionPage.Id, pageObjects, cancellationToken);
+				if (metadataOnly) {
+					// Keep the cached body, localized file links, render paths and media resources intact.
+					pageGraph = Repository.GetEditableResourceGraph(pageID);
+					pageObjects = Repository.LoadObjects(pageGraph);
+					pageObjects[notionPage.Id] = notionPage;
+					localPage.Renders = previousPage.Renders;
+				} else {
+					Logger.Info($"Fetching page graph for '{notionPage.GetTextTitle()}' ({notionPage.Id})");
+					pageObjects = new Dictionary<string, IObject>();
+					pageObjects.Add(notionPage.Id, notionPage);    // optimization: pre-add Page root object to avoid expensive fetch
+					pageGraph = await NotionClient.Blocks.GetObjectGraphAsync(notionPage.Id, pageObjects, cancellationToken);
+				}
 
 				// Determine the parent page
 				localPage.ParentResourceID = CalculateResourceParent(localPage.ID, pageObjects);
@@ -354,18 +382,7 @@ public class NotionSyncOrchestrator {
 				// Determine feature image
 				localPage.FeatureImageID = LocalNotionHelper.CalculateFeatureImageID(localPage, notionPage, pageObjects, pageGraph);
 
-				// Extract keywords from native visible text. Keywords are cosmetic, but this runs inside
-				// the download phase where no fault-tolerance handler applies -- so a rendering
-				// fault here would abort the whole pull instead of costing one page its keywords.
-				localPage.Keywords = [];
-				try {
-					localPage.Keywords = LocalNotionHelper.ExtractDefaultPageKeywords(pageGraph, pageObjects);
-				} catch (OperationCanceledException) {
-					throw;
-				} catch (Exception error) {
-					Logger.Warning($"Failed to extract keywords for '{localPage.Title}' ({localPage.ID}) - continuing without them.");
-					Logger.Exception(error);
-				}
+				localPage.Keywords = metadataOnly ? previousPage.Keywords : [];
 				
 				// Determine child resources
 				childPages =
@@ -374,6 +391,7 @@ public class NotionSyncOrchestrator {
 					.Where(x => x is ChildPageBlock)
 					.Cast<ChildPageBlock>()
 					.Select(x => (x.Id, new DateTime?(x.LastEditedTime)))
+					.Union(pageObjects.Values.OfType<Page>().Where(page => page.Id != pageID).Select(page => (page.Id, new DateTime?(page.LastEditedTime))))
 					.ToList();
 
 				childDatabases =
@@ -396,6 +414,21 @@ public class NotionSyncOrchestrator {
 				}
 
 				// If no summary was provided, generate one
+				if (localPage.CMSProperties?.Keywords is { Length: > 0 } authoredKeywords) {
+					localPage.Keywords = authoredKeywords;
+				} else if (!metadataOnly || previousPage.CMSProperties?.Keywords is { Length: > 0 }) {
+					// Clearing an authored override derives from the already available body. Other
+					// metadata-only updates retain the existing cached-keyword fast path exactly.
+					localPage.Keywords = [];
+					try {
+						localPage.Keywords = LocalNotionHelper.ExtractDefaultPageKeywords(pageGraph, pageObjects);
+					} catch (OperationCanceledException) {
+						throw;
+					} catch (Exception error) {
+						Logger.Warning($"Failed to extract keywords for '{localPage.Title}' ({localPage.ID}) - continuing without them.");
+						Logger.Exception(error);
+					}
+				}
 				LocalNotionHelper.PopulateDefaultPageSummary(localPage, pageGraph, pageObjects);
 
 				#endregion
@@ -464,7 +497,7 @@ public class NotionSyncOrchestrator {
 				#region Save Local Notion objects and resources
 
 				// Save notion objects (note: this saves Page object)
-				foreach (var obj in pageObjects.Values) {
+				foreach (var obj in metadataOnly ? new IObject[] { notionPage } : pageObjects.Values) {
 					// since ChildPageBlock and Page share same ID, we avoid overwriting child page
 					if (obj is ChildPageBlock && Repository.ContainsObject(obj.Id))
 						continue;
@@ -472,10 +505,14 @@ public class NotionSyncOrchestrator {
 				}
 
 				// Save the page graph (json file describing the object graph)
-				Repository.SavePageGraph(pageGraph);
+				if (!metadataOnly)
+					Repository.SavePageGraph(pageGraph);
 
 				// Save local notion page resource 
-				Repository.AddResource(localPage);
+				if (metadataOnly)
+					Repository.UpdateResource(localPage);
+				else
+					Repository.AddResource(localPage);
 				downloadedResources.Add(localPage);
 
 				// In order to support cyclic references between parent -> child pages in the case where
@@ -483,7 +520,7 @@ public class NotionSyncOrchestrator {
 				// the render as ILinkGenerator's do is unreliable due to potential for conflicting filenames.
 				// Search for 646870E8-FEDC-45F0-9CF5-B8945C4A2F9E in source code for code support relating to this
 				// issue.
-				if (!Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Page))
+				if (!metadataOnly && !Repository.Paths.UsesObjectIDSubFolders(LocalNotionResourceType.Page))
 					Repository.ImportBlankResourceRender(notionPage.Id, options.RenderType);
 
 				#endregion
@@ -769,6 +806,26 @@ public class NotionSyncOrchestrator {
 		   (parsedUrl.Scheme == Uri.UriSchemeHttp || parsedUrl.Scheme == Uri.UriSchemeHttps) &&
 		   ((Repository.Paths.ForceDownloadExternalContent && !Tools.Url.IsVideoSharingUrl(url)) ||
 		    LocalNotionHelper.TryParseNotionFileUrl(url, out _, out _));
+
+	private static JToken PageMetadata(Page page) {
+		// Ignore signed-file transport renewal and the equivalent localized file link.
+		// Parent and authored properties still detect moves and edits with an unchanged timestamp.
+		var metadata = JObject.FromObject(new { page.Parent, page.Properties, page.Icon, page.Cover, page.InTrash });
+		foreach (var property in metadata.Descendants().OfType<JProperty>().ToArray()) {
+			if (property.Name == "expiry_time") {
+				property.Remove();
+				continue;
+			}
+			if (property.Name != "url" || property.Value.Type != JTokenType.String || string.IsNullOrWhiteSpace((string)property.Value))
+				continue;
+			var url = (string)property.Value;
+			if (LocalNotionRenderLink.TryParse(url, out var link) && link.RenderType == RenderType.File)
+				property.Value = "notion-file:" + link.ResourceID.ToLowerInvariant();
+			else if (LocalNotionHelper.TryParseNotionFileUrl(url, out var fileID, out _))
+				property.Value = "notion-file:" + fileID.ToLowerInvariant();
+		}
+		return metadata;
+	}
 
 	/// <summary>
 	/// This calculates a notion-like FileID for a file which is not part of notion but downloaded to Local Notion.

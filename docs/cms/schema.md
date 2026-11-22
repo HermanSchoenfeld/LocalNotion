@@ -2,9 +2,9 @@
 
 Keep canonical names and types exactly as listed. Notion views can hide or reorder columns without changing the schema.
 
-All twenty columns are created by `create-cms`. Structural detection requires the nineteen names other than Authentication and explicitly checks Themes as multi-select and Sequence as number. Parsing expects compatible canonical types for the other fields too. Use the full template rather than relying on the detector's narrower checks.
+All twenty-one columns are created by `create-cms`. Structural detection retains the existing nineteen required names, with Authentication and Keywords optional, and explicitly checks Themes as multi-select and Sequence as number. Parsing expects compatible canonical types for the other fields too. Existing CMS databases do not have to add Keywords to keep working.
 
-## All twenty properties
+## All twenty-one properties
 
 | Property | Exact Notion type | Purpose and normal use |
 | --- | --- | --- |
@@ -23,6 +23,7 @@ All twenty columns are created by `create-cms`. Structural detection requires th
 | Category5 | `rich_text` | Next component after Category4. |
 | Tags | `multi_select` | Behavioral flags and custom metadata; see [tags](tags.md). |
 | Summary | `rich_text` | Short CMS description used in summaries and metadata. |
+| Keywords | `rich_text` | Optional comma-separated authored keyword phrases. Nonempty phrases override automatic extraction; clearing an override restores automatic keywords. |
 | Authentication | `rich_text` | Optional secret-bearing route credentials; blank for public content. Optional to structural detection. |
 | Created By | `created_by` | Notion-managed creator. |
 | Created On | `created_time` | Notion-managed creation time. |

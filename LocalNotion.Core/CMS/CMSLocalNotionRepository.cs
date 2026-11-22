@@ -66,6 +66,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 			}
 		}
 		Registry.CMSItemsBySlug.Remove(slug);
+		RequiresSave = true;
 	}
 
 
@@ -126,75 +127,46 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 
 	protected override void OnResourceUpdating(string resourceID) {
 		base.OnResourceUpdating(resourceID);
-		var resource = this.GetResource(resourceID);
-		if (resource is LocalNotionEditableResource { CMSProperties: not null } lner) {
-			_preUpdateCmsProperties = lner.CMSProperties;
-		}
+		_preUpdateCmsProperties = (this.GetResource(resourceID) as LocalNotionEditableResource)?.CMSProperties;
 	}
 
 	protected sealed override void OnResourceUpdated(LocalNotionResource resource) {
 		base.OnResourceUpdated(resource);
-		if (resource is LocalNotionPage { CMSProperties: not null } page) {
-			switch (page.CMSProperties.PageType) {
-				case CMSPageType.Header:
-				case CMSPageType.NavBar:
-				case CMSPageType.Footer:
-				case CMSPageType.Internal:
-					if (_preUpdateCmsProperties.PageType != page.CMSProperties.PageType) {
-						RecalculateAllFraming();
-					} else {
-						MarkAnyCmsItemWhichReferencesPageAsDirty(page);
-					}
-					break;
-				case CMSPageType.Page:
-					if (_preUpdateCmsProperties.PageType != CMSPageType.Page) {
-						RemovePageWithUpdatedType(page, _preUpdateCmsProperties);
-						OnAddedPage(page);
-					} else {
-						OnUpdatedPage(page);
-					}
-					break;
-				case CMSPageType.Section:
-					if (_preUpdateCmsProperties.PageType != CMSPageType.Section) {
-						RemovePageWithUpdatedType(page, _preUpdateCmsProperties);
-						OnAddedSectionPage(page);
-					} else {
-						OnUpdatedSectionPage(page);
-					}
-					break;
-				case CMSPageType.Gallery:
-					if (_preUpdateCmsProperties.PageType != CMSPageType.Gallery) {
-						RemovePageWithUpdatedType(page, _preUpdateCmsProperties);
-						OnAddedGalleryPage(page);
-					} else {
-						OnUpdatedGalleryPage(page);
-					}
-					break;
-				default:
-					throw new InvalidOperationException($"Unknown CMS Page Type '{page.CMSProperties.PageType}'");
-			}
-		}
+		var previous = _preUpdateCmsProperties;
 		_preUpdateCmsProperties = null;
+		if (resource is not LocalNotionPage page)
+			return;
 
-		void RemovePageWithUpdatedType(LocalNotionPage page, CMSProperties pageCmsProperties) {
-			switch (pageCmsProperties.PageType) {
-				case CMSPageType.Section:
-					OnRemovedSectionPage(page, pageCmsProperties);
-					break;
-				case CMSPageType.Gallery:
-					OnRemovedGalleryPage(page, pageCmsProperties);
-					break;
-				case CMSPageType.NavBar:
-				case CMSPageType.Header:
-				case CMSPageType.Footer:
-				case CMSPageType.Internal:
-					// Doesn't need to do anything
-					break;
-				case CMSPageType.Page:
-				default:
-					OnRemovedPage(page, pageCmsProperties);
-					break;
-			}
+		// Retire only the old CMS membership before applying a changed role or address.
+		var membershipChanged = previous != null && (page.CMSProperties == null ||
+			previous.PageType != page.CMSProperties.PageType || previous.CustomSlug != page.CMSProperties.CustomSlug);
+		if (membershipChanged)
+			OnResourceRemoved(new LocalNotionPage { ID = page.ID, Title = page.Title, CMSProperties = previous });
+		if (page.CMSProperties == null)
+			return;
+		if (previous == null || membershipChanged) {
+			OnResourceAdded(page);
+			return;
+		}
+
+		switch (page.CMSProperties.PageType) {
+			case CMSPageType.Header:
+			case CMSPageType.NavBar:
+			case CMSPageType.Footer:
+			case CMSPageType.Internal:
+				MarkAnyCmsItemWhichReferencesPageAsDirty(page);
+				break;
+			case CMSPageType.Page:
+				OnUpdatedPage(page);
+				break;
+			case CMSPageType.Section:
+				OnUpdatedSectionPage(page);
+				break;
+			case CMSPageType.Gallery:
+				OnUpdatedGalleryPage(page);
+				break;
+			default:
+				throw new InvalidOperationException($"Unknown CMS Page Type '{page.CMSProperties.PageType}'");
 		}
 	}
 
@@ -320,15 +292,12 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 		var galleryUrl = breadCrumb.Skip(1).First();
 
 		RemoveCmsItemReferencesTo(galleryPage.ID);
-		RemoveCmsItem(galleryUrl);
-		if (TryGetCMSItem(galleryUrl, out var cmsItem) && cmsItem.Parts.Length == 0) {
-			RemoveCmsItem(galleryUrl);
+		TouchContainerCmsItem(galleryUrl);
 
-			// Update any Categories pages which contain this page
-			breadCrumb = breadCrumb.Skip(2).ToArray();   // skip head since: /category1/category2/gallery/card-page -> /category1/category2, /category1
-			foreach (var url in breadCrumb)
-				TouchContainerCmsItem(url);
-		}
+		// Refresh categories whether the gallery retains cards or becomes empty.
+		breadCrumb = breadCrumb.Skip(2).ToArray();
+		foreach (var url in breadCrumb)
+			TouchContainerCmsItem(url);
 	}
 
 	#endregion 

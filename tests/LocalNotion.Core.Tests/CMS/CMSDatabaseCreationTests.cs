@@ -39,7 +39,7 @@ public class CMSDatabaseCreationTests {
 		Assert.That(transport.Body["initialDataSource"], Is.Null);
 		Assert.That(transport.Body["children"], Is.Null, "The new database must have no copied rows or blocks.");
 		Assert.That(transport.Body.SelectTokens("$..id"), Is.Empty, "Source property and option identifiers must never be copied.");
-		Assert.That(transport.Body["initial_data_source"]["properties"].Count(), Is.EqualTo(20));
+		Assert.That(transport.Body["initial_data_source"]["properties"].Count(), Is.EqualTo(21));
 		Assert.That(transport.Body.SelectTokens("$..options").OfType<JArray>().All(x => x.Count <= 100), Is.True);
 		Assert.That(transport.PageCreateCount, Is.EqualTo(1));
 		Assert.That(transport.PageUpdateCount, Is.EqualTo(1));
@@ -91,6 +91,7 @@ public class CMSDatabaseCreationTests {
 	[TestCase("Edited On", "last_edited_time")]
 	[TestCase("Authentication", "rich_text")]
 	[TestCase("Root", "rich_text")]
+	[TestCase("Keywords", "rich_text")]
 	public void RequiredPropertyUsesCorrectType(string name, string type) {
 		var request = new CMSDatabaseTemplate().CreateRequest(ParentPageID, "New website");
 		Assert.That(request.InitialDataSource.Properties[name].Type, Is.EqualTo(type));
@@ -145,7 +146,7 @@ public class CMSDatabaseCreationTests {
 		var template = new CMSDatabaseTemplate();
 		var first = template.CreateRequest(ParentPageID, "First");
 		first.InitialDataSource.Properties.Clear();
-		Assert.That(template.CreateRequest(ParentPageID, "Second").InitialDataSource.Properties.Count, Is.EqualTo(20));
+		Assert.That(template.CreateRequest(ParentPageID, "Second").InitialDataSource.Properties.Count, Is.EqualTo(21));
 	}
 
 	[Test]

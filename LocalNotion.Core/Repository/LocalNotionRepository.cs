@@ -655,34 +655,37 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 
 		if (resource is LocalNotionEditableResource lner) {
 			Guard.Ensure(!string.IsNullOrWhiteSpace(lner.Name), $"Resource name was null or whitespace");
-
-			// Update name
 			var lnerInstance = (LocalNotionEditableResource)resourceInstance;
-			if (lnerInstance.Name != lner.Name) {
+			if (lnerInstance.Name != lner.Name)
 				Guard.Ensure(!_resourceByName.ContainsCachedItem(lner.Name), $"Resource with name '{lner.Name}' already exists.");
-				lnerInstance.Name = lner.Name;
-			}
+		}
 
-			// Other LNER props
-			lnerInstance.CreatedOn = lner.CreatedOn;
-			lnerInstance.LastEditedOn = lner.LastEditedOn;
+		// Observers must see the stored metadata before the detached replacement is copied.
+		NotifyResourceUpdating(resource.ID);
+		if (resource is LocalNotionEditableResource editable) {
+			var stored = (LocalNotionEditableResource)resourceInstance;
+			stored.Name = editable.Name;
+			stored.CreatedOn = editable.CreatedOn;
+			stored.LastEditedOn = editable.LastEditedOn;
+			stored.Cover = editable.Cover;
+			stored.Thumbnail = editable.Thumbnail;
+			stored.FeatureImageID = editable.FeatureImageID;
+			stored.Keywords = editable.Keywords;
+			stored.Bookmarks = editable.Bookmarks;
+			stored.CMSProperties = editable.CMSProperties;
 		}
 
 		// Std props
 		resourceInstance.Title = resource.Title;
 		resourceInstance.ID = resource.ID;
+		resourceInstance.ParentResourceID = resource.ParentResourceID;
+		resourceInstance.LastSyncedOn = resource.LastSyncedOn;
 		resourceInstance.Renders = resource.Renders;
-
-		if (resource is LocalNotionPage lnp) {
-			var lnpInstance = (LocalNotionPage)resourceInstance;
-			lnpInstance.Cover = lnp.Cover;
-			lnpInstance.Title = lnp.Title;
-			lnpInstance.CMSProperties = lnp.CMSProperties;
-		}
 
 		// Don't need to do anything
 		FlushCaches();
 		RequiresSave = true;
+		NotifyResourceUpdated(resourceInstance);
 	}
 
 	public virtual void RemoveResource(string resourceID, bool removeChildren) {

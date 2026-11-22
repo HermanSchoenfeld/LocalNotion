@@ -1077,6 +1077,10 @@
     "type": "rich_text",
     "rich_text": {}
   },
+  "Keywords": {
+    "type": "rich_text",
+    "rich_text": {}
+  },
   "Category4": {
     "type": "rich_text",
     "rich_text": {}

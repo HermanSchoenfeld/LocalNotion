@@ -48,7 +48,7 @@ public sealed class CMSDatabaseTemplate {
 		Guard.Ensure(stream != null, "The embedded CMS database template is missing.");
 		using var reader = new StreamReader(stream);
 		var properties = JsonConvert.DeserializeObject<Dictionary<string, DataSourcePropertyConfigRequest>>(reader.ReadToEnd());
-		Guard.Ensure(properties != null && properties.Count == 20, "The embedded CMS database template is invalid.");
+		Guard.Ensure(properties != null && properties.Count == 21, "The embedded CMS database template is invalid.");
 		return properties;
 	}
 

@@ -27,6 +27,7 @@ public static class Constants {
 	public const string Category5PropertyName = "Category5";
 	public const string TagsPropertyName = "Tags";
 	public const string SummaryPropertyName = "Summary";
+	public const string KeywordsPropertyName = "Keywords";
 	public const string AuthenticationPropertyName = "Authentication";
 	public const string CreatedByPropertyName = "Created By";
 	public const string CreatedOnPropertyName = "Created On";

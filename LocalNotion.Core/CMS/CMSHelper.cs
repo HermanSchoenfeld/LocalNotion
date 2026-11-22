@@ -155,6 +155,8 @@ public class CMSHelper {
 		result.Category4 = page.GetPropertyDisplayValue(Constants.Category4PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Category5 = page.GetPropertyDisplayValue(Constants.Category5PropertyName)?.Trim().ToNullWhenWhitespace();
 		result.Summary = !IsFramingContent(result.PageType) ? page.GetPropertyDisplayValue(Constants.SummaryPropertyName)?.Trim().ToNullWhenWhitespace() : string.Empty;
+		// Keywords is optional so existing CMS databases keep their automatic metadata behavior.
+		result.Keywords = ParseAuthoredKeywords(page);
 		result.Tags = ((MultiSelectPropertyValue)page.Properties[Constants.TagsPropertyName]).MultiSelect.Select(x => x.Name).Select(x => x.Trim()).ToArray();
 		result.Authentication = page.GetPropertyDisplayValue(Constants.AuthenticationPropertyName)?.Trim().ToNullWhenWhitespace();
 		var pageTitle =page.GetTextTitle().ToValueWhenNullOrEmpty(Constants.DefaultResourceTitle);
@@ -249,6 +251,12 @@ public class CMSHelper {
 			},
 			true
 		);
+
+	internal static string[] ParseAuthoredKeywords(Page page) {
+		return page.Properties.TryGetValue(Constants.KeywordsPropertyName, out var keywordProperty) && keywordProperty is RichTextPropertyValue keywords
+			? (keywords.RichText?.ToPlainText() ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+			: null;
+	}
 
 }
 

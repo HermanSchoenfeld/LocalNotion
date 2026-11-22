@@ -54,6 +54,9 @@ public class CMSProperties {
 	[JsonProperty("summary", NullValueHandling = NullValueHandling.Ignore)]
 	public string Summary { get; set; }
 
+	[JsonProperty("keywords", NullValueHandling = NullValueHandling.Ignore)]
+	public string[] Keywords { get; set; }
+
 	[JsonProperty("authentication", NullValueHandling = NullValueHandling.Ignore)]
 	public string Authentication { get; set; }
 
