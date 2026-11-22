@@ -224,7 +224,7 @@ public class LocalNotionHelper {
 				.Trim()
 				.TrimStart('/')
 				.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-				.Select(Tools.Url.ToUrlSlug)
+				.Select(part => Tools.Url.ToUrlSlug(part, allowUnicode: true))
 				.ToDelimittedString("/");
 	}
 
@@ -253,8 +253,11 @@ public class LocalNotionHelper {
 		return result;
 	}
 
-	public static string CalculatePageName(string id, string title) 
-		=> Tools.Url.ToHtml4DOMObjectID($"{Tools.Text.ToCasing(TextCasing.KebabCase, title)}", String.Empty);
+	public static string CalculatePageName(string id, string title) {
+		var name = Tools.Url.ToUrlSlug(Tools.Text.ToCasing(TextCasing.KebabCase, title), allowUnicode: true);
+		// Titles containing only punctuation or symbols still need a stable, nonempty resource name.
+		return string.IsNullOrEmpty(name) ? SanitizeObjectID(id) : name;
+	}
 
 	public static string CalculateFeatureImageID(LocalNotionPage localPage, Page page, IDictionary<string, IObject> pageObjects, NotionObjectGraph objectGraph) {
 		var firstImage = FindFirstImage(objectGraph);

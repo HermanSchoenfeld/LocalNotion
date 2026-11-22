@@ -209,14 +209,14 @@ public class CMSHelper {
 			_ => cmsProperties.CustomSlug ?? CalculateSlug(cmsProperties.Categories.Concat(pageTitle))
 		};
 	}
-	
+
 	public static string CalculateNestedPageSlug(CMSPageType pageType, string parentPageSlug, string childPageTitle) 
 		// if parent is NOT a section and has anchor tag we treat it is an implicit "category" by simply replacing '#' with '/' 
 		// if parent is a section and has anchor tag we ignore anchor tag
 		// example: parent slug = /services#development   child slug = /services/development/mobile
 		=> pageType switch  {
-			CMSPageType.Section => $"{new string(parentPageSlug.TakeUntil(c => c == '#').ToArray())}/{Tools.Url.ToUrlSlug(childPageTitle)}".TrimStart("/"),
-			_ => $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle)}".TrimStart("/")
+			CMSPageType.Section => $"{new string(parentPageSlug.TakeUntil(c => c == '#').ToArray())}/{Tools.Url.ToUrlSlug(childPageTitle, allowUnicode: true)}".TrimStart("/"),
+			_ => $"{parentPageSlug.Replace("###", "#").Replace("##", "#").Replace('#', '/')}/{Tools.Url.ToUrlSlug(childPageTitle, allowUnicode: true)}".TrimStart("/")
 		};
 
 	/// <summary>
@@ -228,7 +228,7 @@ public class CMSHelper {
 		=> LocalNotionHelper.SanitizeSlug(
 		  	 parts
 			 .Where(x => !string.IsNullOrEmpty(x))
-			 .Select(Tools.Url.ToUrlSlug)
+			 .Select(part => Tools.Url.ToUrlSlug(part, allowUnicode: true))
 			 .ToDelimittedString("/")
 		);
 

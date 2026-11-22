@@ -17,6 +17,29 @@ Fill components consecutively. Category2 cannot skip Category1; Category1 cannot
 
 Categories create intermediate hierarchy nodes. Documentation can become an inferred book/article listing without a dedicated row for each category. Adding a Page at a category route can change that listing structure; inspect the full result.
 
+## Unicode names and URLs
+
+Current development builds preserve Unicode letters, decimal digits and combining marks in resource names and CMS paths. For example, a Page titled `توجيه` beneath Root `مقالات` and Category1 `تشفير` becomes `/مقالات/تشفير/توجيه`. Accents are retained: `Café` becomes `/café`.
+
+Names are lowercased with invariant casing and normalized to Unicode form C, so equivalent composed and decomposed spellings produce the same slug. Spaces and supported word separators become hyphens. Reserved syntax, control characters and unsupported symbols are removed. A resource title containing only punctuation or symbols uses its Notion ID as a fallback name; that fallback does not replace a readable Arabic or other Unicode title. Keep CMS page/category paths meaningful and unique.
+
+Generated HTML and Nginx mappings use readable Unicode paths. Browsers encode non-ASCII characters when sending HTTP requests; do not paste percent-encoded browser addresses into title or category fields. The same naming rules apply to new and existing content when its source metadata is refreshed. There is no legacy ASCII mode in Local Notion.
+
+### Upgrading an existing website
+
+Earlier versions removed non-ASCII letters and accents. Refreshing an existing `Café` page therefore changes its generated route from `/cafe` to `/café`; mixed-script titles and category names can also change. Builds that keep [redirects](#redirects-from-old-addresses) record each changed address during the refresh; earlier builds did not. Review Item titles, Root, Category1–Category5, nested-page titles and any Custom Slug values before upgrading. Ordinary article prose can contain Unicode without affecting its URL.
+
+To retain an established address, use a title/category spelling that produces that address. Use Custom Slug only for an intentional exception; normally let Local Notion derive the hierarchy. Check for collisions with existing pages and category routes before publishing.
+
+After installing a build with Unicode support, refresh stored metadata and regenerate the site:
+
+```bash
+localnotion pull --all --force
+localnotion render --all
+```
+
+Run these commands in the intended repository. Pull follows its configured Git commit/push settings; disable automatic publication while reviewing a migration. Rendering alone reuses stored metadata and does not replace old CMS paths obtained during an earlier pull. Inspect generated links, sitemap and Nginx mappings, then publish the refreshed output and mappings together.
+
 ## Custom routes and home
 
 Custom Slug overrides the default. Enter a path such as `guides/cms`, not a complete hostname. Local Notion normalizes it and removes its leading slash internally.
