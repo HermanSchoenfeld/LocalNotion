@@ -83,7 +83,9 @@ public class MonitoredRepository : DisposableResource,  ICmsLocalNotionRepositor
 	public virtual IEnumerable<LocalNotionResource> Resources => InternalRepository.Value.Resources;
 
 	public IEnumerable<CMSItem> CMSItems => InternalRepository.Value.CMSItems;
-	
+
+	public IEnumerable<LocalNotionRedirect> Redirects => InternalRepository.Value.Redirects;
+
 	public virtual GitSettings GitSettings => InternalRepository.Value.GitSettings;
 
 	public virtual NGinxSettings NGinxSettings => InternalRepository.Value.NGinxSettings;
@@ -153,6 +155,10 @@ public class MonitoredRepository : DisposableResource,  ICmsLocalNotionRepositor
 	public virtual void RemoveResourceRender(string resourceID, RenderType renderType) => throw new NotSupportedException();
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.Value.CalculateRenderSlug(resource, render, renderedFilename);
+
+	public virtual bool AddRedirect(string from, string to, RedirectType type = RedirectType.Hard, string resourceID = null) => throw new NotSupportedException();
+
+	public virtual bool RemoveRedirect(string from) => throw new NotSupportedException();
 
 	public virtual bool ContainsCmsItem(string slug) => InternalRepository.Value.ContainsCmsItem(slug);
 

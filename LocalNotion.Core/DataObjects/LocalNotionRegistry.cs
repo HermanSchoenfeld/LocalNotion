@@ -16,6 +16,7 @@ namespace LocalNotion.Core;
 public class LocalNotionRegistry {
 	private IList<LocalNotionResource> _resources = new List<LocalNotionResource>();
 	private IDictionary<string, CMSItem> _cmsRenders = new Dictionary<string, CMSItem>();
+	private IDictionary<string, LocalNotionRedirect> _redirects = new Dictionary<string, LocalNotionRedirect>(StringComparer.Ordinal);
 
 	[JsonProperty("version")]
 	public int Version { get; set; } = 1;
@@ -60,12 +61,21 @@ public class LocalNotionRegistry {
 		set => _cmsRenders = value?.ToDictionary(x => x.Slug);
 	}
 
+	[JsonProperty("redirects")]
+	public LocalNotionRedirect[] Redirects {
+		get => _redirects.Values.ToArray();
+		set => _redirects = (value ?? []).ToDictionary(x => x.From, StringComparer.Ordinal);
+	}
+
 	[JsonExtensionData]
 	public IDictionary<string, JToken> AdditionalData { get; set; }
 
 
 	[JsonIgnore]
 	internal IDictionary<string, CMSItem> CMSItemsBySlug => _cmsRenders;
+
+	[JsonIgnore]
+	internal IDictionary<string, LocalNotionRedirect> RedirectsByFrom => _redirects;
 
 	public void Add(LocalNotionResource resource) {
 		_resources.Add(resource);
@@ -78,6 +88,9 @@ public class LocalNotionRegistry {
 	public void Add(CMSItem item) {
 		_cmsRenders[item.Slug] = item;
 	}
+
+	// A registry without redirects keeps its existing shape.
+	public bool ShouldSerializeRedirects() => _redirects.Count > 0;
 
 	public static LocalNotionRegistry Load(string registryFile) {
 		var registry = JsonConvert.DeserializeObject<LocalNotionRegistry>(File.ReadAllText(registryFile));

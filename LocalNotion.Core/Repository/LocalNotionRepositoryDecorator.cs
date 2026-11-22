@@ -55,6 +55,9 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual IEnumerable<LocalNotionResource> Resources => InternalRepository.Resources;
 
 	public virtual IEnumerable<CMSItem> CMSItems => InternalRepository.CMSItems;
+
+	public virtual IEnumerable<LocalNotionRedirect> Redirects => InternalRepository.Redirects;
+
 	public virtual GitSettings GitSettings => InternalRepository.GitSettings;
 
 	public virtual NGinxSettings NGinxSettings => InternalRepository.NGinxSettings;
@@ -124,6 +127,10 @@ public abstract class LocalNotionRepositoryDecorator : ILocalNotionRepository {
 	public virtual void RemoveResourceRender(string resourceID, RenderType renderType) => InternalRepository.RemoveResourceRender(resourceID, renderType);
 
 	public virtual string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) => InternalRepository.CalculateRenderSlug(resource, render, renderedFilename);
+
+	public virtual bool AddRedirect(string from, string to, RedirectType type = RedirectType.Hard, string resourceID = null) => InternalRepository.AddRedirect(from, to, type, resourceID);
+
+	public virtual bool RemoveRedirect(string from) => InternalRepository.RemoveRedirect(from);
 
 	public virtual void Dispose() => InternalRepository.Dispose();
 

@@ -254,6 +254,7 @@ See the [CMS authoring example](docs/cms/index.md#add-mermaid-diagrams) and [ren
 status     Provides status of the Local Notion repository
 init       Creates a Local Notion repository
 git        Displays or changes repository Git settings
+redirects  Lists, adds or removes the redirects kept for changed page and file addresses
 create-cms Creates an empty Notion website database with the canonical CMS schema
 clean      Cleans your local Notion repository by removing dangling pages, files and databases
 remove     Remove resources from a Local Notion repository

@@ -23,6 +23,8 @@ Current development builds preserve Unicode letters, decimal digits and combinin
 
 Names are lowercased with invariant casing and normalized to Unicode form C, so equivalent composed and decomposed spellings produce the same slug. Spaces and supported word separators become hyphens. Reserved syntax, control characters and unsupported symbols are removed. A resource title containing only punctuation or symbols uses its Notion ID as a fallback name; that fallback does not replace a readable Arabic or other Unicode title. Keep CMS page/category paths meaningful and unique.
 
+The language name `C#` becomes `c-sharp` in CMS titles and categories. For example, `How to write a custom binary serializer in C#` becomes `how-to-write-a-custom-binary-serializer-in-c-sharp`. Nested-page routes use the same conversion. Refreshing metadata for an older page can therefore replace its previous `...-in-c` address; Local Notion keeps the old address as a [redirect](#redirects-from-old-addresses), but update authored links to the new one.
+
 Generated HTML and Nginx mappings use readable Unicode paths. Browsers encode non-ASCII characters when sending HTTP requests; do not paste percent-encoded browser addresses into title or category fields. The same naming rules apply to new and existing content when its source metadata is refreshed. There is no legacy ASCII mode in Local Notion.
 
 ### Upgrading an existing website
@@ -49,6 +51,28 @@ Enter the **page path only**, without a `#` fragment. The inspected slug sanitiz
 A simple Page homepage should use Custom Slug `/`, which becomes the empty internal home slug. A Page merely titled Home with no override normally becomes `/home`.
 
 Moving a route can change descendant structure, inherited framing and links. Regenerate and inspect affected navigation and bookmarks.
+
+## Redirects from old addresses
+
+When Local Notion changes an address, it keeps the old one in the repository registry (`redirects` in `.localnotion/registry.json`) with the date it was retired. Nginx hosting serves it as a redirect, so links and search results that still use it reach the page.
+
+An address is recorded when:
+
+- a Page's or Gallery card's title, categories or Custom Slug change, including when a pull refreshes the page;
+- the last Section leaves a page address, or the last page leaves a category;
+- a page's raw export (`/pages/<id>/<title>`) is retitled, or a downloaded file is renamed.
+
+A deleted page keeps no redirect. When a page, file or category takes an address again, any redirect from it is removed, so a redirect never hides content. A chain of moves leads straight to the current address, and moving back removes the reverse redirect.
+
+Recorded redirects are **hard** (HTTP 301, permanent). A **soft** redirect (302, temporary) suits a move you may undo; add one by hand. The `redirects` command lists, adds and removes them:
+
+```bash
+localnotion redirects --path "./website"
+localnotion redirects --path "./website" --add old/address new/address --soft
+localnotion redirects --path "./website" --remove old/address
+```
+
+Generating hosting files writes `.localnotion/nginx/conf/ln-redirects.conf` beside `ln-urls.conf`, which includes it. Only redirects to an address the site serves are written; the others stay in the registry until they are removed. Query strings, including a listing's `?page=`, carry over. See [publishing](publishing.md#redirects-file) for the hosting mount.
 
 ## Sections
 

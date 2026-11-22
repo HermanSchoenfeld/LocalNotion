@@ -16,6 +16,8 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 
 	private readonly IFuture<CMSDatabase> _cmsDatabase;
 	private CMSProperties _preUpdateCmsProperties;
+	// Addresses of routable CMS pages removed in this session; a re-added page at another address keeps the old one as a redirect.
+	private readonly Dictionary<string, string> _retiredPageAddresses = new(StringComparer.Ordinal);
 
 	public CMSLocalNotionRepository(string registryFile, ILogger logger = null) 
 		: base(registryFile, logger) {
@@ -40,18 +42,21 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 	public void AddCMSItem(CMSItem cmsItem) {
 		CheckLoaded();
 		Registry.CMSItemsBySlug.Add(cmsItem.Slug, cmsItem);
+		RemoveRedirect(cmsItem.Slug);
 	}
 
 	public void UpdateCMSItem(CMSItem cmsItem) {
 		CheckLoaded();
 		Guard.Ensure(Registry.CMSItemsBySlug.ContainsKey(cmsItem.Slug), $"CMS Item '{cmsItem.Slug}' does not exist");
 		Registry.CMSItemsBySlug[cmsItem.Slug] = cmsItem;
+		RemoveRedirect(cmsItem.Slug);
 		RequiresSave = true;
 	}
 
 	public void AddOrUpdateCMSItem(CMSItem cmsItem) {
 		CheckLoaded();
 		Registry.CMSItemsBySlug[cmsItem.Slug] = cmsItem;
+		RemoveRedirect(cmsItem.Slug);
 		RequiresSave = true;
 	}
 
@@ -97,12 +102,16 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 				default:
 					throw new InvalidOperationException($"Unknown CMS Page Type '{page.CMSProperties.PageType}'");
 			}
+			if (_retiredPageAddresses.Remove(page.ID, out var previous))
+				RedirectMovedPage(page, previous);
 		}
 	}
 
 	protected sealed override void OnResourceRemoved(LocalNotionResource resource) {
 		base.OnResourceRemoved(resource);
 		if (resource is LocalNotionPage { CMSProperties: not null } page) {
+			if (page.CMSProperties.PageType is CMSPageType.Page or CMSPageType.Section or CMSPageType.Gallery && !string.IsNullOrWhiteSpace(page.CMSProperties.CustomSlug))
+				_retiredPageAddresses[page.ID] = page.CMSProperties.CustomSlug;
 			switch (page.CMSProperties.PageType) {
 				case CMSPageType.Header:
 				case CMSPageType.NavBar:
@@ -303,6 +312,26 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 	#endregion 
 
 	#region Aux Methods
+
+	protected override bool IsLiveAddress(string address) => base.IsLiveAddress(address) || Registry.CMSItemsBySlug.ContainsKey(address);
+
+	private void RedirectMovedPage(LocalNotionPage page, string previousSlug) {
+		// A section's address is its page's; an old page address stays live while other sections remain there.
+		var previous = NormalizeAddress(previousSlug);
+		var current = NormalizeAddress(page.CMSProperties.CustomSlug);
+		if (previous == current)
+			return;
+		AddRedirect(previous, current, RedirectType.Hard, page.ID);
+
+		// Categories the page left keep their addresses once no page remains in them. Their pairing follows
+		// the path from the root, so it applies only when the page stays at the same depth.
+		var previousCategories = Tools.Url.CalculateBreadcrumbFromPath(previous).Skip(1).Reverse().ToArray();
+		var currentCategories = Tools.Url.CalculateBreadcrumbFromPath(current).Skip(1).Reverse().ToArray();
+		if (previousCategories.Length != currentCategories.Length)
+			return;
+		for (var i = 0; i < previousCategories.Length; i++)
+			AddRedirect(previousCategories[i], currentCategories[i], RedirectType.Hard);
+	}
 
 	private void RemoveCmsItemReferencesTo(string pageID) {
 		foreach(var render in CMSItems.ToArray()) {

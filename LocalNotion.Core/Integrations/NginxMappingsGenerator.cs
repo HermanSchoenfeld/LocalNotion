@@ -20,6 +20,8 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 	public const string MappingFileName = "ln-urls.conf";
 
+	public const string RedirectsFileName = "ln-redirects.conf";
+
 	private const string NGinxConf = 
 		"""
 		worker_processes auto;  # Automatically adjusts to the number of available CPU cores
@@ -213,6 +215,22 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 		""";
 
+	private const string RedirectsFileHeader =
+		"""
+		# Old page and file addresses that Local Notion keeps after an address changes. They are recorded in the
+		# repository registry ("redirects") and regenerated with ln-urls.conf, which includes this file.
+		# Hard redirects answer 301 and soft redirects 302; query strings carry over to the new address.
+
+		""";
+
+	// The mask keeps Nginx starting where the hosting configuration does not provide this file yet.
+	private const string RedirectsInclude =
+		"""
+
+		# Redirects from old addresses
+		include ln-redirects*.conf;
+		""";
+
 	private const string LocationTemplate =
 		"""
 		location = {slug} {
@@ -285,6 +303,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		}).ToArray();
 		// Validate protection before opening the file: a collision must preserve the previous configuration.
 		var protectedPhysicalAliases = CalculateProtectedPhysicalAliases(hostableResources, listingTargets);
+		await GenerateRedirectsFile(hostableResources, listingRenderPaths, protectedPhysicalAliases);
 		var mappingsFilePath = Path.Combine(CalculateNGinxFolderPath(), "conf", MappingFileName);
 		await using var writer = new FileTextWriter(mappingsFilePath, FileMode.Create);
 		await writer.WriteLineAsync(MappingsFileHeader);
@@ -339,6 +358,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 			}, true
 		);
 		await writer.WriteLineAsync(sitemapEntry);
+		await writer.WriteLineAsync(RedirectsInclude);
 	}
 
 	public async Task GenerateSiteMap() {
@@ -543,6 +563,36 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 			current = entry;
 		}
 		return true;
+	}
+
+	private async Task GenerateRedirectsFile(
+		LocalNotionHelper.WebHostableResource[] resources,
+		Dictionary<string, string[]> listingRenderPaths,
+		KeyValuePair<string, LocalNotionHelper.WebHostableResource>[] protectedPhysicalAliases
+	) {
+		// A redirect never replaces a location ln-urls.conf declares, and it only leads to a route that is served.
+		var routes = resources.Select(resource => resource.Slug).ToHashSet(StringComparer.Ordinal);
+		var locations = routes.Select(slug => "/" + slug)
+			.Concat(listingRenderPaths.Keys.Where(slug => slug.Length > 0 && !slug.EndsWith('/')).Select(slug => "/" + slug + "/"))
+			.Concat(protectedPhysicalAliases.Select(alias => alias.Key))
+			.Append("/sitemap.xml")
+			.ToHashSet(StringComparer.Ordinal);
+		var redirectsFilePath = Path.Combine(CalculateNGinxFolderPath(), "conf", RedirectsFileName);
+		await using var writer = new FileTextWriter(redirectsFilePath, FileMode.Create);
+		await writer.WriteLineAsync(RedirectsFileHeader);
+		foreach (var redirect in LocalNotionRepository.Redirects.OrderBy(redirect => redirect.From, StringComparer.Ordinal)) {
+			if (!routes.Contains(redirect.To) || locations.Contains("/" + redirect.From))
+				continue;
+			if ((redirect.From + redirect.To).Any(character => character == '$' || char.IsControl(character))) {
+				LocalNotionRepository.Logger.Warning($"Skipping redirect '{redirect.From}': its addresses contain characters Nginx cannot match literally.");
+				continue;
+			}
+			var status = redirect.Type == RedirectType.Soft ? 302 : 301;
+			// Location headers carry an encoded address; the matched location keeps the decoded one Nginx compares.
+			// A relative Location keeps the visitor's scheme and host behind a proxy, instead of the origin's http address.
+			var destination = "/" + string.Join("/", redirect.To.Split('/').Select(Uri.EscapeDataString)) + "$is_args$args";
+			await writer.WriteLineAsync($"location = {QuoteNginxLiteral("/" + redirect.From)} {{ absolute_redirect off; return {status} {QuoteNginxLiteral(destination)}; }}");
+		}
 	}
 
 	private static string QuoteNginxLiteral(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";

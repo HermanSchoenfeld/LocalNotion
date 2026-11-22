@@ -58,6 +58,10 @@ Files on disk and active configuration are different states. Some installations 
 
 Individually mounted Docker configuration files can retain old file bindings after a host-side atomic replacement. If host/container bytes differ, repair the mount/activation arrangement; a targeted container restart can be one remedy. A successful reload alone does not prove the container sees the new file.
 
+### Redirects file
+
+Generation also writes `ln-redirects.conf`, the redirects from [old addresses](routing.md#redirects-from-old-addresses), and `ln-urls.conf` ends with `include ln-redirects*.conf;`. Nginx resolves that relative to its configuration directory, so the redirects file must sit beside `ln-urls.conf` there. A host that mounts configuration files one by one needs a mount for it too, for example `/root/websites/<domain>/.localnotion/nginx/conf/ln-redirects.conf` at `/etc/nginx/ln-redirects.conf`, read-only. Adding a mount to an existing Docker container means recreating it with its other settings unchanged. The include names a file pattern, so a host without the file keeps running and serves no redirects until it is mounted. Publish the redirects file together with `ln-urls.conf`.
+
 DNS, TLS and reverse proxies are separate host responsibilities. Ensure the public hostname reaches the intended site service. The creation command provisions none of these systems.
 
 ### Keep private repository files inaccessible

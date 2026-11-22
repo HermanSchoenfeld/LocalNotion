@@ -30,8 +30,12 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 	public event EventHandlerEx<object, LocalNotionResource> ResourceUpdated;
 	public event EventHandlerEx<object, string> ResourceRemoving;
 	public event EventHandlerEx<object, LocalNotionResource> ResourceRemoved;
-	
+
+	private record RetiredRender(string ResourceID, RenderType RenderType);
+
 	protected LocalNotionRegistry Registry;
+	// Render addresses of resources removed in this session; a re-added copy at another address keeps the old one as a redirect.
+	private readonly Dictionary<RetiredRender, string> _retiredRenders = new();
 	private ReverseGuidStringFileStore _objectStore;
 	private ReverseGuidStringFileStore _graphStore;
 	
@@ -126,6 +130,13 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		get {
 			CheckLoaded();
 			return Registry.CMSItemsBySlug.Values;
+		}
+	}
+
+	public IEnumerable<LocalNotionRedirect> Redirects {
+		get {
+			CheckLoaded();
+			return Registry.RedirectsByFrom.Values;
 		}
 	}
 
@@ -646,6 +657,18 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		Registry.Add(resource);
 		FlushCaches();
 		RequiresSave = true;
+
+		// The resource's addresses are live again, and a re-added page keeps its previous address as a redirect.
+		foreach (var existingRender in resource.Renders.Values)
+			RemoveRedirect(existingRender.Slug);
+		if (resource.Type is LocalNotionResourceType.Page or LocalNotionResourceType.Database && _retiredRenders.TryGetValue(new RetiredRender(resource.ID, RenderType.HTML), out var retired)) {
+			// The HTML render may come from a later render command, so its address is calculated from the title now
+			// and corrected when the render is imported.
+			var expected = resource.Renders.TryGetValue(RenderType.HTML, out var html)
+				? html.Slug
+				: CalculateRenderSlug(resource, RenderType.HTML, Paths.CalculateResourceFilePath(resource.Type, resource.ID, resource.Title, RenderType.HTML, FileSystemPathType.Absolute));
+			AddRedirect(retired, expected, RedirectType.Hard, resource.ID);
+		}
 		NotifyResourceAdded(resource);
 	}
 
@@ -684,6 +707,8 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		resourceInstance.ParentResourceID = resource.ParentResourceID;
 		resourceInstance.LastSyncedOn = resource.LastSyncedOn;
 		resourceInstance.Renders = resource.Renders;
+		foreach (var render in resourceInstance.Renders.Values)
+			RemoveRedirect(render.Slug);
 
 		// Don't need to do anything
 		FlushCaches();
@@ -699,10 +724,13 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		var resource = _resourcesByNID[resourceID];
 
 		NotifyResourceRemoving(resourceID);
-		
-		// Remove resource renders
-		foreach(var render in resource.Renders)
+
+		// Remove resource renders, remembering their addresses in case a refreshed copy is added at another one
+		foreach(var render in resource.Renders) {
+			if (!string.IsNullOrWhiteSpace(render.Value.Slug))
+				_retiredRenders[new RetiredRender(resourceID, render.Key)] = render.Value.Slug;
 			RemoveResourceRenderInternal(resource, render.Key, render.Value);
+		}
 
 		// Remove resource folder if any
 		if (Paths.UsesObjectIDSubFolders(resource.Type)) {
@@ -811,6 +839,11 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		resource.Renders[renderType] =renderEntry;
 		FlushCaches();
 		RequiresSave = true;
+
+		// The render's address is live. A render replacing one of a removed copy keeps the old address as a redirect.
+		if (_retiredRenders.Remove(new RetiredRender(resourceID, renderType), out var retired))
+			AddRedirect(retired, renderEntry.Slug, RedirectType.Hard, resourceID);
+		RemoveRedirect(renderEntry.Slug);
 		NotifyResourceUpdated(resource);
 		return resourceRenderPath;
 
@@ -848,6 +881,44 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		}
 			
 		return slugBuilder.ToDelimittedString("/");
+	}
+
+	#endregion
+
+	#region Redirects
+
+	public bool AddRedirect(string from, string to, RedirectType type = RedirectType.Hard, string resourceID = null) {
+		CheckLoaded();
+		from = NormalizeAddress(from);
+		to = NormalizeAddress(to);
+		// The home page and live addresses are never redirected, nor is an address to itself.
+		if (from.Length == 0 || to.Length == 0 || from == to || IsLiveAddress(from))
+			return false;
+
+		// The target is an address in use, so a redirect away from it (an earlier move back) no longer applies.
+		var redirects = Registry.RedirectsByFrom;
+		redirects.Remove(to);
+
+		// Earlier addresses that led here now lead straight to the new address and keep their dates.
+		foreach (var earlier in redirects.Values.Where(redirect => redirect.To == from))
+			earlier.To = to;
+		if (redirects.TryGetValue(from, out var existing)) {
+			existing.To = to;
+			existing.Type = type;
+			existing.ResourceID = resourceID ?? existing.ResourceID;
+		} else
+			redirects.Add(from, new LocalNotionRedirect { From = from, To = to, Type = type, ResourceID = resourceID, CreatedOn = DateTime.UtcNow.Date });
+		RequiresSave = true;
+		Logger.Info($"Redirecting '/{from}' to '/{to}'");
+		return true;
+	}
+
+	public bool RemoveRedirect(string from) {
+		CheckLoaded();
+		if (!Registry.RedirectsByFrom.Remove(NormalizeAddress(from)))
+			return false;
+		RequiresSave = true;
+		return true;
 	}
 
 	#endregion
@@ -932,6 +1003,11 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 			}
 		}
 	}
+
+	/// <summary>Whether a request for <paramref name="address"/> is answered by content, which a redirect must never replace.</summary>
+	protected virtual bool IsLiveAddress(string address) => TryFindRenderBySlug(address, out _);
+
+	protected static string NormalizeAddress(string address) => Tools.Url.StripAnchorTag(address ?? string.Empty).Trim('/');
 
 	protected void RemoveResourceRenderInternal(LocalNotionResource resource, RenderType renderType, RenderEntry render) {
 		var fileToDelete = Path.GetFullPath(render.LocalPath, Paths.GetRepositoryPath(FileSystemPathType.Absolute));

@@ -110,6 +110,41 @@ $@"Local Notion Status:
 		}
 	}
 
+	public static async Task<int> ExecuteRedirectsCommandAsync(RedirectsCommandArguments arguments, CancellationToken cancellationToken) {
+		Guard.ArgumentNotNull(arguments, nameof(arguments));
+		var add = arguments.Add?.ToArray() ?? Array.Empty<string>();
+		if (add.Length is not (0 or 2) || arguments.Soft && add.Length == 0) {
+			Console.Error.WriteLine("Provide --add with the old and the new address; --soft applies only to --add.");
+			return Constants.ERRORCODE_COMMANDLINE_ERROR;
+		}
+		try {
+			cancellationToken.ThrowIfCancellationRequested();
+			await using var repo = await OpenRepository(arguments.Path);
+			cancellationToken.ThrowIfCancellationRequested();
+			if (!string.IsNullOrWhiteSpace(arguments.Remove) && !repo.RemoveRedirect(arguments.Remove)) {
+				Console.Error.WriteLine($"No redirect from '{arguments.Remove}'.");
+				return Constants.ERRORCODE_COMMANDLINE_ERROR;
+			}
+			if (add.Length == 2 && !repo.AddRedirect(add[0], add[1], arguments.Soft ? RedirectType.Soft : RedirectType.Hard)) {
+				Console.Error.WriteLine($"No redirect was added: '{add[0]}' is empty, equal to the new address, or still served by a page or file.");
+				return Constants.ERRORCODE_COMMANDLINE_ERROR;
+			}
+			await repo.SaveAsync();
+			foreach (var redirect in repo.Redirects.OrderBy(redirect => redirect.From, StringComparer.Ordinal))
+				Console.WriteLine($"{redirect.CreatedOn:yyyy-MM-dd} {(redirect.Type == RedirectType.Soft ? 302 : 301)} /{redirect.From} -> /{redirect.To}");
+			return Constants.ERRORCODE_OK;
+		} catch (OperationCanceledException) {
+			Console.Error.WriteLine("Redirect command cancelled. No change was saved.");
+			return Constants.ERRORCODE_CANCELLED;
+		} catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException) {
+			Console.Error.WriteLine("Repository not found: select a folder containing .localnotion/registry.json with --path.");
+			return Constants.ERRORCODE_REPO_NOT_FOUND;
+		} catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException) {
+			Console.Error.WriteLine("Unable to open or save the Local Notion repository. Check its permissions and stop other repository writers before retrying.");
+			return Constants.ERRORCODE_REPO_ERROR;
+		}
+	}
+
 	public static Task<int> ExecuteCreateCMSCommandAsync(CreateCMSCommandArguments arguments, CancellationToken cancellationToken)
 		=> ExecuteCreateCMSCommandAsync(arguments, cancellationToken, CreateNotionClient);
 
@@ -325,6 +360,22 @@ $@"Local Notion Status:
 
 		[Option("push", Min = 1, Max = 1, HelpText = "Set automatic push after later commits: true or false (requires enabled=true to take effect)")]
 		public IEnumerable<string> Push { get; set; }
+	}
+
+	[Verb("redirects", HelpText = "Lists, adds or removes the redirects a repository keeps for changed page and file addresses")]
+	public class RedirectsCommandArguments : CommandArgumentsBase {
+
+		[Option('p', "path", HelpText = "Path to an existing Local Notion repository (default is current directory)")]
+		public string Path { get; set; } = GetDefaultRepoFolder();
+
+		[Option("add", Min = 2, Max = 2, HelpText = "Add a redirect: the old address, then the new address, both site-relative")]
+		public IEnumerable<string> Add { get; set; }
+
+		[Option("soft", HelpText = "With --add, answer with 302 (temporary) instead of 301 (permanent)")]
+		public bool Soft { get; set; }
+
+		[Option("remove", HelpText = "Remove the redirect from this old address")]
+		public string Remove { get; set; }
 	}
 
 	[Verb("create-cms", HelpText = "Creates one blank Notion CMS database with the website schema and preset options")]
@@ -1060,6 +1111,7 @@ $@"Local Notion Status:
 			StatusRepositoryCommandArguments,
 			InitRepositoryCommandArguments,
 			GitRepositoryCommandArguments,
+			RedirectsCommandArguments,
 			CreateCMSCommandArguments,
 			CleanRepositoryCommandArguments,
 			RemoveRepositoryCommandArguments,
@@ -1077,6 +1129,7 @@ $@"Local Notion Status:
 			(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync),
 			(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync),
 			(GitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteGitCommandAsync),
+			(RedirectsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRedirectsCommandAsync),
 			(CreateCMSCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs,
 				(arguments, token) => ExecuteCreateCMSCommandAsync(arguments, token, cmsClientFactory ?? CreateNotionClient)),
 			(CleanRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteCleanCommandAsync),

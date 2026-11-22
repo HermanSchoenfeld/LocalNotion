@@ -52,6 +52,8 @@ public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 
 	IEnumerable<CMSItem> CMSItems { get; }
 
+	IEnumerable<LocalNotionRedirect> Redirects { get; }
+
 	GitSettings GitSettings { get; }
 
 	NGinxSettings NGinxSettings { get; }
@@ -121,6 +123,16 @@ public interface ILocalNotionRepository : IDisposable, IAsyncDisposable {
 	void RemoveResourceRender(string resourceID, RenderType renderType);
 
 	string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename);
+
+	/// <summary>
+	/// Keeps <paramref name="from"/> as a redirect to <paramref name="to"/>. Earlier addresses that led to
+	/// <paramref name="from"/> are retargeted to <paramref name="to"/>, and a redirect from <paramref name="to"/> is dropped.
+	/// </summary>
+	/// <returns>False when nothing is recorded: either address is empty, they are equal, or <paramref name="from"/> is live.</returns>
+	bool AddRedirect(string from, string to, RedirectType type = RedirectType.Hard, string resourceID = null);
+
+	/// <summary>Removes the redirect from <paramref name="from"/>, if one exists.</summary>
+	bool RemoveRedirect(string from);
 
 	public static bool IsValidObjectID(string objectID) => LocalNotionHelper.TryCovertObjectIdToGuid(objectID, out _);
 }

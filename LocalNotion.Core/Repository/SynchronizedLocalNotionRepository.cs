@@ -82,6 +82,13 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 		}
 	}
 
+	public override IEnumerable<LocalNotionRedirect> Redirects {
+		get {
+			using (EnterReadScope())
+				return InternalRepository.Redirects;
+		}
+	}
+
 	public override GitSettings GitSettings {
 		get {
 			using (EnterReadScope())
@@ -221,6 +228,16 @@ public class SynchronizedLocalNotionRepository : LocalNotionRepositoryDecorator,
 	public override string CalculateRenderSlug(LocalNotionResource resource, RenderType render, string renderedFilename) {
 		using (EnterReadScope()) 
 			return base.CalculateRenderSlug(resource, render, renderedFilename);
+	}
+
+	public override bool AddRedirect(string from, string to, RedirectType type = RedirectType.Hard, string resourceID = null) {
+		using (EnterWriteScope())
+			return base.AddRedirect(from, to, type, resourceID);
+	}
+
+	public override bool RemoveRedirect(string from) {
+		using (EnterWriteScope())
+			return base.RemoveRedirect(from);
 	}
 
 	public ReadScope EnterReadScope() => _syncObj.EnterReadScope();
