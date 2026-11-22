@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 
 namespace Notion.Client
 {
@@ -18,10 +18,12 @@ namespace Notion.Client
         public class Info
         {
             /// <summary>
-            ///     The state of verification. Possible values are "verified" and "unverified".
+            ///     The state of verification.
+            ///     Read values: <see cref="VerificationStatus.Verified"/>, <see cref="VerificationStatus.Expired"/>, <see cref="VerificationStatus.None"/>.
+            ///     Write values: <see cref="VerificationStatus.Verified"/>, <see cref="VerificationStatus.Unverified"/>.
             /// </summary>
             [JsonProperty("state")]
-            public string State { get; set; }
+            public VerificationStatus State { get; set; }
 
             /// <summary>
             ///     Describes the user who verified this page.

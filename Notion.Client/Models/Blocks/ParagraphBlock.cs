@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Notion.Client
 {
@@ -17,11 +16,17 @@ namespace Notion.Client
             public IEnumerable<RichTextBase> RichText { get; set; }
 
             [JsonProperty("color")]
-            [JsonConverter(typeof(StringEnumConverter))]
             public Color? Color { get; set; }
 
             [JsonProperty("children")]
             public IEnumerable<INonColumnBlock> Children { get; set; }
+
+            /// <summary>
+            /// Optional icon for paragraph blocks that are direct children of a tab block.
+            /// Setting an icon on other paragraphs results in a validation error from the API.
+            /// </summary>
+            [JsonProperty("icon")]
+            public IPageIcon Icon { get; set; }
         }
     }
 }

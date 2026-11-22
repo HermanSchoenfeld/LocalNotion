@@ -1,4 +1,4 @@
-﻿namespace Notion.Client
+namespace Notion.Client
 {
     public static class ApiEndpoints
     {
@@ -46,6 +46,8 @@
 
         public static class BlocksApiUrls
         {
+            public static string QueryMeetingNotes() => "/v1/blocks/meeting_notes/query";
+
             public static string Retrieve(string blockId)
             {
                 return $"/v1/blocks/{blockId}";
@@ -79,25 +81,14 @@
 
         public static class PagesApiUrls
         {
-            public static string Create()
-            {
-                return "/v1/pages";
-            }
+            private const string BasePath = "/v1/pages";
+            public static string Create() => BasePath;
 
-            public static string Retrieve(string pageId)
-            {
-                return $"/v1/pages/{pageId}";
-            }
+            public static string Retrieve(string pageId) => $"{BasePath}/{pageId}";
 
-            public static string Update(string pageId)
-            {
-                return $"/v1/pages/{pageId}";
-            }
+            public static string Update(string pageId) => $"{BasePath}/{pageId}";
 
-            public static string UpdateProperties(string pageId)
-            {
-                return $"/v1/pages/{pageId}";
-            }
+            public static string UpdateProperties(string pageId) => $"{BasePath}/{pageId}";
 
             /// <summary>
             ///     Get the Uri <see cref="string" /> for retrieve page property item
@@ -105,10 +96,15 @@
             /// <param name="pageId">Identifier for a Notion Page</param>
             /// <param name="propertyId">Identifier for a Notion Property</param>
             /// <returns>Returns a Uri <see cref="string" /> for Retrieve page property item</returns>
-            public static string RetrievePropertyItem(string pageId, string propertyId)
-            {
-                return $"/v1/pages/{pageId}/properties/{propertyId}";
-            }
+            public static string RetrievePropertyItem(string pageId, string propertyId) =>
+                $"{BasePath}/{pageId}/properties/{propertyId}";
+
+            public static string RetrieveAsMarkdown(IRetrievePageAsMarkdownPathParameters pathParameters) =>
+                $"{BasePath}/{pathParameters.PageId}/markdown";
+
+            public static string UpdateMarkdown(string pageId) => $"{BasePath}/{pageId}/markdown";
+
+            public static string Move(string pageId) => $"{BasePath}/{pageId}/move";
         }
 
         public static class SearchApiUrls
@@ -130,6 +126,12 @@
             {
                 return "/v1/comments";
             }
+
+            public static string RetrieveSingle(string commentId) => $"/v1/comments/{commentId}";
+
+            public static string Update(string commentId) => $"/v1/comments/{commentId}";
+
+            public static string Delete(string commentId) => $"/v1/comments/{commentId}";
         }
 
         public static class AuthenticationUrls
@@ -149,14 +151,32 @@
             public static string Retrieve(IRetrieveFileUploadPathParameters pathParameters) => $"/v1/file_uploads/{pathParameters.FileUploadId}";
         }
 
+        public static class ViewsApiUrls
+        {
+            private const string BasePath = "/v1/views";
+            public static string List() => BasePath;
+            public static string Create() => BasePath;
+            public static string Retrieve(string viewId) => $"{BasePath}/{viewId}";
+            public static string Update(string viewId) => $"{BasePath}/{viewId}";
+            public static string Delete(string viewId) => $"{BasePath}/{viewId}";
+            public static string CreateQuery(string viewId) => $"{BasePath}/{viewId}/queries";
+            public static string GetQueryResults(string viewId, string queryId) => $"{BasePath}/{viewId}/queries/{queryId}";
+            public static string DeleteQuery(string viewId, string queryId) => $"{BasePath}/{viewId}/queries/{queryId}";
+        }
+
         public static class DataSourcesApiUrls
         {
             private const string BasePath = "/v1/data_sources";
             public static string Retrieve(IRetrieveDataSourcePathParameters pathParameters) => $"{BasePath}/{pathParameters.DataSourceId}";
             internal static string CreateDataSource() => BasePath;
             internal static string Update(IUpdateDataSourcePathParameters pathParameters) => $"{BasePath}/{pathParameters.DataSourceId}";
-            internal static string ListDataSourceTemplates(IListDataSourceTemplatesPathParameters pathParameters) => $"/v1/data-sources/{pathParameters.DataSourceId}/templates";
+            internal static string ListDataSourceTemplates(IListDataSourceTemplatesPathParameters pathParameters) => $"/v1/data_sources/{pathParameters.DataSourceId}/templates";
             internal static string Query(IQueryDataSourcePathParameters pathParameters) => $"{BasePath}/{pathParameters.DataSourceId}/query";
+        }
+
+        public static class EmojisApiUrls
+        {
+            public static string List => "/v1/custom_emojis";
         }
     }
 }

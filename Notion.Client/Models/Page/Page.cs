@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -17,6 +17,12 @@ namespace Notion.Client
         /// </summary>
         [JsonProperty("in_trash")]
         public bool InTrash { get; set; }
+
+        /// <summary>
+        ///     Whether the page is locked from editing in the Notion app UI.
+        /// </summary>
+        [JsonProperty("is_locked")]
+        public bool? IsLocked { get; set; }
 
         /// <summary>
         ///     Property values of this page.

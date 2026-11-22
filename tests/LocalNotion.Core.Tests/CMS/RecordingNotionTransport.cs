@@ -55,7 +55,7 @@ public sealed class RecordingNotionTransport : IRestClient {
 	public bool SetupPageArchived { get; private set; }
 
 	public INotionClient CreateClient()
-		=> new NotionClient(this, null, new DatabasesClient(this), new PagesClient(this), null, null, null, null, null, new DataSourcesClient(this));
+		=> new NotionClient(this, null, new DatabasesClient(this), new PagesClient(this), null, null, null, null, null, new DataSourcesClient(this), null, null);
 
 	public async Task<T> PostAsync<T>(
 		string uri, object body, IEnumerable<KeyValuePair<string, string>> queryParams = null,
@@ -78,6 +78,8 @@ public sealed class RecordingNotionTransport : IRestClient {
 	public async Task<T> PatchAsync<T>(string uri, object body, IDictionary<string, string> queryParams = null,
 		IDictionary<string, string> headers = null, JsonSerializerSettings serializerSettings = null, CancellationToken cancellationToken = default)
 		=> (T)await HandleAsync("PATCH", uri, Serialize(body), cancellationToken);
+
+	public Task<T> DeleteAsync<T>(string uri, IDictionary<string, string> queryParams = null, IDictionary<string, string> headers = null, JsonSerializerSettings serializerSettings = null, CancellationToken cancellationToken = default) => throw new InvalidOperationException("No DELETE expected.");
 
 	public Task DeleteAsync(string uri, IDictionary<string, string> queryParams = null, IDictionary<string, string> headers = null,
 		CancellationToken cancellationToken = default)

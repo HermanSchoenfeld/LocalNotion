@@ -29,7 +29,7 @@ public class CMSDatabaseHttpTests {
 		var result = await new CMSDatabaseCreator(client, new CMSDatabaseTemplate(), TimeSpan.Zero)
 			.CreateAsync(Guid.NewGuid(), "New website");
 		Assert.That(result.Id, Is.EqualTo(state.Response.Id));
-		Assert.That(server.NotionVersion, Is.EqualTo("2025-09-03"));
+		Assert.That(server.NotionVersion, Is.EqualTo("2026-03-11"));
 		Assert.That(state.CreateCount, Is.EqualTo(1));
 		Assert.That(state.PageCreateCount, Is.EqualTo(1));
 		Assert.That(state.PageUpdateCount, Is.EqualTo(1));

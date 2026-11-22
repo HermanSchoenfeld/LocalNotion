@@ -1,4 +1,4 @@
-﻿using JsonSubTypes;
+using JsonSubTypes;
 using Newtonsoft.Json;
 
 namespace Notion.Client
@@ -9,6 +9,7 @@ namespace Notion.Client
     [JsonSubtypes.KnownSubType(typeof(FilePageIcon), PageIconTypes.File)]
     [JsonSubtypes.KnownSubType(typeof(ExternalPageIcon), PageIconTypes.External)]
     [JsonSubtypes.KnownSubType(typeof(IconPageIcon), PageIconTypes.Icon)]
+    [JsonSubtypes.FallBackSubTypeAttribute(typeof(ExternalPageIcon))]
     public interface IPageIcon
     {
         [JsonProperty("type")]

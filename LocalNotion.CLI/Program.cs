@@ -764,14 +764,14 @@ $@"Local Notion Status:
 		}
 
 		string ToAcronym(ObjectType objectType)
-			=> objectType switch {
-				ObjectType.Page => "P",
-				ObjectType.Database => "DB",
-				ObjectType.DataSource => "DS",
-				ObjectType.Block => "B",
-				ObjectType.User => "U",
-				ObjectType.Comment => "C",
-				ObjectType.FileUpload => "F",
+			=> objectType.ToString() switch {
+				ObjectType.PageValue => "P",
+				ObjectType.DatabaseValue => "DB",
+				ObjectType.DataSourceValue => "DS",
+				ObjectType.BlockValue => "B",
+				ObjectType.UserValue => "U",
+				ObjectType.CommentValue => "C",
+				ObjectType.FileUploadValue => "F",
 				_ => throw new ArgumentOutOfRangeException(nameof(objectType), objectType, null)
 			};
 

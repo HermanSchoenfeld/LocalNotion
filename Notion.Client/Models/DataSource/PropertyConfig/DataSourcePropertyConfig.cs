@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -28,6 +28,8 @@ namespace Notion.Client
     [JsonSubtypes.KnownSubTypeAttribute(typeof(UrlDataSourcePropertyConfig), DataSourcePropertyTypes.Url)]
     [JsonSubtypes.KnownSubTypeAttribute(typeof(UniqueIdDataSourcePropertyConfig), DataSourcePropertyTypes.UniqueId)]
     [JsonSubtypes.KnownSubTypeAttribute(typeof(ButtonDataSourcePropertyConfig), DataSourcePropertyTypes.Button)]
+    [JsonSubtypes.KnownSubTypeAttribute(typeof(PlaceDataSourcePropertyConfig), DataSourcePropertyTypes.Place)]
+    [JsonSubtypes.FallBackSubTypeAttribute(typeof(DataSourcePropertyConfig))]
     public class DataSourcePropertyConfig
     {
         [JsonProperty("id")]

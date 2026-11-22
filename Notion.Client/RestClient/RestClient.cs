@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -16,15 +16,48 @@ namespace Notion.Client
     {
         private readonly ClientOptions _options;
 
-        protected readonly JsonSerializerSettings DefaultSerializerSettings = new()
+        internal static readonly JsonSerializerSettings DefaultSerializerSettings = new()
         {
             NullValueHandling = NullValueHandling.Ignore,
             ContractResolver = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy() }
         };
 
+        private readonly HttpClient _httpClient;
+        private readonly IRetryPolicy _retryPolicy;
+
         public RestClient(ClientOptions options)
         {
             _options = MergeOptions(options);
+            _retryPolicy = options.RetryPolicy;
+            _httpClient = options.HttpClient == null ? null : ResolveHttpClient(options.HttpClient, _options.BaseUrl);
+        }
+
+        /// <summary>
+        /// Resolves a caller-owned client or creates a client owned by the current request.
+        /// <para>
+        /// When <paramref name="provided"/> is supplied it is used as-is (only <c>BaseAddress</c> is set
+        /// if absent). The caller owns the lifetime of the provided client.
+        /// </para>
+        /// <para>
+        /// When <paramref name="provided"/> is <c>null</c>, a default pipeline is built:
+        /// <c>LoggingHandler → HttpClientHandler</c>.
+        /// </para>
+        /// </summary>
+        private static HttpClient ResolveHttpClient(HttpClient provided, string baseUrl)
+        {
+            if (provided != null)
+            {
+                if (provided.BaseAddress == null)
+                {
+                    provided.BaseAddress = new Uri(baseUrl);
+                }
+
+                return provided;
+            }
+
+            var pipeline = new LoggingHandler { InnerHandler = new HttpClientHandler() };
+
+            return new HttpClient(pipeline) { BaseAddress = new Uri(baseUrl) };
         }
 
         public async Task<T> GetAsync<T>(
@@ -34,7 +67,7 @@ namespace Notion.Client
             JsonSerializerSettings serializerSettings = null,
             CancellationToken cancellationToken = default)
         {
-            using var response = await SendAsync(uri, HttpMethod.Get, queryParams, headers,
+            var response = await SendAsync(uri, HttpMethod.Get, queryParams, headers,
                 cancellationToken: cancellationToken);
 
             return await response.ParseStreamAsync<T>(serializerSettings);
@@ -143,6 +176,19 @@ namespace Notion.Client
                 basicAuthenticationParameters: null, cancellationToken);
         }
 
+        public async Task<T> DeleteAsync<T>(
+            string uri,
+            IDictionary<string, string> queryParams = null,
+            IDictionary<string, string> headers = null,
+            JsonSerializerSettings serializerSettings = null,
+            CancellationToken cancellationToken = default)
+        {
+            var response = await SendAsync(uri, HttpMethod.Delete, queryParams, headers, null,
+                basicAuthenticationParameters: null, cancellationToken);
+
+            return await response.ParseStreamAsync<T>(serializerSettings);
+        }
+
         private static ClientOptions MergeOptions(ClientOptions options)
         {
             return new ClientOptions
@@ -195,30 +241,51 @@ namespace Notion.Client
             IBasicAuthenticationParameters basicAuthenticationParameters = null,
             CancellationToken cancellationToken = default)
         {
-            using var client = GetHttpClient();
-
+            // Preserve the local memory-leak fix: SDK-owned clients live for one request,
+            // including its retry attempts. An injected client remains caller-owned.
+            using var ownedClient = _httpClient == null ? ResolveHttpClient(null, _options.BaseUrl) : null;
+            var client = _httpClient ?? ownedClient;
             requestUri = AddQueryString(requestUri, queryParams);
 
-            using var httpRequest = new HttpRequestMessage(httpMethod, requestUri);
-
-            httpRequest.Headers.Authorization = CreateAuthenticationHeader(basicAuthenticationParameters);
-            httpRequest.Headers.Add("Notion-Version", _options.NotionVersion);
-
-            if (headers != null)
+            for (var attempt = 0; ; attempt++)
             {
-                AddHeaders(httpRequest, headers);
+                // HttpRequestMessage is single-use; rebuild it for every attempt.
+                using var httpRequest = new HttpRequestMessage(httpMethod, requestUri);
+
+                httpRequest.Headers.Authorization = CreateAuthenticationHeader(basicAuthenticationParameters);
+                httpRequest.Headers.Add("Notion-Version", _options.NotionVersion);
+
+                if (headers != null)
+                {
+                    AddHeaders(httpRequest, headers);
+                }
+
+                attachContent?.Invoke(httpRequest);
+
+                var response = await client.SendAsync(httpRequest, cancellationToken);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    return response;
+                }
+
+                if (_retryPolicy == null || !_retryPolicy.ShouldRetry(response, httpMethod, attempt))
+                {
+                    throw await BuildException(response);
+                }
+
+                var delay = _retryPolicy.GetDelay(response, attempt);
+
+                Log.Trace(
+                    "Retry attempt {attempt} after {delay}ms (HTTP {status})",
+                    attempt + 1,
+                    (int)delay.TotalMilliseconds,
+                    (int)response.StatusCode);
+
+                response.Dispose();
+
+                await Task.Delay(delay, cancellationToken);
             }
-
-            attachContent?.Invoke(httpRequest);
-
-            var response = await client.SendAsync(httpRequest, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw await BuildException(response);
-            }
-
-            return response;
         }
 
         private AuthenticationHeaderValue CreateAuthenticationHeader(IBasicAuthenticationParameters basicAuth)
@@ -234,15 +301,6 @@ namespace Notion.Client
             {
                 request.Headers.Add(header.Key, header.Value);
             }
-        }
-
-        private HttpClient GetHttpClient()
-        {
-            var pipeline = new LoggingHandler { InnerHandler = new HttpClientHandler() };
-
-            var httpClient = new HttpClient(pipeline);
-            httpClient.BaseAddress = new Uri(_options.BaseUrl);
-            return httpClient;
         }
 
         private static string AddQueryString(string uri, IEnumerable<KeyValuePair<string, string>> queryParams)

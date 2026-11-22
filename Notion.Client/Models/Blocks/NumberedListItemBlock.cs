@@ -1,6 +1,5 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace Notion.Client
 {
@@ -17,11 +16,16 @@ namespace Notion.Client
             public IEnumerable<RichTextBase> RichText { get; set; }
 
             [JsonProperty("color")]
-            [JsonConverter(typeof(StringEnumConverter))]
             public Color? Color { get; set; }
 
             [JsonProperty("children")]
             public IEnumerable<INonColumnBlock> Children { get; set; }
+
+            [JsonProperty("list_start_index")]
+            public int? ListStartIndex { get; set; }
+
+            [JsonProperty("list_format")]
+            public NumberedListFormat? ListFormat { get; set; }
         }
     }
 }

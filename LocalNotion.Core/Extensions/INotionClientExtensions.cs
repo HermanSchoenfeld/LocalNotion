@@ -29,10 +29,10 @@ public static class INotionClientExtensions {
 		// Pages return as ChildPageBlock, databases as ChildDatabaseBlock.
 		try {
 			var block = await client.Blocks.RetrieveAsync(objectID, cancellationToken);
-			switch (block?.Type) {
-				case BlockType.ChildPage:
+			switch (block?.Type.ToString()) {
+				case BlockType.ChildPageValue:
 					return new NotionObjectQualification(LocalNotionResourceType.Page, block.LastEditedTime, block.InTrash);
-				case BlockType.ChildDatabase:
+				case BlockType.ChildDatabaseValue:
 					return new NotionObjectQualification(LocalNotionResourceType.Database, block.LastEditedTime, block.InTrash);
 			}
 		} catch (NotionApiException) {

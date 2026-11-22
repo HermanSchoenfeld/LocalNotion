@@ -13,4 +13,5 @@ namespace Notion.Client
         [JsonExtensionData]
         public IDictionary<string, object> AdditionalData { get; set; }
     }
+
 }

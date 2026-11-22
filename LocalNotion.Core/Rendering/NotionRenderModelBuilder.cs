@@ -237,13 +237,13 @@ public sealed partial class NotionRenderModelBuilder {
 
 	private R.Metadata Metadata(ProjectionContext context, IObject source, string id) {
 		var normalized = NormalizeID(id);
-		context.Occurrences.TryGetValue(normalized, out var count);
+		var count = context.Occurrences.TryGetValue(normalized, out var seen) ? seen : 0;
 		context.Occurrences[normalized] = count + 1;
 		return new R.Metadata {
 			SourceId = id,
 			Anchor = count == 0 ? normalized : normalized + "-" + (count + 1),
 			ObjectType = source?.Object.ToString().ToLowerInvariant().Replace('_', '-') ?? "block",
-			Type = source is IBlock blockValue ? EnumToken(blockValue.Type) : source?.GetType().Name ?? "missing"
+			Type = source is IBlock blockValue ? blockValue.Type.ToString().Replace('_', '-') : source?.GetType().Name ?? "missing"
 		};
 	}
 
@@ -277,7 +277,7 @@ public sealed partial class NotionRenderModelBuilder {
 
 	private static DateTimeOffset? Timestamp(DateTime value) => value == default ? null : new DateTimeOffset(value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value);
 
-	private static R.Color MapColor(global::Notion.Client.Color? colorValue) => Enum.TryParse<R.Color>(colorValue?.ToString(), out R.Color visual) ? visual : R.Color.Default;
+	private static R.Color MapColor(global::Notion.Client.Color? colorValue) => MapColor(colorValue?.ToString());
 
 	private static R.Color MapColor(string colorValue) => Enum.TryParse<R.Color>(colorValue?.Replace("_", string.Empty), true, out R.Color visual) ? visual : R.Color.Default;
 

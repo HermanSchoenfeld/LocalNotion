@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using JsonSubTypes;
 using Newtonsoft.Json;
 
@@ -6,7 +6,9 @@ namespace Notion.Client
 {
     [JsonConverter(typeof(JsonSubtypes), "type")]
     [JsonSubtypes.KnownSubTypeAttribute(typeof(UploadedFile), "file")]
+    [JsonSubtypes.KnownSubTypeAttribute(typeof(NewFileUpload), "file_upload")]
     [JsonSubtypes.KnownSubTypeAttribute(typeof(ExternalFile), "external")]
+    [JsonSubtypes.FallBackSubTypeAttribute(typeof(FileObject))]
     public abstract class FileObject
     {
         [JsonProperty("caption")]

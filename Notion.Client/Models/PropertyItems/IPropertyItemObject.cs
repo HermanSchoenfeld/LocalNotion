@@ -1,4 +1,4 @@
-﻿using JsonSubTypes;
+using JsonSubTypes;
 using Newtonsoft.Json;
 
 namespace Notion.Client
@@ -6,6 +6,7 @@ namespace Notion.Client
     [JsonConverter(typeof(JsonSubtypes), "object")]
     [JsonSubtypes.KnownSubTypeAttribute(typeof(SimplePropertyItem), "property_item")]
     [JsonSubtypes.KnownSubTypeAttribute(typeof(ListPropertyItem), "list")]
+    [JsonSubtypes.FallBackSubTypeAttribute(typeof(SimplePropertyItem))]
     public interface IPropertyItemObject
     {
         [JsonProperty("object")]

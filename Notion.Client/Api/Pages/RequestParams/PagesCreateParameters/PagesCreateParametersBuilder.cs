@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Notion.Client
@@ -11,6 +11,9 @@ namespace Notion.Client
         private IPageCoverRequest _cover;
         private IPageIconRequest _icon;
         private IParentOfPageRequest _parent;
+        private string _markdown;
+        private PageTemplate _template;
+        private PagePosition _position;
 
         private PagesCreateParametersBuilder()
         {
@@ -49,15 +52,39 @@ namespace Notion.Client
             return this;
         }
 
+        public PagesCreateParametersBuilder SetMarkdown(string markdown)
+        {
+            _markdown = markdown;
+
+            return this;
+        }
+
+        public PagesCreateParametersBuilder SetTemplate(PageTemplate template)
+        {
+            _template = template;
+
+            return this;
+        }
+
+        public PagesCreateParametersBuilder SetPosition(PagePosition position)
+        {
+            _position = position;
+
+            return this;
+        }
+
         public PagesCreateParameters Build()
         {
             return new PagesCreateParameters
             {
                 Parent = _parent,
                 Properties = _properties,
-                Children = _children,
+                Children = _children.Count > 0 ? _children : null,
                 Icon = _icon,
-                Cover = _cover
+                Cover = _cover,
+                Markdown = _markdown,
+                Template = _template,
+                Position = _position
             };
         }
     }
