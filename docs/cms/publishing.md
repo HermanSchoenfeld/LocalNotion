@@ -58,6 +58,21 @@ Individually mounted Docker configuration files can retain old file bindings aft
 
 DNS, TLS and reverse proxies are separate host responsibilities. Ensure the public hostname reaches the intended site service. The creation command provisions none of these systems.
 
+### Keep private repository files inaccessible
+
+The current development generator includes these restrictions in a newly created `nginx.conf`. They deny both each private directory's own URL and every path beneath it. The generated route mappings and public theme assets remain separate.
+
+```nginx
+location = /.localnotion { return 404; }
+location ^~ /.localnotion/ { return 404; }
+location = /.git { return 404; }
+location ^~ /.git/ { return 404; }
+```
+
+Existing `nginx.conf` and `mime.types` files are intentionally preserved during normal generation. An application upgrade or another pull does not add these rules to an existing host. Review the active site's configuration and add any missing restrictions inside its `server` block, before `include ln-urls.conf;`. Preserve its route mappings, authentication policies, MIME configuration and other custom settings. Do not delete the hosting folder or replace the whole configuration to obtain these four rules.
+
+Validate the configuration with `nginx -t`, activate it on the intended host, then check that requests to `/.localnotion`, `/.localnotion/registry.json`, `/.git` and `/.git/config` return a denial, while ordinary pages and public assets still load. Verify both the origin service and the public hostname: a proxy response can conceal an exposed origin. Do not print, save or include the response body when testing a potentially exposed private file. For file-mounted containers, also verify that the container sees the updated configuration before activation.
+
 ## Authentication and secrets
 
 Publication, privacy and authentication are separate:
