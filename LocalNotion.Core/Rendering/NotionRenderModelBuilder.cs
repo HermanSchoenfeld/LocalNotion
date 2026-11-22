@@ -102,6 +102,12 @@ public sealed partial class NotionRenderModelBuilder {
 		};
 	}
 
+	internal R.BreadcrumbBlock BuildBreadcrumb(string resourceID, string outputDirectory) {
+		var resource = (TryGetResource(resourceID, out var stored) ? stored : null) as LocalNotionEditableResource
+			?? throw new InvalidOperationException($"Resource '{resourceID}' is not renderable.");
+		return MapBreadcrumb(new ProjectionContext(resource, new Dictionary<string, IObject>(), outputDirectory, ProjectionPurpose.Html));
+	}
+
 	private IDictionary<string, IObject> LoadProjectionObjects(NotionObjectGraph graph) {
 		var objects = new Dictionary<string, IObject>();
 		var visited = new HashSet<NotionObjectGraph>(ReferenceEqualityComparer.Instance);

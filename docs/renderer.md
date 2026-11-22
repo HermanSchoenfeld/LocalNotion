@@ -20,6 +20,12 @@ Themes with the `suppress_formatting` trait bypass this pass. Ordinary source
 resource rendering remains unchanged. Code, Mermaid source, script/style bodies
 and meaningful inline spacing must retain their semantics.
 
+## Static article listings
+
+LocalNotion owns article selection, ordering, pagination, stable article destinations and generated output files. It projects one bounded listing document at a time into the stock `cms_articles` templates. Sphere10.Framework.Web.VisualRenderer composes that prepared page and its supplied navigation links without reading a repository or fetching another page.
+
+Online listing navigation uses `?page=N` on the existing collection URL, resolved to separately generated HTML by LocalNotion's Nginx mappings. Offline navigation uses the actual generated file destinations. No article slug is derived from its listing-page number. See [Article collections and static pagination](cms/articles.md) for authoring, hosting and deployment behavior.
+
 ## Native Notion tab blocks
 
 LocalNotion supports Notion's native tabbed content blocks in the current source build. Author the tabs and their contents in Notion, then pull the owning page using the normal `localnotion pull --path "./website" --objects PAGE_ID` command. No CMS Tag, special Theme, HTML injection or new CLI command is required. A subsequent `render` uses downloaded content; it does not fetch edits from Notion.

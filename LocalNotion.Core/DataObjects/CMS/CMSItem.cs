@@ -63,6 +63,10 @@ public class CMSItem {
 	[JsonProperty("render_path", NullValueHandling = NullValueHandling.Ignore)]
 	public string RenderPath { get; set; } = null;
 
+	/// <summary>All generated article listing pages, with the primary render first. Empty for legacy and non-listing items.</summary>
+	[JsonProperty("listing_render_paths")]
+	public string[] ListingRenderPaths { get; set; } = Array.Empty<string>();
+
 	public bool ReferencesResource(string resourceID) 
 		=> ReferencesAnyResources([resourceID]);
 

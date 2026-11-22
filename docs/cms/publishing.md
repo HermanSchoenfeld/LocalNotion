@@ -52,6 +52,8 @@ Replace the example domain and database ID, and set `NOTION_API_KEY_FILE` to the
 
 When enabled, Nginx generation writes configuration under `.localnotion/nginx/conf`, including `ln-urls.conf`. The active host must include the correct mappings and serve the expected output paths.
 
+Article collections generate separate static listing documents of up to 20 summaries each. Their generated routes use query selectors such as `/articles?page=2`, preserving all article slugs. Publish every tracked slice together with `ln-urls.conf`; the query selector must reach the Nginx origin, and any HTML cache must distinguish it. Existing listing authorization also applies to extra backing files. See [Article collections and static pagination](articles.md) for query behavior, offline exports and rebuild checks.
+
 Files on disk and active configuration are different states. Some installations monitor changes and reload; others restart a per-site container. Check the actual service, script, watched path and target. Validate configuration before activation and verify that only the intended site changed.
 
 Individually mounted Docker configuration files can retain old file bindings after a host-side atomic replacement. If host/container bytes differ, repair the mount/activation arrangement; a targeted container restart can be one remedy. A successful reload alone does not prove the container sees the new file.

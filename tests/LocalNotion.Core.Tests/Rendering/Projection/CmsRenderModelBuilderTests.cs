@@ -48,6 +48,157 @@ public class CmsRenderModelBuilderTests {
 	}
 
 	[Test]
+	public async Task ArticleFeatureProjectsOnlyTheExplicitCoverFitModifier([Values(false, true)] bool selected) {
+		await CreateDocument(LocalNotionMode.Online, "/");
+		var item = _repository.GetCMSItem("docs");
+		var first = _repository.GetPage(item.Parts[0]);
+		var second = _repository.GetPage(item.Parts[1]);
+		first.CMSProperties.Themes = selected ? ["header_small", "header_cover_contain", "table_scroll"] : ["header_small", "table_scroll"];
+		second.CMSProperties.Themes = ["header_small"];
+		var document = new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export")).Build(item);
+		var summaries = Templates(document).Where(block => block.Template is "articles_summary" or "articles_summary_alt").ToArray();
+		var firstFeature = (R.TemplateBlock)summaries[0].Slots["feature"];
+		var secondFeature = (R.TemplateBlock)summaries[1].Slots["feature"];
+		Assert.That(firstFeature.Themes, Is.EqualTo(selected ? new[] { "cms_articles", "header_cover_contain" } : Array.Empty<string>()));
+		Assert.That(secondFeature.Themes, Is.Empty, "Another article must retain its existing feature crop.");
+		Assert.That(summaries.SelectMany(summary => summary.Themes), Is.Empty, "The modifier is scoped to the feature widget.");
+		Assert.That(document.Themes, Is.EqualTo(new[] { "cms_articles" }), "Collection framing remains independent of article page Themes.");
+		Assert.That(first.CMSProperties.Themes, Is.EqualTo(selected
+			? new[] { "header_small", "header_cover_contain", "table_scroll" }
+			: new[] { "header_small", "table_scroll" }), "Projection must preserve authored selections.");
+
+		// The real renderer must enter and leave the feature's Theme scope without changing its sibling.
+		var themesDirectory = Path.Combine(_fixtureRoot, "feature-overrides");
+		var modifierDirectory = Path.Combine(themesDirectory, "header_cover_contain");
+		Directory.CreateDirectory(modifierDirectory);
+		await File.WriteAllTextAsync(Path.Combine(modifierDirectory, ".config.json"), "{\"type\":\"html\"}");
+		await File.WriteAllTextAsync(Path.Combine(modifierDirectory, "articles_summary_feature.html"), "<div data-test-feature-fit=\"contain\" data-feature-url=\"{url}\">{thumbnail}</div>");
+		var renderer = new R.HtmlRenderer(new R.ThemeCatalog(new R.ThemeOptions { ThemesDirectory = themesDirectory }));
+		var html = renderer.Render(document, new R.RenderOptions { Environment = R.RenderEnvironment.Online }).Html;
+		var parsed = new HtmlParser().ParseDocument(html);
+		Assert.That(parsed.QuerySelectorAll("[data-test-feature-fit=contain]"), Has.Length.EqualTo(selected ? 1 : 0));
+		Assert.That(parsed.QuerySelectorAll(".article-summary"), Has.Length.EqualTo(2));
+		if (!selected)
+			Assert.That(html, Is.EqualTo(new R.HtmlRenderer().Render(document, new R.RenderOptions { Environment = R.RenderEnvironment.Online }).Html),
+				"Installing the modifier must leave an unselected collection's full HTML unchanged.");
+	}
+
+	[Test]
+	public async Task NativeChildModifiersComeFromInternalWithoutInheritingSectionLayout([Values(false, true)] bool nativeChild) {
+		// Use real repository graphs so the inherited Internal token and native parent are projected together.
+		await CreateDocument(LocalNotionMode.Online, "/");
+		var item = _repository.GetCMSItem("docs/first");
+		var page = _repository.GetPage(item.Parts[0]);
+		var parent = AddArticle(page.ParentResourceID, "Parent section", "docs#parent", 3);
+		parent.CMSProperties.PageType = CMSPageType.Section;
+		parent.CMSProperties.Themes = ["business1", "shape_lineup"];
+		page.CMSProperties.Themes = [];
+		page.CMSProperties.Tags = [Constants.TagHideEmbeddedPages];
+		if (nativeChild)
+			page.ParentResourceID = parent.ID;
+		var source = new Page { Id = page.ID };
+		var paragraph = new global::Notion.Client.ParagraphBlock { Id = Guid.NewGuid().ToString(), Paragraph = new() { RichText = [Run("Independent destination body")] } };
+		_repository.AddObject(source);
+		_repository.AddObject(paragraph);
+		_repository.AddResourceGraph(new NotionObjectGraph { ObjectID = source.Id, Children = [new() { ObjectID = paragraph.Id }] });
+		var internalId = Guid.NewGuid().ToString();
+		var setting = new global::Notion.Client.CodeBlock { Id = Guid.NewGuid().ToString(), Code = new() {
+			Language = "plain text", Caption = [Run("embedded_page_themes")], RichText = [Run("h3_typed, h3_color_aux, h3_typed,,")]
+		} };
+		_repository.AddObject(setting);
+		_repository.AddResourceGraph(new NotionObjectGraph { ObjectID = internalId, Children = [new() { ObjectID = setting.Id }] });
+		item.InternalID = internalId;
+		var document = new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export")).Build(item);
+		Assert.That(document.Themes, Is.EqualTo(nativeChild
+			? new[] { "cms", "h3_typed", "h3_color_aux" }
+			: new[] { "cms" }));
+		Assert.That(document.HideEmbeddedPages, Is.True);
+		Assert.That(document.RenderFrame, Is.True, "A hidden reference must not hide the independently rendered child document.");
+		Assert.That(document.Children.OfType<R.ParagraphBlock>().Count(), Is.EqualTo(1));
+		Assert.That(document.Tokens["embedded_page_themes"], Is.EqualTo("h3_typed, h3_color_aux, h3_typed,,"), "Source settings remain intact.");
+	}
+
+	[Test]
+	public async Task PageScopedInternalModifiersDoNotLeakToOtherPagesOrDatasourceRows([Values(false, true)] bool nativeChild) {
+		await CreateDocument(LocalNotionMode.Online, "/");
+		var firstItem = _repository.GetCMSItem("docs/first");
+		var secondItem = _repository.GetCMSItem("docs/second");
+		var first = _repository.GetPage(firstItem.Parts[0]);
+		var second = _repository.GetPage(secondItem.Parts[0]);
+		var parent = AddArticle(first.ParentResourceID, "Parent section", "docs#parent", 3);
+		parent.CMSProperties.PageType = CMSPageType.Section;
+		foreach (var page in new[] { first, second }) {
+			if (nativeChild)
+				page.ParentResourceID = parent.ID;
+			AddSourcePage(page);
+		}
+		var caption = $"embedded_page_themes:{Guid.Parse(first.ID):D}";
+		SetInternal(firstItem, (caption, "link_button, link_button,,"));
+		secondItem.InternalID = firstItem.InternalID;
+		var builder = new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export"));
+		var firstDocument = builder.Build(firstItem);
+		var secondDocument = builder.Build(secondItem);
+		Assert.That(firstDocument.Themes, Is.EqualTo(nativeChild ? new[] { "cms", "link_button" } : new[] { "cms" }));
+		Assert.That(secondDocument.Themes, Is.EqualTo(new[] { "cms" }), "Sharing an Internal source must not share another child's scoped Theme selection.");
+		Assert.That(firstDocument.Tokens[caption], Is.EqualTo("link_button, link_button,,"), "The authored setting remains intact.");
+	}
+
+	[Test]
+	public async Task CommonAndPageScopedInternalModifiersPreserveOrderAndNormalizePageIDs([Values("D", "N")] string pageIdFormat) {
+		await CreateDocument(LocalNotionMode.Online, "/");
+		var item = _repository.GetCMSItem("docs/first");
+		var parent = AddArticle(_repository.CMSDatabaseID, "Parent section", "docs#parent", 3);
+		parent.CMSProperties.PageType = CMSPageType.Section;
+		var page = AddArticle(parent.ID, "Native child", "docs/native", 4, pageIdFormat);
+		page.CMSProperties.Themes = ["h2_color_primary"];
+		item.Parts = [page.ID];
+		AddSourcePage(page);
+		var caption = $"embedded_page_themes:{Guid.Parse(page.ID):D}";
+		SetInternal(item, ("embedded_page_themes", "h3_typed,h3_color_aux,h3_typed"), (caption, "h3_color_aux, link_button, h3_typed,,link_button"));
+		var document = new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export")).Build(item);
+		Assert.That(document.Themes, Is.EqualTo(new[] { "cms", "h2_color_primary", "h3_typed", "h3_color_aux", "link_button" }));
+		Assert.That(document.Tokens[caption], Is.EqualTo("h3_color_aux, link_button, h3_typed,,link_button"));
+	}
+
+	[TestCase("@HideEmbeddedPages", true)]
+	[TestCase("HideEmbeddedPages", false)]
+	[TestCase("hide_embedded_pages", false)]
+	public async Task HideEmbeddedPagesTagAppliesToSectionWithoutHidingSectionContent(string tagName, bool hidesEmbeddedPages) {
+		await CreateDocument(LocalNotionMode.Online, "/");
+		var item = _repository.GetCMSItem("docs/first");
+		var page = _repository.GetPage(item.Parts[0]);
+		page.CMSProperties.PageType = CMSPageType.Section;
+		page.CMSProperties.Tags = [tagName];
+		var source = new Page { Id = page.ID };
+		_repository.AddObject(source);
+		_repository.AddResourceGraph(new NotionObjectGraph { ObjectID = source.Id });
+		item.ItemType = CMSItemType.SectionedPage;
+		var document = new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export")).Build(item);
+		var section = (R.DocumentBlock)document.Children.Single();
+		Assert.That(section.HideEmbeddedPages, Is.EqualTo(hidesEmbeddedPages));
+		Assert.That(section.Themes, Does.Not.Contain(Constants.TagHideEmbeddedPages));
+		Assert.That(section.Themes, Does.Contain("cms_section"));
+		Assert.That(section.RenderFrame, Is.False);
+		Assert.That(document.RenderFrame, Is.True);
+	}
+
+	[TestCase("@HideEmbeddedPages")]
+	[TestCase("HideEmbeddedPages")]
+	[TestCase("hide_embedded_pages")]
+	public async Task ThemeSelectionDoesNotActAsAControlTag(string themeName) {
+		await CreateDocument(LocalNotionMode.Online, "/");
+		var item = _repository.GetCMSItem("docs/first");
+		var page = _repository.GetPage(item.Parts[0]);
+		page.CMSProperties.Themes = [themeName];
+		page.CMSProperties.Tags = [];
+		_repository.AddObject(new Page { Id = page.ID });
+		_repository.AddResourceGraph(new NotionObjectGraph { ObjectID = page.ID });
+		var document = new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export")).Build(item);
+		Assert.That(document.HideEmbeddedPages, Is.False, "A Theme name must not be interpreted as a behavior Tag; old selections need explicit CMS migration.");
+		Assert.That(document.Themes, Does.Contain(themeName), "Projection preserves authored Theme names without silently moving them between fields.");
+	}
+
+	[Test]
 	public async Task ArticleProjectionPreservesSlugAndProvidesResolvedUrl(
 		[Values("articles_category", "articles_category_active", "articles_summary", "articles_summary_alt")] string templateName,
 		[Values("/", "https://example.test/content/")] string baseUrl
@@ -132,8 +283,25 @@ public class CmsRenderModelBuilderTests {
 		return new CmsRenderModelBuilder(_repository, Path.Combine(_fixtureRoot, "cms", "export")).Build(items[1]);
 	}
 
-	private LocalNotionPage AddArticle(string databaseId, string title, string slug, int sequence) {
-		var pageId = Guid.NewGuid().ToString();
+	private void AddSourcePage(LocalNotionPage page) {
+		_repository.AddObject(new Page { Id = page.ID });
+		_repository.AddResourceGraph(new NotionObjectGraph { ObjectID = page.ID });
+	}
+
+	private void SetInternal(CMSItem item, params (string Caption, string Themes)[] settings) {
+		var internalId = Guid.NewGuid().ToString("D");
+		var blocks = settings.Select(setting => new global::Notion.Client.CodeBlock {
+			Id = Guid.NewGuid().ToString("D"),
+			Code = new() { Language = "plain text", Caption = [Run(setting.Caption)], RichText = [Run(setting.Themes)] }
+		}).ToArray();
+		foreach (var block in blocks)
+			_repository.AddObject(block);
+		_repository.AddResourceGraph(new NotionObjectGraph { ObjectID = internalId, Children = blocks.Select(block => new NotionObjectGraph { ObjectID = block.Id }).ToArray() });
+		item.InternalID = internalId;
+	}
+
+	private LocalNotionPage AddArticle(string databaseId, string title, string slug, int sequence, string idFormat = "D") {
+		var pageId = Guid.NewGuid().ToString(idFormat);
 		var page = new LocalNotionPage {
 			ID = pageId, Name = title, Title = title, ParentResourceID = databaseId, Keywords = [],
 			CreatedOn = new DateTime(2026, 1, 1), LastEditedOn = new DateTime(2026, 1, 2)
@@ -149,6 +317,8 @@ public class CmsRenderModelBuilderTests {
 	private static R.DocumentBlock Fragment(R.TemplateBlock template) => new() {
 		RenderFrame = false, ShowPageHeader = false, Themes = ["cms_articles"], Children = [template]
 	};
+
+	private static RichTextText Run(string text) => new() { Text = new() { Content = text }, PlainText = text };
 
 	private static IEnumerable<R.TemplateBlock> Templates(R.VisualNode node) {
 		if (node is R.TemplateBlock template) {

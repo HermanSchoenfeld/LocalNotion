@@ -179,6 +179,8 @@ Keep the child link in the intended position in the parent body, use one native 
 
 ## 4. Manage Editing Views and Publication
 
+Article collections use the same CMS hierarchy to provide category listings and standalone article pages. Large listings are split into generated static documents, selected through query URLs such as `/articles?page=2`; article slugs remain independent of listing position. See [Article collections and static pagination](articles.md) for authoring, ordering and hosting requirements.
+
 Create focused views of the same CMS database. Views are editing tools; they do not publish, hide, reparent or reorder website content by themselves.
 
 | View | Filter and Order |

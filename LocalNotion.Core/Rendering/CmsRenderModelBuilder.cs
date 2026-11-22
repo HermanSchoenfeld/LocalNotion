@@ -44,21 +44,78 @@ public sealed class CmsRenderModelBuilder {
 		_pages = new NotionRenderModelBuilder(_sources, logger);
 	}
 
-	public R.DocumentBlock Build(CMSItem item) {
+	public R.DocumentBlock Build(CMSItem item, int pageNumber = 1) => Build(item, pageNumber, null);
+
+	internal R.DocumentBlock Build(CMSItem item, int pageNumber, CmsArticleListing listing) {
 		ArgumentNullException.ThrowIfNull(item);
+		if (pageNumber < 1 || (item.ItemType != CMSItemType.CategoryPage && pageNumber != 1))
+			throw new ArgumentOutOfRangeException(nameof(pageNumber));
 		R.DocumentBlock document = item.ItemType switch {
 			CMSItemType.Page when item.Parts.Length == 1 => BuildPart(item.Parts[0], CMSPageType.Page),
 			CMSItemType.Page => throw new InvalidOperationException("Page-based CMS items must have exactly one part."),
 			CMSItemType.SectionedPage => BuildSections(item),
-			CMSItemType.CategoryPage => BuildArticles(item),
+			CMSItemType.CategoryPage => BuildArticles(item, pageNumber, listing),
 			CMSItemType.GalleryPage => BuildGallery(item),
 			_ => throw new NotSupportedException($"Unsupported CMS item type '{item.ItemType}'.")
 		};
+		// Empty parts remain empty without loading inherited framing.
+		if (document.Themes.Contains("empty", StringComparer.OrdinalIgnoreCase))
+			return document with { RenderFrame = false, ShowPageHeader = false, Children = [] };
+		if (item.ItemType == CMSItemType.Page && _repository.CMSItems.Any(listingItem =>
+			listingItem.ItemType == CMSItemType.CategoryPage && listingItem.Parts.Contains(item.Parts[0], StringComparer.OrdinalIgnoreCase)))
+			document = AddArticleNavigation(item, document);
+		var (tokens, slots) = BuildFraming(item);
+		// Standalone native child pages can opt into modifiers without inheriting section layout themes.
+		if (item.ItemType == CMSItemType.Page) {
+			var page = _repository.GetPage(item.Parts[0]);
+			if (page.ParentResourceID != null && _repository.TryGetResource(page.ParentResourceID, out var parent) && parent.Type == LocalNotionResourceType.Page) {
+				var commonThemes = tokens.TryGetValue("embedded_page_themes", out var common) ? common : null;
+				var pageThemes = Guid.TryParse(page.ID, out var pageID) && tokens.TryGetValue($"embedded_page_themes:{pageID:D}", out var scoped) ? scoped : null;
+				if (commonThemes != null || pageThemes != null)
+					document = document with { Themes = document.Themes
+						.Concat(new[] { commonThemes, pageThemes }.Where(value => value != null)
+							.SelectMany(value => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+						.Distinct(StringComparer.Ordinal).ToArray() };
+			}
+		}
 		// Empty parts remain empty, including framing, as with the existing empty theme.
 		if (document.Themes.Contains("empty", StringComparer.OrdinalIgnoreCase))
 			return document with { RenderFrame = false, ShowPageHeader = false, Children = [] };
-		var (tokens, slots) = BuildFraming(item);
 		return document with { Tokens = tokens, Slots = slots, Author = string.IsNullOrWhiteSpace(item.Author) ? "Local Notion" : item.Author };
+	}
+
+	private R.DocumentBlock AddArticleNavigation(CMSItem item, R.DocumentBlock document) {
+		var nodes = document.Children.SelectMany(Descendants).ToArray();
+		var navigation = new List<VisualNode>();
+		if (!nodes.OfType<R.BreadcrumbBlock>().Any())
+			navigation.Add(_pages.BuildBreadcrumb(item.Parts[0], _outputDirectory));
+		if (!nodes.OfType<R.TableOfContentsBlock>().Any() && nodes.OfType<R.HeadingBlock>().Any(heading =>
+			heading.Level is >= 1 and <= 3 && heading.Text.Any(inline => !string.IsNullOrWhiteSpace(inline switch {
+				R.TextInline text => text.Text,
+				R.EquationInline equation => equation.Expression,
+				_ => inline.PlainTextOverride
+			}))))
+			navigation.Add(new R.TableOfContentsBlock { PlainTextOverride = "Table of Contents" + Environment.NewLine });
+		// A generated TOC follows the authored breadcrumb's owner without moving native content.
+		if (navigation.Count == 1 && navigation[0] is R.TableOfContentsBlock) {
+			var breadcrumbIndex = Array.FindIndex(document.Children, child => Descendants(child).OfType<R.BreadcrumbBlock>().Any());
+			return document with { Children = document.Children.Take(breadcrumbIndex + 1).Concat(navigation).Concat(document.Children.Skip(breadcrumbIndex + 1)).ToArray() };
+		}
+		return navigation.Count == 0 ? document : document with { Children = navigation.Concat(document.Children).ToArray() };
+
+		IEnumerable<VisualNode> Descendants(VisualNode node) {
+			// Embedded documents have their own navigation and heading scope.
+			if (node is R.DocumentBlock)
+				yield break;
+			yield return node;
+			var children = node switch {
+				R.ContainerVisual container => container.Children,
+				R.ColumnListBlock columns => columns.Columns.Cast<VisualNode>().ToArray(),
+				_ => Array.Empty<VisualNode>()
+			};
+			foreach (var child in children.SelectMany(Descendants))
+				yield return child;
+		}
 	}
 
 	private R.DocumentBlock BuildSections(CMSItem item) {
@@ -69,28 +126,68 @@ public sealed class CmsRenderModelBuilder {
 			pages.Select(page => (VisualNode)BuildPart(page.ID, CMSPageType.Section)).ToArray());
 	}
 
-	private R.DocumentBlock BuildArticles(CMSItem item) {
+	private R.DocumentBlock BuildArticles(CMSItem item, int pageNumber, CmsArticleListing listing) {
 		var content = _repository.CMSDatabase.GetContent(item.Slug);
-		var articles = item.Parts.Select(_repository.GetPage)
-			.Where(page => !CMSHelper.IsFramingContent(page.CMSProperties.PageType))
-			.GroupBy(page => Tools.Url.StripAnchorTag(page.CMSProperties.CustomSlug))
-			.Select(group => _repository.CMSDatabase.GetContent(group.Key))
-			.OrderBy(node => node.Content.Select(page => page.CMSProperties.Sequence ?? int.MaxValue).DefaultIfEmpty(int.MaxValue).Min())
-			.ThenBy(node => node.CreatedOn).ThenByDescending(node => node.LastEditedOn).ToArray();
+		listing ??= new CmsArticleListing(_repository, item);
+		var articles = listing.Articles;
+		var pageArticles = listing.GetPage(pageNumber);
 		var root = content.GetLogicalContentRoot();
 		var source = articles.SelectMany(node => node.Content).FirstOrDefault();
 		var all = new CMSContentNode { Slug = root.Slug, TitleOverride = root.Title.ToUpperInvariant() };
-		R.TemplateBlock body = Template("articles", slots: new() {
+		var counts = new Dictionary<string, string> {
+			["range_start"] = (articles.Length == 0 ? 0 : (pageNumber - 1) * CmsArticleListing.PageSize + 1).ToString(CultureInfo.InvariantCulture),
+			["range_end"] = Math.Min(pageNumber * CmsArticleListing.PageSize, articles.Length).ToString(CultureInfo.InvariantCulture),
+			["total_count"] = articles.Length.ToString(CultureInfo.InvariantCulture),
+			["page_number"] = pageNumber.ToString(CultureInfo.InvariantCulture),
+			["page_count"] = listing.PageCount.ToString(CultureInfo.InvariantCulture)
+		};
+		R.TemplateBlock body = Template("articles", counts, new() {
 			["category_root"] = Category(all, 1, new HashSet<CMSContentNode>()),
 			["categories"] = Group(root.Children.Where(node => node.Type == CMSContentType.Book)
 				.Select(node => Category(node, 1, new HashSet<CMSContentNode>()))),
-			["summaries"] = Group(articles.Select((node, index) => Summary(node, index % 2 == 1)))
+			["summaries"] = Group(pageArticles.Select((node, index) => Summary(node, index % 2 == 1))),
+			["pagination"] = Template("articles_pagination", counts, new() { ["links"] = Group(PageLinks()) })
 		});
 		return Shell(item, "cms_articles", "cms-articles", content.Title,
 			articles.SelectMany(node => node.Content).ToArray(), [body]) with {
 			Keywords = content.Keywords.ToArray(),
 			Description = content.Summary
 		};
+
+		IEnumerable<VisualNode> PageLinks() {
+			if (listing.PageCount == 1)
+				yield break;
+			if (pageNumber > 1)
+				yield return PageLink(pageNumber - 1, "Previous");
+			var previous = 0;
+			// Keep the control bounded even for large publications, with the first and last page always reachable.
+			foreach (var number in Enumerable.Range(Math.Max(1, pageNumber - 2), Math.Min(listing.PageCount, pageNumber + 2) - Math.Max(1, pageNumber - 2) + 1)
+				.Prepend(1).Append(listing.PageCount).Distinct()) {
+				if (previous != 0 && number > previous + 1)
+					yield return Template("articles_page_gap");
+				yield return number == pageNumber
+					? Template("articles_page_active", new() { ["label"] = number.ToString(CultureInfo.InvariantCulture) })
+					: PageLink(number, number.ToString(CultureInfo.InvariantCulture));
+				previous = number;
+			}
+			if (pageNumber < listing.PageCount)
+				yield return PageLink(pageNumber + 1, "Next");
+		}
+
+		VisualNode PageLink(int number, string label) {
+			string url;
+			if (_repository.Paths.Mode == LocalNotionMode.Online) {
+				url = ResolveCmsUrl(source, item.Slug);
+				if (number > 1)
+					url += "?page=" + number.ToString(CultureInfo.InvariantCulture);
+			} else {
+				if (item.ListingRenderPaths == null || item.ListingRenderPaths.Length != listing.PageCount)
+					throw new InvalidOperationException("Offline article listing paths must be reserved before projection.");
+				url = Path.GetRelativePath(_outputDirectory, Path.GetFullPath(item.ListingRenderPaths[number - 1],
+					_repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute))).Replace('\\', '/');
+			}
+			return Template("articles_page_link", new() { ["url"] = url, ["label"] = label });
+		}
 
 		VisualNode Category(CMSContentNode node, int indent, HashSet<CMSContentNode> ancestry) {
 			if (indent > 128 || !ancestry.Add(node))
@@ -123,6 +220,10 @@ public sealed class CmsRenderModelBuilder {
 				ThumbnailType.Image => Template("articles_summary_thumbnail_image", new() { ["url"] = thumbnailUrl }),
 				_ => new R.GroupBlock()
 			};
+			var feature = Template("articles_summary_feature", new() { ["url"] = CssUrl(image) }, new() { ["thumbnail"] = thumbnailNode });
+			// Only the cover-fit modifier belongs on the feature; page layout Themes must not enter the collection.
+			if (primary?.CMSProperties?.Themes?.Contains("header_cover_contain", StringComparer.Ordinal) == true)
+				feature = feature with { Themes = ["cms_articles", "header_cover_contain"] };
 			return Template(alternate ? "articles_summary_alt" : "articles_summary", new() {
 				["title"] = node.Title ?? "",
 				["created_on"] = node.CreatedOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
@@ -131,7 +232,7 @@ public sealed class CmsRenderModelBuilder {
 				["slug"] = LocalNotionHelper.SanitizeSlug(node.Slug),
 				["url"] = ResolveCmsUrl(primary, node.Slug)
 			}, new() {
-				["feature"] = Template("articles_summary_feature", new() { ["url"] = CssUrl(image) }, new() { ["thumbnail"] = thumbnailNode })
+				["feature"] = feature
 			});
 		}
 	}

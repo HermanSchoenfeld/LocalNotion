@@ -130,11 +130,11 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 					var slug = slugParts.Take(j+1).ToDelimittedString("/");
 					traits = BreadCrumbItemTraits.HasUrl;
 					var type = LocalNotionResourceType.Page; // what about DB?
-					if (Repository.TryFindRenderBySlug(slug, out var slugResult)) {
+					if (TryGetBreadcrumbContentResource(slug, out var slugResource)) {
 						// TODO: what about if DB?
 						traits.SetFlags(BreadCrumbItemTraits.IsPage);
 						traits.SetFlags(BreadCrumbItemTraits.IsCMSPage);
-						url = LinkGenerator.Generate(from, slugResult.ResourceID, RenderType.HTML, out resource);
+						url = LinkGenerator.Generate(from, slugResource.ID, RenderType.HTML, out resource);
 						title = resource.Title;;
 						if (resource is LocalNotionPage lnp) {
 							data = lnp.Thumbnail.Data;
@@ -203,4 +203,17 @@ public class BreadCrumbGenerator : IBreadCrumbGenerator {
 		}
 	}
 
+	private bool TryGetBreadcrumbContentResource(string slug, out LocalNotionResource resource) {
+		// A raw framing export can register its CMS slug without supplying a public ancestor title.
+		resource = null;
+		if (Repository.TryFindRenderBySlug(slug, out var render) && Repository.TryGetResource(render.ResourceID, out resource) &&
+			(resource is not LocalNotionPage { CMSProperties: { } properties } || !CMSHelper.IsFramingContent(properties.PageType)))
+			return true;
+
+		// A framing alias must not hide a genuine rendered Page or Gallery at the same address.
+		resource = Repository.Resources.OfType<LocalNotionPage>().FirstOrDefault(page =>
+			page.CMSProperties is { } cmsProperties && CMSHelper.IsPublicContent(page) && !CMSHelper.IsFramingContent(cmsProperties.PageType) &&
+			string.Equals(cmsProperties.CustomSlug, slug, StringComparison.InvariantCultureIgnoreCase) && page.Renders.ContainsKey(RenderType.HTML));
+		return resource != null;
+	}
 }

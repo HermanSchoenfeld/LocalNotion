@@ -321,6 +321,278 @@ public class NginxMappingsGeneratorTests {
 		Assert.That(Locations(mappings, "/files/Private Document.pdf")[0], Does.Contain("default_type application/pdf;"));
 	}
 
+	[Test]
+	public async Task ListingMappingSelectsOnlyFixedManifestTargetsAtExistingRoute() {
+		RegisterListing("articles", ["cms/articles.html", "cms/articles-2.html", "cms/articles-3.html"]);
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = "articles/cryptography/signatures", RenderPath = "cms/signatures.html" });
+		var mappings = await GenerateMappings();
+		var listing = Locations(mappings, "/articles").Single();
+		Assert.That(listing, Does.Contain("if ($arg_page = \"\") { set $ln_listing_path \"/cms/articles.html\"; }"));
+		Assert.That(listing, Does.Contain("if ($arg_page = \"1\") { set $ln_listing_path \"/cms/articles.html\"; }"));
+		Assert.That(listing, Does.Contain("if ($arg_page = \"2\") { set $ln_listing_path \"/cms/articles-2.html\"; }"));
+		Assert.That(listing, Does.Contain("if ($arg_page = \"3\") { set $ln_listing_path \"/cms/articles-3.html\"; }"));
+		Assert.That(listing, Does.Contain("if ($ln_listing_path = \"\") { return 404; }"));
+		Assert.That(listing, Does.Contain("rewrite ^ $ln_listing_path last;"));
+		Assert.That(listing, Does.Not.Contain("try_files $ln_listing_path"));
+		Assert.That(listing, Does.Not.Contain("rewrite ^ $arg_page"));
+		Assert.That(listing, Does.Not.Contain("$args ="), "Unrelated tracking arguments must remain intact.");
+		Assert.That(Locations(mappings, "/articles/page/2"), Is.Empty);
+		Assert.That(Locations(mappings, "/articles/2"), Is.Empty);
+		Assert.That(Locations(mappings, "/cms/articles-2.html"), Is.Empty, "Public backing files retain the existing static-root policy.");
+		var article = Locations(mappings, "/articles/cryptography/signatures").Single();
+		Assert.That(article, Does.Contain("try_files \"/cms/signatures.html\" =404;"));
+		Assert.That(article, Does.Not.Contain("$arg_page"), "Article routes must remain standalone documents.");
+	}
+
+	[Test]
+	public async Task RenamedCollectionsAtDifferentDepthsSelectTheirOwnStaticPages() {
+		RegisterListing("updates", ["cms/updates.html", "cms/updates-2.html"]);
+		RegisterListing("fixed/fixed2/field-notes/device-setup", ["cms/device-setup.html", "cms/device-setup-2.html"]);
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = "fixed/fixed2/field-notes/device-setup/installing-sensors", RenderPath = "cms/sensors.html" });
+		var mappings = await GenerateMappings();
+		var updates = Locations(mappings, "/updates").Single();
+		var devices = Locations(mappings, "/fixed/fixed2/field-notes/device-setup").Single();
+		Assert.That(updates, Does.Contain("if ($arg_page = \"2\") { set $ln_listing_path \"/cms/updates-2.html\"; }"));
+		Assert.That(updates, Does.Not.Contain("device-setup-2.html"));
+		Assert.That(devices, Does.Contain("if ($arg_page = \"2\") { set $ln_listing_path \"/cms/device-setup-2.html\"; }"));
+		Assert.That(devices, Does.Not.Contain("updates-2.html"));
+		Assert.That(Locations(mappings, "/fixed/fixed2/field-notes/device-setup/").Single(),
+			Does.Contain("return 301 \"/fixed/fixed2/field-notes/device-setup$is_args$args\";"));
+		Assert.That(Locations(mappings, "/articles"), Is.Empty);
+		var article = Locations(mappings, "/fixed/fixed2/field-notes/device-setup/installing-sensors").Single();
+		Assert.That(article, Does.Contain("try_files \"/cms/sensors.html\" =404;"));
+		Assert.That(article, Does.Not.Contain("$arg_page"));
+		Assert.That(Locations(mappings, "/fixed/fixed2/field-notes/device-setup/2/installing-sensors"), Is.Empty);
+	}
+
+	[Test]
+	public async Task ListingWithOnePageWhitelistsOnlyDefaultAndPageOne() {
+		RegisterListing("articles", ["cms/articles.html"]);
+		var listing = Locations(await GenerateMappings(), "/articles").Single();
+		var allowedPages = Regex.Matches(listing, """if \(\$arg_page = "(?<page>[^"]*)"\)""")
+			.Select(match => match.Groups["page"].Value).ToArray();
+		Assert.That(allowedPages, Is.EqualTo(new[] { "", "1" }));
+		Assert.That(listing, Does.Contain("set $ln_listing_path \"\";"));
+		Assert.That(listing, Does.Contain("if ($ln_listing_path = \"\") { return 404; }"));
+	}
+
+	[Test]
+	public async Task ListingTrailingSlashAliasPreservesAllQueryArgumentsWithoutChangingOtherRedirects() {
+		RegisterListing("articles/cryptography", ["cms/articles.html", "cms/articles-2.html"]);
+		var mappings = await GenerateMappings();
+		var alias = Locations(mappings, "/articles/cryptography/").Single();
+		Assert.That(alias, Does.Contain("return 301 \"/articles/cryptography$is_args$args\";"));
+		Assert.That(mappings, Does.Contain("return 301 $1;"), "The existing global redirect policy remains unchanged.");
+		Assert.That(Locations(mappings, "/unrelated/"), Is.Empty);
+	}
+
+	[TestCase("page=1&page=2", true)]
+	[TestCase("page=&source=mail&PAGE=2", true)]
+	[TestCase("page&page=2", true)]
+	[TestCase("source=mail&page=2&other=3&page=1&end=4", true)]
+	[TestCase("page=2", false)]
+	[TestCase("page=", false)]
+	[TestCase("source=mail&page=2&campaign=release", false)]
+	[TestCase("webpage=1&page=2", false)]
+	[TestCase("page_size=1&page=2", false)]
+	[TestCase("source=page=1&page=2", false)]
+	[TestCase("page=2&next=%26page%3D1", false)]
+	public async Task ListingMappingRejectsOnlyDuplicatePageArguments(string arguments, bool rejected) {
+		RegisterListing("articles", ["cms/articles.html", "cms/articles-2.html"]);
+		var listing = Locations(await GenerateMappings(), "/articles").Single();
+		var duplicateCheck = Regex.Match(listing, """if \(\$args ~\* "(?<pattern>[^"]+)"\) \{ return 400; \}""");
+		Assert.That(duplicateCheck.Success, Is.True);
+		Assert.That(Regex.IsMatch(arguments, duplicateCheck.Groups["pattern"].Value, RegexOptions.IgnoreCase), Is.EqualTo(rejected));
+	}
+
+	[Test]
+	public async Task ProtectedListingAppliesAuthenticationToQueryRouteAndEveryPhysicalPage() {
+		RegisterListing("private/articles", ["cms/articles.html", "cms/articles-2.html", "cms/articles-3.html"], "fixture-user:fixture-password");
+		var mappings = await GenerateMappings();
+		var listing = Locations(mappings, "/private/articles").Single();
+		var authentication = "if ($http_authorization != \"Basic " + "fixture-user:fixture-password".ToBase64() + "\")";
+		Assert.That(listing, Does.Contain(authentication));
+		Assert.That(listing.IndexOf(authentication, StringComparison.Ordinal), Is.LessThan(listing.IndexOf("$arg_page", StringComparison.Ordinal)));
+		foreach (var file in new[] { "articles.html", "articles-2.html", "articles-3.html" }) {
+			var physical = Locations(mappings, "/cms/" + file).Single();
+			Assert.That(physical, Does.Contain(authentication));
+			Assert.That(physical, Does.Contain("try_files \"/cms/" + file + "\" =404;"));
+			Assert.That(physical, Does.Not.Contain("$arg_page"), "Physical URLs serve their fixed file with the same credentials.");
+		}
+	}
+
+	[TestCase("cms/../cms/articles.html")]
+	[TestCase("./cms/articles.html")]
+	public async Task ListingMappingAcceptsEquivalentPrimaryRenderPath(string firstPath) {
+		_repository.AddOrUpdateCMSItem(new CMSItem {
+			Slug = "articles", RenderPath = "cms/articles.html", ListingRenderPaths = [firstPath, "cms/articles-2.html"]
+		});
+		var mappings = await GenerateMappings();
+		Assert.That(Locations(mappings, "/articles").Single(), Does.Contain("set $ln_listing_path \"/cms/articles.html\";"));
+	}
+
+	[TestCase(null)]
+	[TestCase("")]
+	[TestCase(" ")]
+	[TestCase("../outside.html")]
+	[TestCase("cms/$variable.html")]
+	[TestCase("cms/\"quote.html")]
+	[TestCase("cms/line\nbreak.html")]
+	[TestCase("cms/articles.html")]
+	[TestCase("cms/sitemap.xml")]
+	[TestCase("pages/raw-page.html")]
+	[TestCase(".localnotion/repository.json")]
+	[TestCase("cms/source.json")]
+	[TestCase("cms/query?.html")]
+	[TestCase("cms/fragment#.html")]
+	public async Task ListingMappingRejectsInvalidExtraTargetsWithoutReplacingPreviousMap(string extraPath) {
+		await _generator.GenerateNGinxFolder();
+		var mappingsPath = Path.Combine(_generator.CalculateNGinxFolderPath(), "conf", NginxMappingsGenerator.MappingFileName);
+		await File.WriteAllTextAsync(mappingsPath, "previous mappings");
+		RegisterListing("articles", ["cms/articles.html", extraPath]);
+		await Assert.ThatAsync(async () => await _generator.GenerateUrlMappingsFile(), Throws.TypeOf<InvalidOperationException>());
+		Assert.That(await File.ReadAllTextAsync(mappingsPath), Is.EqualTo("previous mappings"));
+	}
+
+	[Test]
+	public async Task ListingMappingRejectsManifestWhoseFirstPageIsNotPrimaryRender() {
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = "articles", RenderPath = "cms/articles.html", ListingRenderPaths = ["cms/wrong.html"] });
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[TestCase("another", "cms/articles.html")]
+	[TestCase("another", "cms/articles-2.html")]
+	[TestCase("cms/articles-2.html", "cms/another.html")]
+	public async Task ListingMappingRejectsOtherRouteAndBackingFileCollisions(string otherSlug, string otherPath) {
+		RegisterListing("articles", ["cms/articles.html", "cms/articles-2.html"]);
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = otherSlug, RenderPath = otherPath });
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[Test]
+	public async Task ListingMappingRejectsDuplicateFriendlyRouteFromRawPage() {
+		var root = Path.Combine(_fixtureRoot, "online-collision");
+		Directory.CreateDirectory(root);
+		using var repository = (CMSLocalNotionRepository)await LocalNotionRepository.CreateNew(root, cmsDatabaseID: Guid.NewGuid().ToString(),
+			pathProfile: new LocalNotionPathProfile { Mode = LocalNotionMode.Online }, logger: new NoOpLogger());
+		repository.AddOrUpdateCMSItem(new CMSItem { Slug = "articles", RenderPath = "cms/articles.html", ListingRenderPaths = ["cms/articles.html"] });
+		var page = new LocalNotionPage { ID = Guid.NewGuid().ToString(), Name = "other" };
+		page.Renders[RenderType.HTML] = new RenderEntry { Slug = "articles", LocalPath = "pages/other.html" };
+		repository.AddResource(page);
+		var generator = new NginxMappingsGenerator(repository);
+		await generator.GenerateNGinxFolder();
+		await Assert.ThatAsync(async () => await generator.GenerateUrlMappingsFile(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[Test]
+	public async Task ListingMappingRejectsSharedPagesBetweenManifests() {
+		RegisterListing("articles", ["cms/articles.html", "cms/shared.html"]);
+		RegisterListing("articles/cryptography", ["cms/cryptography.html", "cms/shared.html"]);
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[TestCase("cms/articles.html")]
+	[TestCase("cms/articles-2.html")]
+	public async Task ListingMappingRejectsFriendlyRouteToItsOwnPhysicalPage(string slug) {
+		RegisterListing(slug, ["cms/articles.html", "cms/articles-2.html"]);
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[Test]
+	public async Task ListingMappingRejectsTrailingSlashAliasCollision() {
+		RegisterListing("articles", ["cms/articles.html", "cms/articles-2.html"]);
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = "articles/", RenderPath = "cms/another.html" });
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[Test]
+	public async Task ProtectedListingRejectsPublicRouteToExtraPage() {
+		RegisterListing("private/articles", ["cms/articles.html", "cms/articles-2.html"], "fixture-user:fixture-password");
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = "public-copy", RenderPath = "cms/articles-2.html" });
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[Test]
+	[Platform("Win")]
+	public async Task ListingMappingRejectsExtraRenderWithMismatchedFileNameCase() {
+		CreateRender("articles.html");
+		CreateRender("articles-2.html");
+		RegisterListing("articles", ["cms/articles.html", "cms/ARTICLES-2.html"]);
+		await Assert.ThatAsync(async () => await GenerateMappings(), Throws.TypeOf<InvalidOperationException>());
+	}
+
+	[Test]
+	public async Task InvalidListingPreservesPreviousMappingsAndSkipsRenderCleanup() {
+		var first = CreateRender("articles.html");
+		var previousPage = CreateRender("previous-page.html");
+		await _generator.GenerateNGinxFolder();
+		var mappingsPath = Path.Combine(_generator.CalculateNGinxFolderPath(), "conf", NginxMappingsGenerator.MappingFileName);
+		await File.WriteAllTextAsync(mappingsPath, "previous mappings");
+		RegisterListing("articles", ["cms/articles.html", "../outside.html"]);
+		await Assert.ThatAsync(async () => await NginxMappingsGenerator.GenerateNGinxFiles(_repository), Throws.TypeOf<InvalidOperationException>());
+		Assert.That(await File.ReadAllTextAsync(mappingsPath), Is.EqualTo("previous mappings"));
+		Assert.That(File.Exists(first), Is.True);
+		Assert.That(File.Exists(previousPage), Is.True, "Failed routing validation must not delete the prior deployment's files.");
+	}
+
+	[Test]
+	public async Task ListingCleanupKeepsEveryManifestPageAndRemovesPagesAfterManifestShrinks() {
+		var first = CreateRender("articles.html");
+		var second = CreateRender("articles-2.html");
+		var third = CreateRender("articles-3.html");
+		var obsolete = CreateRender("obsolete.html");
+		RegisterListing("articles", ["cms/articles.html", "cms/articles-2.html", "cms/articles-3.html"]);
+		await NginxMappingsGenerator.GenerateNGinxFiles(_repository);
+		Assert.That(new[] { first, second, third }.All(File.Exists), Is.True);
+		Assert.That(File.Exists(obsolete), Is.False);
+		RegisterListing("articles", ["cms/articles.html", "cms/articles-2.html"]);
+		await NginxMappingsGenerator.GenerateNGinxFiles(_repository);
+		Assert.That(File.Exists(first), Is.True);
+		Assert.That(File.Exists(second), Is.True);
+		Assert.That(File.Exists(third), Is.False, "A removed manifest entry becomes an obsolete render.");
+		var mappings = await GenerateMappings();
+		Assert.That(Locations(mappings, "/articles").Single(), Does.Not.Contain("articles-3.html"));
+	}
+
+	[Test]
+	[Category("NginxIntegration")]
+	[Explicit("Exports dummy routing files for an isolated Nginx container; set NginxPaginationFixturePath to a new directory.")]
+	public async Task ExportPaginationRoutingFixture() {
+		var exportPath = TestContext.Parameters.Get("NginxPaginationFixturePath", "");
+		Assert.That(Path.IsPathFullyQualified(exportPath), Is.True, "Supply an absolute fixture export directory.");
+		Assert.That(Directory.Exists(exportPath), Is.False, "The fixture exporter must not overwrite an existing directory.");
+		RegisterListing("articles", ["cms/public-1.html", "cms/public-2.html", "cms/public-3.html"]);
+		RegisterListing("private/articles", ["cms/private-1.html", "cms/private-2.html"], "pagination-fixture:pagination-fixture");
+		RegisterListing("articles/filenames", ["cms/100% ready 1.html", "cms/100% ready 2.html"]);
+		RegisterListing("private/filenames", ["cms/private 100% ready 1.html", "cms/private 100% ready 2.html"], "pagination-fixture:pagination-fixture");
+		_repository.AddOrUpdateCMSItem(new CMSItem { Slug = "articles/unchanged-article", RenderPath = "cms/article.html" });
+		CreateRender("public-1.html", "<html><body>PUBLIC_PAGE_1</body></html>");
+		CreateRender("public-2.html", "<html><body>PUBLIC_PAGE_2</body></html>");
+		CreateRender("public-3.html", "<html><body>PUBLIC_PAGE_3</body></html>");
+		CreateRender("private-1.html", "<html><body>Dummy authenticated fixture page</body></html>");
+		CreateRender("private-2.html", "<html><body>Dummy authenticated fixture page</body></html>");
+		CreateRender("article.html", "<html><body>PUBLIC_ARTICLE</body></html>");
+		CreateRender("100% ready 1.html", "<html><body>PUBLIC_FILENAME_1</body></html>");
+		CreateRender("100% ready 2.html", "<html><body>PUBLIC_FILENAME_2</body></html>");
+		CreateRender("private 100% ready 1.html", "<html><body>Dummy authenticated fixture page</body></html>");
+		CreateRender("private 100% ready 2.html", "<html><body>Dummy authenticated fixture page</body></html>");
+		await GenerateMappings();
+
+		// Export generated hosting files and dummy HTML only, never the repository registry or source data.
+		var exportCmsPath = Path.Combine(exportPath, "cms");
+		var exportConfPath = Path.Combine(exportPath, "conf");
+		Directory.CreateDirectory(exportCmsPath);
+		Directory.CreateDirectory(exportConfPath);
+		foreach (var file in Directory.EnumerateFiles(_cmsPath, "*.html"))
+			File.Copy(file, Path.Combine(exportCmsPath, Path.GetFileName(file)));
+		foreach (var file in Directory.EnumerateFiles(Path.Combine(_generator.CalculateNGinxFolderPath(), "conf")))
+			File.Copy(file, Path.Combine(exportConfPath, Path.GetFileName(file)));
+		TestContext.AddTestAttachment(Path.Combine(exportConfPath, NginxMappingsGenerator.MappingFileName), "Generated dummy pagination mappings");
+	}
+
+	private void RegisterListing(string slug, string[] paths, string authentication = null)
+		=> _repository.AddOrUpdateCMSItem(new CMSItem { Slug = slug, RenderPath = paths[0], ListingRenderPaths = paths, Auth = authentication });
+
 	private async Task<string> GenerateMappings() {
 		await _generator.GenerateNGinxFolder();
 		await _generator.GenerateUrlMappingsFile();

@@ -58,8 +58,8 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 	public void RemoveCmsItem(string slug) {
 		CheckLoaded();
 		var cmsItem = this.GetCMSItem(slug);
-		if (!string.IsNullOrWhiteSpace(cmsItem.RenderPath)) {
-			var renderFile = Path.Join(Paths.GetRepositoryPath(FileSystemPathType.Absolute), cmsItem.RenderPath);
+		foreach (var path in (cmsItem.ListingRenderPaths ?? []).Append(cmsItem.RenderPath).Where(path => !string.IsNullOrWhiteSpace(path)).Distinct()) {
+			var renderFile = Path.GetFullPath(path, Paths.GetRepositoryPath(FileSystemPathType.Absolute));
 			if (File.Exists(renderFile)) {
 				Logger.Info($"Deleting CMS render '{renderFile}'");
 				Tools.FileSystem.DeleteFile(renderFile);
@@ -344,6 +344,7 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 	
 	private void AddOrUpdateCmsItem(CMSItemType itemType, string slug, string auth, string title, string description, string image, string[] parts, string[] keywords) {
 		var contentSlug = CMSDatabase.GetContent(slug);	
+		TryGetCMSItem(slug, out var existingRender);
 		AddOrUpdateCMSItem(new CMSItem {
 			Slug = slug,
 			Auth = auth,
@@ -359,7 +360,8 @@ public class CMSLocalNotionRepository : LocalNotionRepository, ICmsLocalNotionRe
 			InternalID = contentSlug.Internal?.ID,
 			Parts = parts ?? [],
 			Dirty = true,
-			RenderPath = TryGetCMSItem(slug, out var existingRender) ? existingRender.RenderPath : null
+			RenderPath = existingRender?.RenderPath,
+			ListingRenderPaths = existingRender?.ListingRenderPaths?.ToArray() ?? []
 		});
 	}
 	

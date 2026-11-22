@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Sphere10.Framework;
 using Notion.Client;
@@ -277,14 +278,28 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 	public async Task GenerateUrlMappingsFile() {
 		var hostableResources = LocalNotionHelper.EnumerateWebHostableResources(LocalNotionRepository).ToArray();
+		var listingRenderPaths = CalculateListingRenderPaths(hostableResources);
+		var listingTargets = listingRenderPaths.SelectMany(listing => {
+			var resource = hostableResources.Single(resource => resource.Slug == listing.Key);
+			return listing.Value.Skip(1).Select(path => new LocalNotionHelper.WebHostableResource(resource.Slug, path, resource.MimeType, resource.Authentication));
+		}).ToArray();
 		// Validate protection before opening the file: a collision must preserve the previous configuration.
-		var protectedPhysicalAliases = CalculateProtectedPhysicalAliases(hostableResources);
+		var protectedPhysicalAliases = CalculateProtectedPhysicalAliases(hostableResources, listingTargets);
 		var mappingsFilePath = Path.Combine(CalculateNGinxFolderPath(), "conf", MappingFileName);
 		await using var writer = new FileTextWriter(mappingsFilePath, FileMode.Create);
 		await writer.WriteLineAsync(MappingsFileHeader);
 
 		// Generate entries for hostable resources
 		foreach (var hostableResource in hostableResources) {
+			if (listingRenderPaths.TryGetValue(hostableResource.Slug, out var paths)) {
+				await writer.WriteLineAsync(GenerateListingLocation(hostableResource, paths));
+				if (hostableResource.Slug.Length > 0 && !hostableResource.Slug.EndsWith('/')) {
+					var alias = QuoteNginxLiteral("/" + hostableResource.Slug + "/");
+					var destination = QuoteNginxLiteral("/" + hostableResource.Slug + "$is_args$args");
+					await writer.WriteLineAsync($"location = {alias} {{ return 301 {destination}; }}");
+				}
+				continue;
+			}
 			var template = !string.IsNullOrWhiteSpace(hostableResource.Authentication) ? ProtectedLocationTemplate : LocationTemplate;
 			var location = 				
 				template.FormatWithDictionary(
@@ -324,62 +339,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 			}, true
 		);
 		await writer.WriteLineAsync(sitemapEntry);
-
-
 	}
-
-	private KeyValuePair<string, LocalNotionHelper.WebHostableResource>[] CalculateProtectedPhysicalAliases(LocalNotionHelper.WebHostableResource[] resources) {
-		var cmsPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Relative);
-		resources = resources.Append(new LocalNotionHelper.WebHostableResource("sitemap.xml", Path.Combine(cmsPath, "sitemap.xml"), "application/xml", null)).ToArray();
-		var aliases = new Dictionary<string, LocalNotionHelper.WebHostableResource>(StringComparer.Ordinal);
-		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
-		foreach (var resource in resources.Where(resource => !string.IsNullOrWhiteSpace(resource.Authentication)))
-			if (resource.RelPath.Any(character => char.IsControl(character) || character is '$' or '"'))
-				throw new InvalidOperationException("A protected hosting target contains unsupported Nginx path syntax.");
-		var targets = resources.Select(resource => {
-			var fullPath = Path.GetFullPath(resource.RelPath.ToUnixPath(), repoPath);
-			return Path.GetRelativePath(repoPath, fullPath).ToUnixPath();
-		}).ToArray();
-		for (var i = 0; i < resources.Length; i++) {
-			var resource = resources[i];
-			if (string.IsNullOrWhiteSpace(resource.Authentication))
-				continue;
-			var target = targets[i];
-			if (target is "." or ".." || target.StartsWith("../", StringComparison.Ordinal) || Path.IsPathRooted(target))
-				throw new InvalidOperationException("A protected hosting target cannot be represented safely beneath the repository root.");
-			if (OperatingSystem.IsWindows() && File.Exists(Path.Combine(repoPath, target)) && !HasExactFileSystemCase(repoPath, target))
-				throw new InvalidOperationException("A protected hosting target's case does not match its existing file.");
-
-			var physicalUrl = "/" + target;
-			var alreadyMapped = false;
-			for (var j = 0; j < resources.Length; j++) {
-				var other = resources[j];
-				// Nginx normalizes incoming URIs, not the literal configured location. Do not URL-decode filenames.
-				var isPhysicalLocation = "/" + other.Slug == physicalUrl;
-				if (targets[j] != target && !isPhysicalLocation)
-					continue;
-				if (targets[j] != target || other.Authentication != resource.Authentication || other.MimeType != resource.MimeType)
-					throw new InvalidOperationException("A protected hosting target conflicts with another route's target or authentication policy.");
-				alreadyMapped |= isPhysicalLocation;
-			}
-			if (!alreadyMapped)
-				aliases.TryAdd(physicalUrl, resource);
-		}
-		return aliases.ToArray();
-	}
-
-	private static bool HasExactFileSystemCase(string root, string relativePath) {
-		var current = root;
-		foreach (var part in relativePath.Split('/')) {
-			var entry = Directory.EnumerateFileSystemEntries(current).FirstOrDefault(entry => Path.GetFileName(entry) == part);
-			if (entry is null)
-				return false;
-			current = entry;
-		}
-		return true;
-	}
-
-	private static string QuoteNginxLiteral(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
 	public async Task GenerateSiteMap() {
 		var cmsRepo = LocalNotionRepository as CMSLocalNotionRepository;
@@ -403,7 +363,7 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
 		var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 		var allRequiredFiles = LocalNotionRepository.CMSItems
-			.Select(item => item.RenderPath)
+			.SelectMany(item => (item.ListingRenderPaths ?? []).Append(item.RenderPath))
 			.Where(renderPath => !string.IsNullOrWhiteSpace(renderPath))
 			.Select(renderPath => Path.GetFullPath(renderPath, repoPath))
 			.ToHashSet(pathComparer);
@@ -444,5 +404,147 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 
 		return $"\"{path}\"";
 	}
+
+	private Dictionary<string, string[]> CalculateListingRenderPaths(LocalNotionHelper.WebHostableResource[] resources) {
+		var listings = new Dictionary<string, string[]>(StringComparer.Ordinal);
+		var listingItems = LocalNotionRepository.CMSItems.Where(item => item.ListingRenderPaths is { Length: > 0 }).ToArray();
+		if (listingItems.Length == 0)
+			return listings;
+		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
+		var cmsPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Relative);
+		var sitemap = new LocalNotionHelper.WebHostableResource("sitemap.xml", Path.Combine(cmsPath, "sitemap.xml"), "application/xml", null);
+		var allResources = resources.Append(sitemap).ToArray();
+		var allTargets = allResources.Select(resource => NormalizeTarget(resource.RelPath)).ToArray();
+		var cmsTargetPrefix = NormalizeTarget(cmsPath).TrimEnd('/') + "/";
+		var listingTargets = new HashSet<string>(StringComparer.Ordinal);
+		foreach (var item in listingItems) {
+			if (item.Slug is null || resources.Count(resource => resource.Slug == item.Slug) != 1 || listings.ContainsKey(item.Slug))
+				throw new InvalidOperationException("An article listing must have one unambiguous hosting route.");
+			if (item.Slug.Any(character => char.IsControl(character) || character is '$' or '"'))
+				throw new InvalidOperationException("An article listing route contains unsupported Nginx path syntax.");
+			if (item.Slug.Length > 0 && !item.Slug.EndsWith('/') && allResources.Any(resource => resource.Slug == item.Slug + "/"))
+				throw new InvalidOperationException("An article listing's trailing-slash alias conflicts with another hosting route.");
+			var ownResource = resources.Single(resource => resource.Slug == item.Slug);
+			var paths = item.ListingRenderPaths.Select(path => {
+				if (string.IsNullOrWhiteSpace(path) || path.Any(character => char.IsControl(character) || character is '$' or '"'))
+					throw new InvalidOperationException("An article listing target contains unsupported Nginx path syntax.");
+				if (path.IndexOfAny(['?', '#']) >= 0)
+					throw new InvalidOperationException("An article listing target cannot contain query or fragment delimiters.");
+				var target = NormalizeTarget(path);
+				if (target is "." or ".." || target.StartsWith("../", StringComparison.Ordinal) || Path.IsPathRooted(target))
+					throw new InvalidOperationException("An article listing target must remain beneath the repository root.");
+				if (!target.StartsWith(cmsTargetPrefix, StringComparison.Ordinal) || !target.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+					throw new InvalidOperationException("An article listing target must be an HTML render beneath the CMS directory.");
+				if (OperatingSystem.IsWindows() && File.Exists(Path.Combine(repoPath, target)) && !HasExactFileSystemCase(repoPath, target))
+					throw new InvalidOperationException("An article listing target's case does not match its existing file.");
+				if (!listingTargets.Add(target))
+					throw new InvalidOperationException("Article listings cannot share physical page targets.");
+				for (var i = 0; i < allResources.Length; i++) {
+					var other = allResources[i];
+					if (ReferenceEquals(other, ownResource)) {
+						if (other.Slug == target)
+							throw new InvalidOperationException("An article listing route cannot be one of its physical page targets.");
+						continue;
+					}
+					if (allTargets[i] == target || "/" + other.Slug == "/" + target)
+						throw new InvalidOperationException("An article listing target conflicts with another hosting route.");
+				}
+				return target;
+			}).ToArray();
+			if (paths[0] != NormalizeTarget(item.RenderPath))
+				throw new InvalidOperationException("An article listing's first target must match its primary render path.");
+			listings.Add(item.Slug, paths);
+		}
+		return listings;
+
+		string NormalizeTarget(string path) {
+			if (string.IsNullOrWhiteSpace(path))
+				throw new InvalidOperationException("A hosting route has no physical target.");
+			return Path.GetRelativePath(repoPath, Path.GetFullPath(path.ToUnixPath(), repoPath)).ToUnixPath();
+		}
+	}
+
+	private static string GenerateListingLocation(LocalNotionHelper.WebHostableResource resource, string[] paths) {
+		var location = new StringBuilder();
+		location.AppendLine($"location = {QuoteNginxLiteral("/" + resource.Slug)} {{");
+		if (!string.IsNullOrWhiteSpace(resource.Authentication)) {
+			location.AppendLine($"\tif ($http_authorization != \"Basic {resource.Authentication.ToBase64()}\") {{");
+			location.AppendLine("\t\treturn 401;");
+			location.AppendLine("\t}");
+		}
+
+		// Only fixed generated targets reach the internal redirect. Tracking arguments remain untouched.
+		location.AppendLine("\tif ($args ~* \"(^|&)page(?:=[^&]*)?&(?:[^&]*&)*page(?:=|&|$)\") { return 400; }");
+		location.AppendLine("\tset $ln_listing_path \"\";");
+		location.AppendLine($"\tif ($arg_page = \"\") {{ set $ln_listing_path {SanitizePath(paths[0])}; }}");
+		for (var i = 0; i < paths.Length; i++)
+			location.AppendLine($"\tif ($arg_page = \"{i + 1}\") {{ set $ln_listing_path {SanitizePath(paths[i])}; }}");
+		location.AppendLine("\tif ($ln_listing_path = \"\") { return 404; }");
+		// A successful if/set enters an implicit location that does not inherit try_files.
+		// Re-select the validated physical route instead; its existing authentication policy applies again.
+		location.AppendLine("\trewrite ^ $ln_listing_path last;");
+		location.AppendLine($"\tdefault_type {resource.MimeType};");
+		location.AppendLine("}");
+		return location.ToString();
+	}
+
+	private KeyValuePair<string, LocalNotionHelper.WebHostableResource>[] CalculateProtectedPhysicalAliases(
+		LocalNotionHelper.WebHostableResource[] resources, LocalNotionHelper.WebHostableResource[] additionalTargets
+	) {
+		var cmsPath = LocalNotionRepository.Paths.GetResourceTypeFolderPath(LocalNotionResourceType.CMS, FileSystemPathType.Relative);
+		var mappedRouteCount = resources.Length + 1;
+		resources = resources.Append(new LocalNotionHelper.WebHostableResource("sitemap.xml", Path.Combine(cmsPath, "sitemap.xml"), "application/xml", null))
+			.Concat(additionalTargets).ToArray();
+		var aliases = new Dictionary<string, LocalNotionHelper.WebHostableResource>(StringComparer.Ordinal);
+		var repoPath = LocalNotionRepository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
+		foreach (var resource in resources.Where(resource => !string.IsNullOrWhiteSpace(resource.Authentication)))
+			if (resource.RelPath.Any(character => char.IsControl(character) || character is '$' or '"'))
+				throw new InvalidOperationException("A protected hosting target contains unsupported Nginx path syntax.");
+		var targets = resources.Select(resource => {
+			var fullPath = Path.GetFullPath(resource.RelPath.ToUnixPath(), repoPath);
+			return Path.GetRelativePath(repoPath, fullPath).ToUnixPath();
+		}).ToArray();
+		for (var i = 0; i < resources.Length; i++) {
+			var resource = resources[i];
+			if (string.IsNullOrWhiteSpace(resource.Authentication))
+				continue;
+			var target = targets[i];
+			if (target is "." or ".." || target.StartsWith("../", StringComparison.Ordinal) || Path.IsPathRooted(target))
+				throw new InvalidOperationException("A protected hosting target cannot be represented safely beneath the repository root.");
+			if (OperatingSystem.IsWindows() && File.Exists(Path.Combine(repoPath, target)) && !HasExactFileSystemCase(repoPath, target))
+				throw new InvalidOperationException("A protected hosting target's case does not match its existing file.");
+
+			var physicalUrl = "/" + target;
+			var alreadyMapped = false;
+			for (var j = 0; j < resources.Length; j++) {
+				var other = resources[j];
+				// Nginx normalizes incoming URIs, not the literal configured location. Do not URL-decode filenames.
+				// Additional listing files carry their route's policy but are not themselves friendly routes.
+				var isPhysicalLocation = j < mappedRouteCount && "/" + other.Slug == physicalUrl;
+				if (targets[j] != target && !isPhysicalLocation)
+					continue;
+				if (targets[j] != target || other.Authentication != resource.Authentication || other.MimeType != resource.MimeType)
+					throw new InvalidOperationException("A protected hosting target conflicts with another route's target or authentication policy.");
+				alreadyMapped |= isPhysicalLocation;
+			}
+			// Targets sharing one file were checked above to carry the same policy, so the first alias stands for them all.
+			if (!alreadyMapped && !aliases.ContainsKey(physicalUrl))
+				aliases.Add(physicalUrl, resource);
+		}
+		return aliases.ToArray();
+	}
+
+	private static bool HasExactFileSystemCase(string root, string relativePath) {
+		var current = root;
+		foreach (var part in relativePath.Split('/')) {
+			var entry = Directory.EnumerateFileSystemEntries(current).FirstOrDefault(entry => Path.GetFileName(entry) == part);
+			if (entry is null)
+				return false;
+			current = entry;
+		}
+		return true;
+	}
+
+	private static string QuoteNginxLiteral(string value) => "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
 }
