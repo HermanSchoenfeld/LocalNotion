@@ -71,7 +71,11 @@ public sealed partial class NotionRenderModelBuilder {
 			&& _repository.TryGetResourceGraph(databaseResource.ID, out var storedGraph))
 			graph = storedGraph;
 		var pages = (graph.Children ?? []).Where(node => node is not null).Select(node => FindObject(context, node.ObjectID)).OfType<Page>().ToArray();
+		// CMS authentication is hosting policy, never a public database column.
+		var cmsDatabaseID = context.Purpose == ProjectionPurpose.Html ? _repository.CMSDatabaseID : null;
+		var omitAuthentication = !string.IsNullOrWhiteSpace(cmsDatabaseID) && NormalizeID(databaseValue.Id) == NormalizeID(cmsDatabaseID);
 		var columns = pages.SelectMany(pageValue => pageValue.Properties ?? new Dictionary<string, PropertyValue>())
+			.Where(pair => !omitAuthentication || pair.Key != Constants.AuthenticationPropertyName)
 			.DistinctBy(pair => pair.Key).Select(pair => new R.DatabaseColumn {
 				Key = pair.Key,
 				Label = pair.Key,

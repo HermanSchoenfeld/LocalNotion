@@ -12,7 +12,7 @@ using Notion.Client;
 
 namespace LocalNotion.Core.Tests;
 
-internal sealed class FixtureRepository(IPathResolver pathResolver) : LocalNotionRepositoryDecorator(null) {
+internal sealed class FixtureRepository(IPathResolver pathResolver) : LocalNotionRepositoryDecorator(null), ILocalNotionRepository {
 
 	public Dictionary<string, IObject> ObjectMap { get; } = new();
 
@@ -25,6 +25,10 @@ internal sealed class FixtureRepository(IPathResolver pathResolver) : LocalNotio
 	public override IPathResolver Paths => pathResolver;
 
 	public override string[] DefaultThemes => ["default"];
+
+	string ILocalNotionRepository.CMSDatabaseID => CMSDatabaseIdentifier;
+
+	public string CMSDatabaseIdentifier { get; set; }
 
 	public int ObjectReads { get; private set; }
 
