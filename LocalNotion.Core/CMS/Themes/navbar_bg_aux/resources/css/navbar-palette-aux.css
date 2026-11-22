@@ -1,0 +1,59 @@
+/* Auxiliary surfaces inherit the contrast pair selected by Bootstrap text-bg-* utilities.
+   Only the main menu uses that pair; dropdowns retain their normal body palette. */
+/* Preserve the supplied full-colour logo on saturated auxiliary surfaces. */
+nav.ln-navbar-palette-aux .navbar-brand {
+    background-color: var(--bs-body-bg);
+    border-radius: .45rem;
+    padding-inline: .5rem;
+}
+
+nav.ln-navbar-palette-aux .navbar-nav > .nav-item {
+    color: inherit !important;
+}
+
+nav.ln-navbar-palette-aux .navbar-nav > .nav-item > .nav-link {
+    color: inherit !important;
+    background-color: transparent !important;
+}
+
+nav.ln-navbar-palette-aux .navbar-nav > .nav-item > .nav-link:hover {
+    background-color: transparent !important;
+    border-color: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+nav.ln-navbar-palette-aux .navbar-nav > .nav-item > .nav-link.active,
+nav.ln-navbar-palette-aux .navbar-nav > .nav-item > .nav-link[data-ln-current-branch="true"] {
+    color: inherit !important;
+    background-color: transparent !important;
+    box-shadow: inset 0 -2px 0 currentColor;
+}
+
+nav.ln-navbar-palette-aux .navbar-nav > .nav-item > .nav-link:focus-visible,
+nav.ln-navbar-palette-aux .navbar-toggler:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+nav.ln-navbar-palette-aux .navbar-toggler {
+    color: inherit;
+    border-color: currentColor;
+}
+
+nav.ln-navbar-palette-aux .navbar-toggler-icon {
+    background-color: currentColor;
+    background-image: none;
+    -webkit-mask-image: var(--bs-navbar-toggler-icon-bg);
+    mask-image: var(--bs-navbar-toggler-icon-bg);
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 100%;
+    mask-size: 100%;
+}
+
+nav.ln-navbar-palette-aux .dropdown-menu {
+    color: var(--bs-body-color);
+    background-color: var(--bs-body-bg);
+}

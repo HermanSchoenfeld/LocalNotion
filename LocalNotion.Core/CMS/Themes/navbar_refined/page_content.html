@@ -1,0 +1,15 @@
+﻿{include://navbar_refined_pre.inc}
+{include://navbar_palette_pre.inc}
+<nav id="{object_id}" class="navbar navbar-expand-lg ln-navbar-refined {include://navbar_position.inc} {include://navbar_palette.inc}" aria-label="Main navigation" data-ln-density="{include://navbar_refined_density.inc}" data-ln-panel="{include://navbar_refined_panel.inc}">
+    <div class="container-fluid ln-navbar-container">
+        {thumbnail}
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-{object_id}" aria-controls="navbar-{object_id}" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse ms-auto" id="navbar-{object_id}">
+            <ul class="navbar-nav nav-pills ms-auto">
+                {children}
+            </ul>
+        </div>
+    </div>
+</nav>

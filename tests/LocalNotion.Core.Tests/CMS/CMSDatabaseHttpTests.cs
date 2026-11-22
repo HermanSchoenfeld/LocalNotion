@@ -35,7 +35,7 @@ public class CMSDatabaseHttpTests {
 		Assert.That(state.PageUpdateCount, Is.EqualTo(1));
 		Assert.That(state.ArchiveCount, Is.EqualTo(1));
 		Assert.That(state.QueryCount, Is.EqualTo(1));
-		Assert.That(state.SavedSchema["Themes"]["multi_select"]["options"].Count(), Is.EqualTo(228));
+		Assert.That(state.SavedSchema["Themes"]["multi_select"]["options"].Count(), Is.EqualTo(235));
 		Assert.That(state.SetupPageArchived, Is.True);
 	}
 

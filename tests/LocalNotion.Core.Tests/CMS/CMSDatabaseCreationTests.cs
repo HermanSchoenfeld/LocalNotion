@@ -9,6 +9,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -47,7 +48,7 @@ public class CMSDatabaseCreationTests {
 		Assert.That(transport.SetupPageArchived, Is.True);
 		Assert.That(transport.SchemaReadCount, Is.EqualTo(1));
 		Assert.That(transport.QueryCount, Is.EqualTo(1));
-		Assert.That(transport.PageBodies.SelectMany(x => x.SelectTokens("$.properties.*.multi_select")).OfType<JArray>().Select(x => x.Count), Is.EqualTo(new[] { 100, 28 }));
+		Assert.That(transport.PageBodies.SelectMany(x => x.SelectTokens("$.properties.*.multi_select")).OfType<JArray>().Select(x => x.Count), Is.EqualTo(new[] { 100, 35 }));
 	}
 
 	[Test]
@@ -66,13 +67,29 @@ public class CMSDatabaseCreationTests {
 				config["options"] = property["options"].DeepClone();
 			expected[(string)property["name"]] = new JObject { ["type"] = type, [type] = config };
 		}
-		Assert.That(JToken.DeepEquals(actual, expected), Is.True, "Names, property types, option order and colors must match the canonical staging snapshot.");
+		// Keep the dated fixture unchanged; behavior controls belong to Tags and banner presentation belongs to Themes.
+		expected["Keywords"] = new JObject { ["type"] = "rich_text", ["rich_text"] = new JObject() };
+		((JArray)expected["Tags"]["multi_select"]["options"]).Add(new JObject { ["name"] = "@HideEmbeddedPages", ["color"] = "default" });
+		((JArray)expected["Themes"]["multi_select"]["options"]).Add(new JObject { ["name"] = "header_cover", ["color"] = "default" });
+		var menuThemes = new[] { "navbar_refined", "navbar_refined_product_cards", "navbar_refined_compact", "navbar_refined_wide", "navbar_standard", "navbar_bg_aux" };
+		foreach (var theme in menuThemes)
+			((JArray)expected["Themes"]["multi_select"]["options"]).Add(new JObject { ["name"] = theme, ["color"] = "default" });
+		Assert.That(JToken.DeepEquals(actual, expected), Is.True, "Names, property types, option order and colors must match the dated staging snapshot plus explicit behavior and presentation presets.");
+		Assert.That(actual["Themes"]["multi_select"]["options"].Select(option => (string)option["name"]), Does.Not.Contain("@HideEmbeddedPages").And.Not.Contain("HideEmbeddedPages").And.Not.Contain("hide_embedded_pages"));
+		Assert.That(actual["Themes"]["multi_select"]["options"].Select(option => (string)option["name"]), Does.Contain("header_cover"));
+		var tagNames = actual["Tags"]["multi_select"]["options"].Select(option => (string)option["name"]).ToArray();
+		Assert.That(tagNames, Does.Contain("@HideEmbeddedPages").And.Not.Contain("HideEmbeddedPages").And.Not.Contain("hide_embedded_pages").And.Not.Contain("header_cover"));
+		Assert.That(tagNames.Where(name => !Regex.IsMatch(name, @"^@[A-Z][A-Za-z0-9]*$")), Is.Empty,
+			"Every canonical Tag starts with one @ followed by PascalCase.");
+		Assert.That(tagNames.Intersect(menuThemes), Is.Empty, "Menu presentation presets belong to Themes; existing behavior Tags such as @HideNavBar remain valid.");
+		Assert.That(() => new Sphere10.Framework.Web.VisualRenderer.ThemeCatalog().CreateSession(["default", "header_cover", "header_large"],
+			Sphere10.Framework.Web.VisualRenderer.RenderEnvironment.Online, Sphere10.Framework.Web.VisualRenderer.RenderMode.ReadOnly), Throws.Nothing);
 	}
 
 	[TestCase("Type", "select", 8)]
 	[TestCase("Status", "select", 4)]
-	[TestCase("Tags", "multi_select", 12)]
-	[TestCase("Themes", "multi_select", 228)]
+	[TestCase("Tags", "multi_select", 13)]
+	[TestCase("Themes", "multi_select", 235)]
 	public async Task PresetsAreComplete(string name, string type, int count) {
 		var transport = new RecordingNotionTransport();
 		await new CMSDatabaseCreator(transport.CreateClient(), new CMSDatabaseTemplate(), TimeSpan.Zero).CreateAsync(ParentPageID, "New website");

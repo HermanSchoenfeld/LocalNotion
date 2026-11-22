@@ -320,7 +320,10 @@ public class LocalNotionRepository : SyncDisposable, ILocalNotionRepository {
 		Paths = new PathResolver(Path.GetFullPath(Registry.Paths.RepositoryPathR, Path.GetDirectoryName(_registryPath)), Registry.Paths);
 
 		// LocalNotion keeps a complete theme tree for renderers that consume physical files.
-		await RepositoryThemeDeployment.DeployMissing(Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute));
+		await RepositoryThemeDeployment.DeployMissing(
+			Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute),
+			Paths.GetRepositoryPath(FileSystemPathType.Absolute)
+		);
 
 		// create the resource lookup table
 		_resourcesByNID = new BulkFetchActionCache<string, LocalNotionResource>( 

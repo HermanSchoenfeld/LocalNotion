@@ -29,6 +29,13 @@ An alternative `toggle_open` theme template has a missing include in the inspect
 
 `header_tiny`, `header_small`, `header_large` and `header_full` choose different header height classes; leaving the choice empty uses the default. These are percentage-based treatments, not fixed pixel heights or a universal promise to fill the viewport. Judge the actual header with its content and container.
 
+For a native Page cover with a centered white title and optional native Subtitle, select `header_cover`. Without a size modifier it uses the stock `35vh` height and `200px` minimum. The existing size modifiers can be selected explicitly when another height is intended. This cover composition is separate from a Toggle-based carousel Header.
+
+A Page's native icon straddles the bottom edge of its cover, with half above and
+half below. Its lower half reserves space before the page title and content. A
+Page without a cover keeps its icon in the ordinary page flow. Cover sizing and
+artwork fit do not require changing the icon's dimensions or the page typography.
+
 Add `header_fade` to compare a fade transition between at least two slides. `header_no_slide_controls` removes previous/next controls and indicators; a one-slide header already has no need for them. `header_no_pause` changes the carousel's pause setting, so inspect its actual hover behavior before depending on it.
 
 `header_particles` adds a decorative animated layer and needs its external script. Use one particle header per route in this implementation because the layer uses a fixed identifier. For most documentation pages, a modest static header or no header leaves more room for the material readers came to use.
@@ -60,6 +67,25 @@ The navbar's page icon/thumbnail can supply branding where the template supports
 `navbar_fixed_top` and `navbar_fixed_bottom` fix the navigation at a viewport edge. `navbar_sticky_top` and `navbar_sticky_bottom` request sticky positioning, whose visible behavior also depends on the scroll container and placement. Choose one position and inspect a long page in the [navigation lab](https://staging.sphere10.com/products/localnotion/cms/style-lab/navigation).
 
 For a richer menu entry, `navbar_callout_productlink` turns a NavBar callout into a product link: the callout's own text is the URL, its icon supplies the image area, and its child blocks provide the visible title/description. Keep this separate from ordinary prose callouts and test the complete entry's destination.
+
+## Choose the menu layout and colours
+
+Select presentation options in the **NavBar row's Themes**. The shared NavBar then keeps the same layout and palette on Pages, Articles, Galleries and section-based pages that inherit it. Body themes should not override the menu's background.
+
+| Theme | Effect |
+|---|---|
+| `navbar_refined` | Refined layout with touch targets, keyboard focus, current-location cues and responsive dropdowns. Retains the original logo size. |
+| `navbar_refined_product_cards` | Linked product cards for URL-owning Callouts. Select after the refined layout; the children supply the visible title and description and must not contain other interactive controls. |
+| `navbar_refined_compact` | Tighter spacing while retaining the original logo size and minimum touch targets. |
+| `navbar_refined_wide` | Wider product dropdown on desktop; phone width remains bounded by the viewport. |
+| `navbar_standard` | Original menu layout. Choose it instead of the four refined-family options. The existing `navbar_callout_productlink` retains its original product-row presentation. |
+| `navbar_bg_aux` | Uses the selected auxiliary contrast pair for the menu bar. Add one existing `color_aux_*` theme to choose the colour. |
+
+For a neutral menu, use `color_bg_body` with a readable text modifier such as `color_text_dark_emphasis`. This is a choice, not a requirement to match the page background. For an independent coloured menu, select `navbar_bg_aux` and one of `color_aux_primary`, `color_aux_secondary`, `color_aux_success`, `color_aux_danger`, `color_aux_warning`, `color_aux_info`, `color_aux_light` or `color_aux_dark`. These paired utilities select readable foreground/background colours; dropdown contents retain their normal body palette. The auxiliary layout keeps a neutral backing behind the unchanged logo.
+
+Current development builds install these menu templates and their public CSS/JavaScript when they create or open a repository, including a repository with a custom private Themes path. Existing overrides are preserved. A new `create-cms` database includes the six menu choices in **Themes**, and creates no content rows or automatic menu selection. These options are not Tags. Older installed releases need a matching update or explicit theme-package installation. After changing an existing NavBar selection, pull, render and publish the output and owned public resources together.
+
+The standard option preserves the original Callout product-row click behaviour; it does not gain the refined card companion's keyboard-link semantics. Test the actual menu after choosing a layout, especially on phones and with a coloured background.
 
 ## Keep location and return paths visible
 

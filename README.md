@@ -79,6 +79,8 @@ localnotion create-cms --parent <notion-page-id> --title "My Website"
 
 The command prints the new database ID and URL. It leaves zero active content rows; one temporary setup row is retained in Notion's Trash to work around its 100-option request limit. It does not copy existing website content, initialize a local repository, or publish a website. See [Create a CMS](docs/cms/create-a-cms.md) for credentials, required permissions, version availability, and the next steps. [Build your first website](docs/cms/first-website.md) provides a complete example.
 
+Current development builds include refined and standard menu layouts, optional linked product cards, compact/wide modifiers and an auxiliary-colour menu surface. Creating or opening a local repository installs their matching templates and public assets while preserving existing overrides. Choose these options on the NavBar row's **Themes**, with the existing `color_aux_*` palette where needed. See [menu layout and colours](docs/cms/headers-and-navigation.md#choose-the-menu-layout-and-colours).
+
 ## Build From Source
 
 ### Prerequisites

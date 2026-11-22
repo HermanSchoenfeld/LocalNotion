@@ -1002,6 +1002,34 @@
         {
           "name": "code_all",
           "color": "yellow"
+        },
+        {
+          "name": "header_cover",
+          "color": "default"
+        },
+        {
+          "name": "navbar_refined",
+          "color": "default"
+        },
+        {
+          "name": "navbar_refined_product_cards",
+          "color": "default"
+        },
+        {
+          "name": "navbar_refined_compact",
+          "color": "default"
+        },
+        {
+          "name": "navbar_refined_wide",
+          "color": "default"
+        },
+        {
+          "name": "navbar_standard",
+          "color": "default"
+        },
+        {
+          "name": "navbar_bg_aux",
+          "color": "default"
         }
       ]
     }

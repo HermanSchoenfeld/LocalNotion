@@ -4,12 +4,14 @@
 		<TargetFramework>net11.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>annotations</Nullable>
+		<GenerateEmbeddedFilesManifest>true</GenerateEmbeddedFilesManifest>
 		<!-- Format complete CMS documents; embedded themes can suppress this pass. -->
 		<DefineConstants>$(DefineConstants);CleanHTML</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="AngleSharp" Version="1.8.0" Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('$(DefineConstants)', '(^|;)\s*CleanHTML\s*(;|$)'))" />
+		<PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="11.0.0" />
         <PackageReference Include="HtmlAgilityPack" Version="1.13.0" />
 		<Sphere10Library Include="Sphere10.Framework" />
 		<Sphere10Library Include="Sphere10.Framework.Web.VisualRenderer" />
@@ -28,6 +30,7 @@
 
 	<ItemGroup>
 		<EmbeddedResource Include="CMS/BlankCMSDatabase.json" />
+		<EmbeddedResource Include="CMS/Themes/**/*" Exclude="CMS/Themes/README.md" />
 	</ItemGroup>
 
 </Project>

@@ -365,6 +365,8 @@ localnotion create-cms --parent "YOUR_PARENT_PAGE_UUID" --title "Website CMS"
 
 The command creates a blank CMS rather than website content. If it is unavailable, prepare the schema from Appendix A. Initialize with the **database ID**; Notion's data-source ID is a separate identifier.
 
+New databases include the refined, standard and auxiliary-colour menu options in **Themes**, alongside the existing palette choices. Repository creation/opening supplies the matching templates and public assets; no separate design-package installation is needed for these six built-in Local Notion presets. Choose the layout on the shared NavBar row; `create-cms` does not select one automatically. See [menu layout and colours](headers-and-navigation.md#choose-the-menu-layout-and-colours).
+
 For a new empty local folder, a PowerShell example is:
 
 ```powershell
@@ -554,7 +556,7 @@ Choose one feature-source Tag; if several are present, the current preference is
 
 The lookup describes stock modifiers, not a requirement to select every option or a catalogue of separately installed design packages. A preset name in Notion does not implement a missing template. Follow the selected package's compatible modifier list and overlay order.
 
-The following tables list the **228 stock Theme preset names**, their intended effects, required content and known limits. Bold Type names identify the recommended owning row. Select exact names in that row’s Themes property. Compatible inherited templates can also affect a Gallery detail page; verify that output before using a modifier more broadly.
+The following tables describe the original **228 stock Theme preset names**, their intended effects, required content and known limits. The blank CMS also includes `header_cover` and the six [menu layout and colour presets](headers-and-navigation.md#choose-the-menu-layout-and-colours), for **235 Theme choices**. Bold Type names identify the recommended owning row. Select exact names in that row’s Themes property. Compatible inherited templates can also affect a Gallery detail page; verify that output before using a modifier more broadly.
 
 Descriptions are grounded in inspected templates and styles. They describe intended mechanisms, not a claim that every option or combination has passed a visual test. Some compatibility notes describe the legacy 1.5.0.12 website renderer and its theme definitions. An installed package can override those definitions, and source changes can precede a released binary. Check the actual executable and theme package rather than treating every historical limitation as universal. Compatibility notes identify known gaps rather than silently substituting a similarly named option.
 

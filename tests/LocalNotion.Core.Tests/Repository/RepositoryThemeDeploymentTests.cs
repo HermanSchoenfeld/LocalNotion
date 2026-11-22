@@ -12,6 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using LocalNotion.Core;
+using Microsoft.Extensions.FileProviders;
 using NUnit.Framework;
 using Sphere10.Framework;
 
@@ -58,6 +59,8 @@ public class RepositoryThemeDeploymentTests {
 	[TestCase("default/paragraph.html")]
 	[TestCase("cms/resources/js/feather.min.js")]
 	[TestCase("default/.config.json")]
+	[TestCase("navbar_refined/page_content.html")]
+	[TestCase("navbar_bg_aux/resources/css/navbar-palette-aux.css")]
 	public async Task ReopeningRepairsMissingFilesAndPreservesOverrides(string missingFile) {
 		string themesDirectory;
 		using (var repository = await LocalNotionRepository.CreateNew(_fixtureRoot, pathProfile: new LocalNotionPathProfile { ThemesPathR = "custom themes" }))
@@ -77,6 +80,50 @@ public class RepositoryThemeDeploymentTests {
 		Assert.That(File.GetLastWriteTimeUtc(overriddenPath), Is.EqualTo(timestamp), "Existing files must not be rewritten.");
 		Assert.That(await File.ReadAllBytesAsync(emptyOverridePath), Is.Empty, "An empty file is still an intentional override.");
 		Assert.That(reopened.RequiresSave, Is.False, "Theme repair must not change the registry.");
+	}
+
+	[Test]
+	public async Task CMSMenuAssetsUseRepositoryRootAndPreservePublicOverrides() {
+		var profile = new LocalNotionPathProfile { ThemesPathR = "custom themes/nested" };
+		using (var repository = await LocalNotionRepository.CreateNew(_fixtureRoot, pathProfile: profile)) {
+			var files = ReadEmbeddedFiles().Where(entry => entry.Key.StartsWith("navbar_refined/resources/", StringComparison.Ordinal)
+				|| entry.Key.StartsWith("navbar_bg_aux/resources/", StringComparison.Ordinal)).ToArray();
+			Assert.That(files.Length, Is.EqualTo(4), "The menu CSS, JavaScript and license must all be available at their online URLs.");
+			foreach (var file in files)
+				Assert.That(await File.ReadAllBytesAsync(Path.Combine(_fixtureRoot, "themes", file.Key)), Is.EqualTo(file.Value), file.Key);
+		}
+
+		// Public resources and private renderer definitions are independent override owners.
+		var css = Path.Combine(_fixtureRoot, "themes", "navbar_refined", "resources", "css", "navbar-refined.css");
+		var script = Path.Combine(_fixtureRoot, "themes", "navbar_refined", "resources", "js", "navbar-refined.js");
+		var missing = Path.Combine(_fixtureRoot, "themes", "navbar_bg_aux", "resources", "css", "navbar-palette-aux.css");
+		var expected = await File.ReadAllBytesAsync(missing);
+		await File.WriteAllTextAsync(css, "/* User menu palette */");
+		await File.WriteAllTextAsync(script, "");
+		var timestamp = new DateTime(2021, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+		File.SetLastWriteTimeUtc(css, timestamp);
+		File.Delete(missing);
+		using var reopened = await LocalNotionRepository.Open(_fixtureRoot);
+		Assert.That(await File.ReadAllTextAsync(css), Is.EqualTo("/* User menu palette */"));
+		Assert.That(File.GetLastWriteTimeUtc(css), Is.EqualTo(timestamp));
+		Assert.That(await File.ReadAllBytesAsync(script), Is.Empty);
+		Assert.That(await File.ReadAllBytesAsync(missing), Is.EqualTo(expected));
+		Assert.That(reopened.RequiresSave, Is.False);
+	}
+
+	[TestCase("navbar_refined")]
+	[TestCase("navbar_standard")]
+	public async Task FreshRepositoryRendersAuxiliaryMenuWithoutExternalTemplateInstallation(string layout) {
+		using var repository = await LocalNotionRepository.CreateNew(_fixtureRoot);
+		var themesDirectory = repository.Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute);
+		var renderer = new Sphere10.Framework.Web.VisualRenderer.HtmlRenderer(new Sphere10.Framework.Web.VisualRenderer.ThemeCatalog(new Sphere10.Framework.Web.VisualRenderer.ThemeOptions { ThemesDirectory = themesDirectory }));
+		var result = renderer.Render(new Sphere10.Framework.Web.VisualRenderer.DocumentBlock {
+			RenderFrame = false,
+			Themes = ["cms_navbar", layout, "color_aux_primary", "navbar_bg_aux"]
+		}, new Sphere10.Framework.Web.VisualRenderer.RenderOptions { Environment = Sphere10.Framework.Web.VisualRenderer.RenderEnvironment.Online });
+		Assert.That(result.Html, Does.Contain("ln-navbar-palette-aux text-bg-primary").And.Contain("aria-label=\"Main navigation\""));
+		Assert.That(result.Html, Does.Contain("/themes/navbar_bg_aux/resources/css/navbar-palette-aux.css?v="));
+		Assert.That(File.Exists(Path.Combine(_fixtureRoot, "themes", "navbar_bg_aux", "resources", "css", "navbar-palette-aux.css")), Is.True);
 	}
 
 	[Test]
@@ -126,6 +173,23 @@ public class RepositoryThemeDeploymentTests {
 			source.CopyTo(buffer);
 			files.Add(entry.FullName, buffer.ToArray());
 		}
+		ReadDirectory(new ManifestEmbeddedFileProvider(typeof(CMSDatabaseTemplate).Assembly, "CMS/Themes"), "");
 		return files;
+
+		void ReadDirectory(IFileProvider provider, string directory) {
+			foreach (var entry in provider.GetDirectoryContents(string.IsNullOrEmpty(directory) ? "/" : directory)) {
+				var path = string.IsNullOrEmpty(directory) ? entry.Name : directory + "/" + entry.Name;
+				if (entry.IsDirectory) {
+					ReadDirectory(provider, path);
+					continue;
+				}
+				using var source = entry.CreateReadStream();
+				using var buffer = new MemoryStream();
+				source.CopyTo(buffer);
+				// Renderer templates deploy first and an existing file is never replaced, so the renderer's entry wins a shared path.
+				if (!files.ContainsKey(path))
+					files.Add(path, buffer.ToArray());
+			}
+		}
 	}
 }

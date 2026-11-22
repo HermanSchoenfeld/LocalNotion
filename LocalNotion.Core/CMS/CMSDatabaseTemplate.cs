@@ -18,7 +18,7 @@ using Sphere10.Framework;
 namespace LocalNotion.Core;
 
 /// <summary>
-/// The portable, schema-only CMS template observed on staging.sphere10.com on 16 October 2026.
+/// The portable, schema-only CMS template based on staging.sphere10.com, with supported behavior and menu presets.
 /// No content, credentials, source database IDs or property IDs are included.
 /// </summary>
 public sealed class CMSDatabaseTemplate {
