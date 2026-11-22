@@ -28,33 +28,186 @@ public static partial class Program {
 
 	private static CancellationTokenSource CancelProgram { get; } = new CancellationTokenSource();
 
-	private static string GetDefaultRepoFolder()
-		=> System.IO.Path.Combine(Environment.CurrentDirectory);
+	public static async Task<int> ExecuteStatusCommandAsync(StatusRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
+		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
-	private static string ResolveNotionApiKey(string explicitKey, string repositoryKey = null) {
-		if (!string.IsNullOrWhiteSpace(explicitKey))
-			return explicitKey;
-
-		var secretPath = Environment.GetEnvironmentVariable("NOTION_API_KEY_FILE");
-		if (!string.IsNullOrWhiteSpace(secretPath) && File.Exists(secretPath)) {
-			var secret = File.ReadAllText(secretPath).Trim();
-			if (!string.IsNullOrWhiteSpace(secret))
-				return secret;
+		if (!Directory.Exists(arguments.Path)) {
+			consoleLogger.Error($"Repository not found: {arguments.Path}");
+			return Constants.ERRORCODE_REPO_NOT_FOUND;
 		}
 
-		return repositoryKey;
+		await using var repo = await OpenRepository(arguments.Path, consoleLogger);
+		System.Console.WriteLine(
+$@"Local Notion Status:
+	Total Resources: {repo.Resources.Count()}
+	Total Objects: {repo.Objects.Count()}
+	Total Graphs: {repo.Graphs.Count()}");
+
+		Console.WriteLine();
+		Console.WriteLine($"\tLocal Notion Resource Paths (relative):");
+		foreach (var resourceType in Enum.GetValues<LocalNotionResourceType>())
+			Console.WriteLine($"\t\t{resourceType}: {repo.Paths.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Relative)}");
+		Console.WriteLine();
+		Console.WriteLine($"\tInternal Resource Paths (relative):");
+		Console.WriteLine($"\t\tRegistry: {repo.Paths.GetRegistryFilePath(FileSystemPathType.Relative)}");
+		foreach (var internalResourceType in Enum.GetValues<InternalResourceType>())
+			Console.WriteLine($"\t\t{internalResourceType}: {repo.Paths.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Relative)}");
+
+		return Constants.ERRORCODE_OK;
 	}
 
-	private static string ToFullPath(string userEnteredPath) {
-		if (Path.IsPathFullyQualified(userEnteredPath))
-			return userEnteredPath;
-		return Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory);
+	public static async Task<int> ExecuteGitCommandAsync(GitRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
+		Guard.ArgumentNotNull(arguments, nameof(arguments));
+		// One-value sequence options require explicit values; the parser treats bool options as valueless switches.
+		bool? enabled = null;
+		bool? push = null;
+		var enabledValues = arguments.Enabled?.ToArray() ?? Array.Empty<string>();
+		var pushValues = arguments.Push?.ToArray() ?? Array.Empty<string>();
+		if (enabledValues.Length > 0) {
+			if (enabledValues.Length != 1 || !bool.TryParse(enabledValues[0], out var value)) {
+				Console.Error.WriteLine("Provide --enabled with true or false.");
+				return Constants.ERRORCODE_COMMANDLINE_ERROR;
+			}
+			enabled = value;
+		}
+		if (pushValues.Length > 0) {
+			if (pushValues.Length != 1 || !bool.TryParse(pushValues[0], out var value)) {
+				Console.Error.WriteLine("Provide --push with true or false.");
+				return Constants.ERRORCODE_COMMANDLINE_ERROR;
+			}
+			push = value;
+		}
+		try {
+			cancellationToken.ThrowIfCancellationRequested();
+			await using var repo = await OpenRepository(arguments.Path);
+			cancellationToken.ThrowIfCancellationRequested();
+			repo.UpdateGitSettings(enabled, push);
+			await repo.SaveAsync();
+			var settings = repo.GitSettings;
+			Console.WriteLine($"{{\"git\":{{\"enabled\":{settings.Enabled.ToString().ToLowerInvariant()},\"push\":{settings.Push.ToString().ToLowerInvariant()}}}}}");
+			return Constants.ERRORCODE_OK;
+		} catch (OperationCanceledException) {
+			Console.Error.WriteLine("Git configuration cancelled. No Git operation was run.");
+			return Constants.ERRORCODE_CANCELLED;
+		} catch (FileNotFoundException) {
+			Console.Error.WriteLine("Repository not found: select a folder containing .localnotion/registry.json with --path.");
+			return Constants.ERRORCODE_REPO_NOT_FOUND;
+		} catch (DirectoryNotFoundException) {
+			Console.Error.WriteLine("Repository not found: select a folder containing .localnotion/registry.json with --path.");
+			return Constants.ERRORCODE_REPO_NOT_FOUND;
+		} catch (Exception error) when (error is Newtonsoft.Json.JsonException or InvalidDataException or DecoderFallbackException) {
+			Console.Error.WriteLine("Unable to read Git settings: the registry must contain a valid Local Notion repository configuration.");
+			return Constants.ERRORCODE_REPO_ERROR;
+		} catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
+			Console.Error.WriteLine("Unable to update or read Git settings. Check registry permissions and stop other repository writers before retrying.");
+			return Constants.ERRORCODE_REPO_ERROR;
+		} catch (ArgumentException) {
+			Console.Error.WriteLine("Provide --path with a valid Local Notion repository folder.");
+			return Constants.ERRORCODE_COMMANDLINE_ERROR;
+		} catch (InvalidOperationException) {
+			Console.Error.WriteLine("Unable to open or save the Local Notion repository. Check its configuration and stop other repository writers before retrying.");
+			return Constants.ERRORCODE_REPO_ERROR;
+		}
 	}
 
-	private static string GetInputPathRelativeToRepo(string repoPath, string userEnteredPath) {
-		if (Path.IsPathFullyQualified(userEnteredPath))
-			return Path.GetRelativePath(repoPath, userEnteredPath); ;
-		return Path.GetRelativePath(repoPath, Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory));
+	public static Task<int> ExecuteCreateCMSCommandAsync(CreateCMSCommandArguments arguments, CancellationToken cancellationToken)
+		=> ExecuteCreateCMSCommandAsync(arguments, cancellationToken, CreateNotionClient);
+
+	public static async Task<int> ExecuteCreateCMSCommandAsync(
+		CreateCMSCommandArguments arguments,
+		CancellationToken cancellationToken,
+		Func<string, INotionClient> clientFactory
+	) {
+		Guard.ArgumentNotNull(arguments, nameof(arguments));
+		Guard.ArgumentNotNull(clientFactory, nameof(clientFactory));
+		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
+		if (!Guid.TryParse(arguments.Parent, out var parentPageID) || parentPageID == Guid.Empty) {
+			consoleLogger.Error("Provide --parent with a valid, non-empty Notion page UUID shared with your integration.");
+			return Constants.ERRORCODE_COMMANDLINE_ERROR;
+		}
+		if (string.IsNullOrWhiteSpace(arguments.Title) || arguments.Title.Length > 2000) {
+			consoleLogger.Error("Provide --title with between 1 and 2000 characters.");
+			return Constants.ERRORCODE_COMMANDLINE_ERROR;
+		}
+
+		var creationRequested = false;
+		try {
+			cancellationToken.ThrowIfCancellationRequested();
+			// Read credentials only. Opening a repository can deploy themes and is unnecessary for creation.
+			var apiKey = ResolveNotionApiKey(arguments.APIKey);
+			if (string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(arguments.Path)) {
+				var registryFile = System.IO.Path.Combine(ToFullPath(arguments.Path), Constants.DefaultRegistryFolderName, Constants.DefaultRegistryFileName);
+				if (!File.Exists(registryFile)) {
+					consoleLogger.Error("The --path repository has no .localnotion/registry.json. Supply an existing repository or another API key source.");
+					return Constants.ERRORCODE_COMMANDLINE_ERROR;
+				}
+				var registry = JObject.Parse(await File.ReadAllTextAsync(registryFile, cancellationToken));
+				apiKey = ResolveNotionApiKey(null, (string)registry["notion_api_key"]);
+			}
+			if (string.IsNullOrWhiteSpace(apiKey)) {
+				consoleLogger.Error("Provide an API key through --key, NOTION_API_KEY_FILE, or --path to an existing repository.");
+				return Constants.ERRORCODE_COMMANDLINE_ERROR;
+			}
+
+			var client = clientFactory(apiKey);
+			creationRequested = true;
+			var database = await new CMSDatabaseCreator(client).CreateAsync(parentPageID, arguments.Title, cancellationToken);
+			if (database == null || !Guid.TryParse(database.Id, out var databaseID) || databaseID == Guid.Empty) {
+				consoleLogger.Error("Notion returned no usable database ID. Check the parent page before retrying; a database may have been created.");
+				return Constants.ERRORCODE_FAIL;
+			}
+
+			consoleLogger.Info("Blank CMS database verified with 20 properties, all preset Type/Status/Tags/Themes options, and zero active rows.");
+			consoleLogger.Info("One temporary Hidden setup row was created and moved to Notion's trash to add presets beyond the API's 100-option request limit.");
+			consoleLogger.Info($"Database ID: {databaseID:D}");
+			// Construct the URL from the validated ID rather than echoing arbitrary response content.
+			consoleLogger.Info($"Database URL: https://www.notion.so/{databaseID:N}");
+			consoleLogger.Info("Next: create an empty local folder, then run:");
+			consoleLogger.Info($"localnotion init --cms {databaseID:D} --profile website --path <empty-local-folder>");
+			consoleLogger.Info("Then configure credentials and create your homepage in Notion before running pull. No local repository was initialized or published.");
+			return Constants.ERRORCODE_OK;
+		} catch (CMSDatabaseCreationException error) {
+			consoleLogger.Error("A CMS database was created, but setup or verification is incomplete. No create request was retried.");
+			consoleLogger.Info($"Database ID: {error.DatabaseID:D}");
+			consoleLogger.Info($"Database URL: https://www.notion.so/{error.DatabaseID:N}");
+			if (error.SetupPageID != Guid.Empty) {
+				consoleLogger.Info($"Temporary setup row: https://www.notion.so/{error.SetupPageID:N}");
+				consoleLogger.Warning(error.SetupPageArchived ? "The temporary setup row was moved to the trash." : "The temporary Hidden setup row could not be confirmed in the trash; move it there before publishing.");
+			} else {
+				consoleLogger.Warning("If setup-row creation was interrupted, inspect the database for a temporary Hidden row and move it to the trash.");
+			}
+			consoleLogger.Warning("Inspect and recover this database before rerunning create-cms, which would create another database. Read-content, insert-content and update-content capabilities are required.");
+			return error.InnerException is OperationCanceledException ? Constants.ERRORCODE_CANCELLED : Constants.ERRORCODE_FAIL;
+		} catch (OperationCanceledException) {
+			consoleLogger.Warning("CMS creation cancelled. Check the parent page before retrying if a request was sent; it may have completed in Notion.");
+			return Constants.ERRORCODE_CANCELLED;
+		} catch (NotionApiException error) {
+			// API messages may echo input. Keep authentication data and raw responses out of output/logs.
+			var guidance = (int)error.StatusCode switch {
+				401 => "Check the selected integration API key; Notion did not accept it.",
+				403 => "Check the integration's read-content, insert-content and update-content capabilities and access to the parent page.",
+				404 => "Check the parent page ID and share that page with the integration.",
+				429 => "Notion's rate limit was reached. Wait before retrying.",
+				_ => "Check the parent page, integration capabilities and compatibility with the CMS schema."
+			};
+			consoleLogger.Error($"Notion rejected CMS creation (HTTP {(int)error.StatusCode}). {guidance}");
+			consoleLogger.Warning("No retry was attempted. Check the parent page before retrying after a server error.");
+			return Constants.ERRORCODE_FAIL;
+		} catch (IOException) {
+			consoleLogger.Error(creationRequested
+				? "CMS creation encountered an I/O failure. No retry was attempted. Check the parent page before retrying; a database may have been created."
+				: "Unable to read the API-key file or repository registry. Check the configured file and its read permissions.");
+			return Constants.ERRORCODE_FAIL;
+		} catch (UnauthorizedAccessException) {
+			consoleLogger.Error("Unable to read the API-key file or repository registry. Check its read permissions.");
+			return Constants.ERRORCODE_FAIL;
+		} catch (Newtonsoft.Json.JsonException) {
+			consoleLogger.Error("Unable to read the CMS template, repository registry, or Notion response. Check the parent page before retrying if a request was sent.");
+			return Constants.ERRORCODE_FAIL;
+		} catch (Exception) {
+			consoleLogger.Error("CMS creation failed. No retry was attempted. Check connectivity and the parent page before retrying; a database may have been created.");
+			return Constants.ERRORCODE_FAIL;
+		}
 	}
 
 	public enum LocalNotionProfileDescriptor {
@@ -258,8 +411,10 @@ public static partial class Program {
 		[Option('p', "path", HelpText = "Path to Local Notion repository (default is current working dir)")]
 		public string Path { get; set; } = GetDefaultRepoFolder();
 
-		[Option("render", Default = (bool)true, HelpText = "Renders objects after pull")]
-		public bool Render { get; set; }
+		[Option("render", Default = true, HelpText = "Renders objects after pull: true or false (a bare option means true)")]
+		public bool? RenderOption { get; set; }
+
+		public bool Render { get => RenderOption ?? true; set => RenderOption = value; }
 
 		[Option("render-type", Default = RenderType.HTML, HelpText = "Type of rendering to use (HTML)")]
 		public RenderType RenderOutput { get; set; }
@@ -273,8 +428,10 @@ public static partial class Program {
 		[Option("nginx-reload", Default = false, HelpText = "Reloads NGINX server only on update")]
 		public bool NginxReload { get; set; }
 
-		[Option("fault-tolerant", Default = (bool)true, HelpText = "Continues processing on failures")]
-		public bool FaultTolerant { get; set; }
+		[Option("fault-tolerant", Default = true, HelpText = "Continues processing on failures: true or false (a bare option means true)")]
+		public bool? FaultTolerantOption { get; set; }
+
+		public bool FaultTolerant { get => FaultTolerantOption ?? true; set => FaultTolerantOption = value; }
 
 		[Option("force", HelpText = "Forces downloading of objects even if unchanged")]
 		public bool Force { get; set; } = false;
@@ -309,8 +466,10 @@ public static partial class Program {
 		[Option("render-mode", Default = RenderMode.ReadOnly, HelpText = "Rendering mode for objects (ReadOnly, Editable)")]
 		public RenderMode RenderMode { get; set; }
 
-		[Option("fault-tolerant", Default = (bool)true, HelpText = "Continues processing on failures")]
-		public bool FaultTolerant { get; set; }
+		[Option("fault-tolerant", Default = true, HelpText = "Continues processing on failures: true or false (a bare option means true)")]
+		public bool? FaultTolerantOption { get; set; }
+
+		public bool FaultTolerant { get => FaultTolerantOption ?? true; set => FaultTolerantOption = value; }
 
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
@@ -344,188 +503,6 @@ public static partial class Program {
 		[Option('f', "poll-frequency", Default = 30, HelpText = "How often to poll Notion for changes")]
 		public int PollFrequency { get; set; }
 
-	}
-
-	public static async Task<int> ExecuteStatusCommandAsync(StatusRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
-		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-
-		if (!Directory.Exists(arguments.Path)) {
-			consoleLogger.Error($"Repository not found: {arguments.Path}");
-			return Constants.ERRORCODE_REPO_NOT_FOUND;
-		}
-
-		await using var repo = await OpenRepository(arguments.Path, consoleLogger);
-		System.Console.WriteLine(
-$@"Local Notion Status:
-	Total Resources: {repo.Resources.Count()}
-	Total Objects: {repo.Objects.Count()}
-	Total Graphs: {repo.Graphs.Count()}");
-
-		Console.WriteLine();
-		Console.WriteLine($"\tLocal Notion Resource Paths (relative):");
-		foreach (var resourceType in Enum.GetValues<LocalNotionResourceType>())
-			Console.WriteLine($"\t\t{resourceType}: {repo.Paths.GetResourceTypeFolderPath(resourceType, FileSystemPathType.Relative)}");
-		Console.WriteLine();
-		Console.WriteLine($"\tInternal Resource Paths (relative):");
-		Console.WriteLine($"\t\tRegistry: {repo.Paths.GetRegistryFilePath(FileSystemPathType.Relative)}");
-		foreach (var internalResourceType in Enum.GetValues<InternalResourceType>())
-			Console.WriteLine($"\t\t{internalResourceType}: {repo.Paths.GetInternalResourceFolderPath(internalResourceType, FileSystemPathType.Relative)}");
-
-		return Constants.ERRORCODE_OK;
-	}
-
-	public static async Task<int> ExecuteGitCommandAsync(GitRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
-		Guard.ArgumentNotNull(arguments, nameof(arguments));
-		// One-value sequence options require explicit values; the parser treats bool options as valueless switches.
-		bool? enabled = null;
-		bool? push = null;
-		var enabledValues = arguments.Enabled?.ToArray() ?? Array.Empty<string>();
-		var pushValues = arguments.Push?.ToArray() ?? Array.Empty<string>();
-		if (enabledValues.Length > 0) {
-			if (enabledValues.Length != 1 || !bool.TryParse(enabledValues[0], out var value)) {
-				Console.Error.WriteLine("Provide --enabled with true or false.");
-				return Constants.ERRORCODE_COMMANDLINE_ERROR;
-			}
-			enabled = value;
-		}
-		if (pushValues.Length > 0) {
-			if (pushValues.Length != 1 || !bool.TryParse(pushValues[0], out var value)) {
-				Console.Error.WriteLine("Provide --push with true or false.");
-				return Constants.ERRORCODE_COMMANDLINE_ERROR;
-			}
-			push = value;
-		}
-		try {
-			cancellationToken.ThrowIfCancellationRequested();
-			await using var repo = await OpenRepository(arguments.Path);
-			cancellationToken.ThrowIfCancellationRequested();
-			repo.UpdateGitSettings(enabled, push);
-			await repo.SaveAsync();
-			var settings = repo.GitSettings;
-			Console.WriteLine($"{{\"git\":{{\"enabled\":{settings.Enabled.ToString().ToLowerInvariant()},\"push\":{settings.Push.ToString().ToLowerInvariant()}}}}}");
-			return Constants.ERRORCODE_OK;
-		} catch (OperationCanceledException) {
-			Console.Error.WriteLine("Git configuration cancelled. No Git operation was run.");
-			return Constants.ERRORCODE_CANCELLED;
-		} catch (FileNotFoundException) {
-			Console.Error.WriteLine("Repository not found: select a folder containing .localnotion/registry.json with --path.");
-			return Constants.ERRORCODE_REPO_NOT_FOUND;
-		} catch (DirectoryNotFoundException) {
-			Console.Error.WriteLine("Repository not found: select a folder containing .localnotion/registry.json with --path.");
-			return Constants.ERRORCODE_REPO_NOT_FOUND;
-		} catch (Exception error) when (error is Newtonsoft.Json.JsonException or InvalidDataException or DecoderFallbackException) {
-			Console.Error.WriteLine("Unable to read Git settings: the registry must contain a valid Local Notion repository configuration.");
-			return Constants.ERRORCODE_REPO_ERROR;
-		} catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
-			Console.Error.WriteLine("Unable to update or read Git settings. Check registry permissions and stop other repository writers before retrying.");
-			return Constants.ERRORCODE_REPO_ERROR;
-		} catch (ArgumentException) {
-			Console.Error.WriteLine("Provide --path with a valid Local Notion repository folder.");
-			return Constants.ERRORCODE_COMMANDLINE_ERROR;
-		} catch (InvalidOperationException) {
-			Console.Error.WriteLine("Unable to open or save the Local Notion repository. Check its configuration and stop other repository writers before retrying.");
-			return Constants.ERRORCODE_REPO_ERROR;
-		}
-	}
-
-	public static Task<int> ExecuteCreateCMSCommandAsync(CreateCMSCommandArguments arguments, CancellationToken cancellationToken)
-		=> ExecuteCreateCMSCommandAsync(arguments, cancellationToken, CreateNotionClient);
-
-	public static async Task<int> ExecuteCreateCMSCommandAsync(
-		CreateCMSCommandArguments arguments,
-		CancellationToken cancellationToken,
-		Func<string, INotionClient> clientFactory
-	) {
-		Guard.ArgumentNotNull(arguments, nameof(arguments));
-		Guard.ArgumentNotNull(clientFactory, nameof(clientFactory));
-		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
-		if (!Guid.TryParse(arguments.Parent, out var parentPageID) || parentPageID == Guid.Empty) {
-			consoleLogger.Error("Provide --parent with a valid, non-empty Notion page UUID shared with your integration.");
-			return Constants.ERRORCODE_COMMANDLINE_ERROR;
-		}
-		if (string.IsNullOrWhiteSpace(arguments.Title) || arguments.Title.Length > 2000) {
-			consoleLogger.Error("Provide --title with between 1 and 2000 characters.");
-			return Constants.ERRORCODE_COMMANDLINE_ERROR;
-		}
-
-		var creationRequested = false;
-		try {
-			cancellationToken.ThrowIfCancellationRequested();
-			// Read credentials only. Opening a repository can deploy themes and is unnecessary for creation.
-			var apiKey = ResolveNotionApiKey(arguments.APIKey);
-			if (string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(arguments.Path)) {
-				var registryFile = System.IO.Path.Combine(ToFullPath(arguments.Path), Constants.DefaultRegistryFolderName, Constants.DefaultRegistryFileName);
-				if (!File.Exists(registryFile)) {
-					consoleLogger.Error("The --path repository has no .localnotion/registry.json. Supply an existing repository or another API key source.");
-					return Constants.ERRORCODE_COMMANDLINE_ERROR;
-				}
-				var registry = JObject.Parse(await File.ReadAllTextAsync(registryFile, cancellationToken));
-				apiKey = ResolveNotionApiKey(null, (string)registry["notion_api_key"]);
-			}
-			if (string.IsNullOrWhiteSpace(apiKey)) {
-				consoleLogger.Error("Provide an API key through --key, NOTION_API_KEY_FILE, or --path to an existing repository.");
-				return Constants.ERRORCODE_COMMANDLINE_ERROR;
-			}
-
-			var client = clientFactory(apiKey);
-			creationRequested = true;
-			var database = await new CMSDatabaseCreator(client).CreateAsync(parentPageID, arguments.Title, cancellationToken);
-			if (database == null || !Guid.TryParse(database.Id, out var databaseID) || databaseID == Guid.Empty) {
-				consoleLogger.Error("Notion returned no usable database ID. Check the parent page before retrying; a database may have been created.");
-				return Constants.ERRORCODE_FAIL;
-			}
-
-			consoleLogger.Info("Blank CMS database verified with 20 properties, all preset Type/Status/Tags/Themes options, and zero active rows.");
-			consoleLogger.Info("One temporary Hidden setup row was created and moved to Notion's trash to add presets beyond the API's 100-option request limit.");
-			consoleLogger.Info($"Database ID: {databaseID:D}");
-			// Construct the URL from the validated ID rather than echoing arbitrary response content.
-			consoleLogger.Info($"Database URL: https://www.notion.so/{databaseID:N}");
-			consoleLogger.Info("Next: create an empty local folder, then run:");
-			consoleLogger.Info($"localnotion init --cms {databaseID:D} --profile website --path <empty-local-folder>");
-			consoleLogger.Info("Then configure credentials and create your homepage in Notion before running pull. No local repository was initialized or published.");
-			return Constants.ERRORCODE_OK;
-		} catch (CMSDatabaseCreationException error) {
-			consoleLogger.Error("A CMS database was created, but setup or verification is incomplete. No create request was retried.");
-			consoleLogger.Info($"Database ID: {error.DatabaseID:D}");
-			consoleLogger.Info($"Database URL: https://www.notion.so/{error.DatabaseID:N}");
-			if (error.SetupPageID != Guid.Empty) {
-				consoleLogger.Info($"Temporary setup row: https://www.notion.so/{error.SetupPageID:N}");
-				consoleLogger.Warning(error.SetupPageArchived ? "The temporary setup row was moved to the trash." : "The temporary Hidden setup row could not be confirmed in the trash; move it there before publishing.");
-			} else {
-				consoleLogger.Warning("If setup-row creation was interrupted, inspect the database for a temporary Hidden row and move it to the trash.");
-			}
-			consoleLogger.Warning("Inspect and recover this database before rerunning create-cms, which would create another database. Read-content, insert-content and update-content capabilities are required.");
-			return error.InnerException is OperationCanceledException ? Constants.ERRORCODE_CANCELLED : Constants.ERRORCODE_FAIL;
-		} catch (OperationCanceledException) {
-			consoleLogger.Warning("CMS creation cancelled. Check the parent page before retrying if a request was sent; it may have completed in Notion.");
-			return Constants.ERRORCODE_CANCELLED;
-		} catch (NotionApiException error) {
-			// API messages may echo input. Keep authentication data and raw responses out of output/logs.
-			var guidance = (int)error.StatusCode switch {
-				401 => "Check the selected integration API key; Notion did not accept it.",
-				403 => "Check the integration's read-content, insert-content and update-content capabilities and access to the parent page.",
-				404 => "Check the parent page ID and share that page with the integration.",
-				429 => "Notion's rate limit was reached. Wait before retrying.",
-				_ => "Check the parent page, integration capabilities and compatibility with the CMS schema."
-			};
-			consoleLogger.Error($"Notion rejected CMS creation (HTTP {(int)error.StatusCode}). {guidance}");
-			consoleLogger.Warning("No retry was attempted. Check the parent page before retrying after a server error.");
-			return Constants.ERRORCODE_FAIL;
-		} catch (IOException) {
-			consoleLogger.Error(creationRequested
-				? "CMS creation encountered an I/O failure. No retry was attempted. Check the parent page before retrying; a database may have been created."
-				: "Unable to read the API-key file or repository registry. Check the configured file and its read permissions.");
-			return Constants.ERRORCODE_FAIL;
-		} catch (UnauthorizedAccessException) {
-			consoleLogger.Error("Unable to read the API-key file or repository registry. Check its read permissions.");
-			return Constants.ERRORCODE_FAIL;
-		} catch (Newtonsoft.Json.JsonException) {
-			consoleLogger.Error("Unable to read the CMS template, repository registry, or Notion response. Check the parent page before retrying if a request was sent.");
-			return Constants.ERRORCODE_FAIL;
-		} catch (Exception) {
-			consoleLogger.Error("CMS creation failed. No retry was attempted. Check connectivity and the parent page before retrying; a database may have been created.");
-			return Constants.ERRORCODE_FAIL;
-		}
 	}
 
 	public static async Task<int> ExecuteInitCommandAsync(InitRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
@@ -958,6 +935,7 @@ $@"Local Notion Status:
 	public static async Task<int> ExecuteRenderCommandAsync(RenderCommandArguments arguments, CancellationToken cancellationToken) {
 		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 		await using var repo = await OpenRepository(arguments.Path, consoleLogger);
+		var hadRenderFailures = false;
 		await using (repo.EnterUpdateScope()) {
 			var renderer = new RenderingManager(repo, repo.Logger);
 			using var renderBatch = renderer.BeginBatch();
@@ -980,6 +958,7 @@ $@"Local Notion Status:
 				} catch (OperationCanceledException) {
 					throw;
 				} catch (Exception error) {
+					hadRenderFailures = true;
 					consoleLogger.Exception(error);
 					if (!arguments.FaultTolerant)
 						throw;
@@ -994,6 +973,7 @@ $@"Local Notion Status:
 				} catch (OperationCanceledException) {
 					throw;
 				} catch (Exception error) {
+					hadRenderFailures = true;
 					consoleLogger.Exception(error);
 					if (!arguments.FaultTolerant)
 						throw;
@@ -1003,6 +983,16 @@ $@"Local Notion Status:
 
 		if (repo.RequiresSave)
 			await repo.SaveAsync();
+
+		// Publish hosting only after a full batch has finalized every CMS destination.
+		if (repo.NGinxSettings.Enabled && arguments.RenderAll) {
+			if (hadRenderFailures) {
+				consoleLogger.Warning("Skipped NGINX hosting generation and CMS cleanup because one or more renders failed.");
+			} else {
+				var folderPath = await NginxMappingsGenerator.GenerateNGinxFiles(repo);
+				consoleLogger.Info($"Generated NGINX hosting files: {folderPath}");
+			}
+		}
 
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
@@ -1017,7 +1007,6 @@ $@"Local Notion Status:
 		consoleLogger.Warning("Local Notion pruning is not currently implemented");
 		return Constants.ERRORCODE_NOT_IMPLEMENTED;
 	}
-
 
 	public static async Task<int> ProcessCommandLineErrorsAsync(IEnumerable<Error> errors) {
 		await Task.Delay(200); // give time for output to flush to parent process
@@ -1049,6 +1038,110 @@ $@"Local Notion Status:
 			Console.WriteLine(error.ToDisplayString());
 			return Constants.ERRORCODE_FAIL;
 		}
+	}
+
+	public static ParserResult<object> ParseCommandLineArguments(string[] args, Parser parser = null) {
+		// Nullable booleans consume explicit values; preserve the existing bare switches by supplying true.
+		if (args.Length > 0 && args[0] is "pull" or "sync" or "render") {
+			var expanded = new List<string>(args.Length);
+			for (var i = 0; i < args.Length; i++) {
+				expanded.Add(args[i]);
+				if (args[i] == "--") {
+					expanded.AddRange(args.Skip(i + 1));
+					break;
+				}
+				if ((args[i] == "--fault-tolerant" || args[i] == "--render" && args[0] != "render")
+					&& (i + 1 == args.Length || args[i + 1].StartsWith("-", StringComparison.Ordinal)))
+					expanded.Add("true");
+			}
+			args = expanded.ToArray();
+		}
+		return (parser ?? Parser.Default).ParseArguments<
+			StatusRepositoryCommandArguments,
+			InitRepositoryCommandArguments,
+			GitRepositoryCommandArguments,
+			CreateCMSCommandArguments,
+			CleanRepositoryCommandArguments,
+			RemoveRepositoryCommandArguments,
+			ListContentsCommandArguments,
+			SyncRepositoryCommandArguments,
+			PullRepositoryCommandArguments,
+			RenderCommandArguments,
+			PruneCommandArguments,
+			int
+		>(args);
+	}
+
+	public static Task<int> ProcessCommandLineAsync(string[] args, Parser parser = null, Func<string, INotionClient> cmsClientFactory = null) {
+		return ParseCommandLineArguments(args, parser).MapResult(
+			(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync),
+			(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync),
+			(GitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteGitCommandAsync),
+			(CreateCMSCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs,
+				(arguments, token) => ExecuteCreateCMSCommandAsync(arguments, token, cmsClientFactory ?? CreateNotionClient)),
+			(CleanRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteCleanCommandAsync),
+			(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync),
+			(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListCommand),
+			(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync),
+			(PullRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePullCommandAsync),
+			(RenderCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRenderCommandAsync),
+			(PruneCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePruneCommandAsync),
+			ProcessCommandLineErrorsAsync
+		);
+	}
+
+
+	/// <summary>
+	/// The main entry point for the application.
+	/// </summary>
+	[STAThread]
+	public static async Task<int> Main(string[] args) {
+		try {
+			var frameworkOptions = Sphere10FrameworkOptions.Default;
+			Sphere10Framework.Instance.Build()
+				.WithOptions(frameworkOptions)
+				.AddModule<ModuleConfiguration>()
+				.Start();
+
+			Console.CancelKeyPress += (sender, args) => {
+				Console.WriteLine("Cancelling");
+				args.Cancel = true;
+				CancelProgram.Cancel();
+			};
+			return await ProcessCommandLineAsync(args);
+		} finally {
+			if (Sphere10Framework.Instance.IsStarted)
+				Sphere10Framework.Instance.EndFramework();
+		}
+	}
+
+	private static string GetDefaultRepoFolder()
+		=> System.IO.Path.Combine(Environment.CurrentDirectory);
+
+	private static string ResolveNotionApiKey(string explicitKey, string repositoryKey = null) {
+		if (!string.IsNullOrWhiteSpace(explicitKey))
+			return explicitKey;
+
+		var secretPath = Environment.GetEnvironmentVariable("NOTION_API_KEY_FILE");
+		if (!string.IsNullOrWhiteSpace(secretPath) && File.Exists(secretPath)) {
+			var secret = File.ReadAllText(secretPath).Trim();
+			if (!string.IsNullOrWhiteSpace(secret))
+				return secret;
+		}
+
+		return repositoryKey;
+	}
+
+	private static string ToFullPath(string userEnteredPath) {
+		if (Path.IsPathFullyQualified(userEnteredPath))
+			return userEnteredPath;
+		return Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory);
+	}
+
+	private static string GetInputPathRelativeToRepo(string repoPath, string userEnteredPath) {
+		if (Path.IsPathFullyQualified(userEnteredPath))
+			return Path.GetRelativePath(repoPath, userEnteredPath); ;
+		return Path.GetRelativePath(repoPath, Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory));
 	}
 
 	private static async Task<bool> ProcessChangeControl(ILocalNotionRepository repo, ILogger logger, CancellationToken cancellationToken = default) {
@@ -1091,60 +1184,5 @@ $@"Local Notion Status:
 
 	private static async Task<ILocalNotionRepository> OpenRepository(string path, ILogger logger = null)
 		=> await LocalNotionRepository.Open(path, logger);
-
-	public static Task<int> ProcessCommandLineAsync(string[] args, Parser parser = null, Func<string, INotionClient> cmsClientFactory = null) {
-		return (parser ?? Parser.Default).ParseArguments<
-			StatusRepositoryCommandArguments,
-			InitRepositoryCommandArguments,
-			GitRepositoryCommandArguments,
-			CreateCMSCommandArguments,
-			CleanRepositoryCommandArguments,
-			RemoveRepositoryCommandArguments,
-			ListContentsCommandArguments,
-			SyncRepositoryCommandArguments,
-			PullRepositoryCommandArguments,
-			RenderCommandArguments,
-			PruneCommandArguments,
-			int
-		>(args).MapResult(
-			(StatusRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteStatusCommandAsync),
-			(InitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteInitCommandAsync),
-			(GitRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteGitCommandAsync),
-			(CreateCMSCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs,
-				(arguments, token) => ExecuteCreateCMSCommandAsync(arguments, token, cmsClientFactory ?? CreateNotionClient)),
-			(CleanRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteCleanCommandAsync),
-			(RemoveRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRemoveCommandAsync),
-			(ListContentsCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteListCommand),
-			(SyncRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteSyncCommandAsync),
-			(PullRepositoryCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePullCommandAsync),
-			(RenderCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecuteRenderCommandAsync),
-			(PruneCommandArguments commandArgs) => ExecuteCommandAsync(commandArgs, ExecutePruneCommandAsync),
-			ProcessCommandLineErrorsAsync
-		);
-	}
-
-	/// <summary>
-	/// The main entry point for the application.
-	/// </summary>
-	[STAThread]
-	public static async Task<int> Main(string[] args) {
-		try {
-			var frameworkOptions = Sphere10FrameworkOptions.Default;
-			Sphere10Framework.Instance.Build()
-				.WithOptions(frameworkOptions)
-				.AddModule<ModuleConfiguration>()
-				.Start();
-
-			Console.CancelKeyPress += (sender, args) => {
-				Console.WriteLine("Cancelling");
-				args.Cancel = true;
-				CancelProgram.Cancel();
-			};
-			return await ProcessCommandLineAsync(args);
-		} finally {
-			if (Sphere10Framework.Instance.IsStarted)
-				Sphere10Framework.Instance.EndFramework();
-		}
-	}
 
 }

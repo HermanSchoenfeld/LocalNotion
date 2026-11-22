@@ -14,6 +14,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using AngleSharp.Html.Parser;
+using LocalNotion.CLI;
 using LocalNotion.Core;
 using Sphere10.Framework.Web.VisualRenderer;
 using Notion.Client;
@@ -594,6 +595,147 @@ public class RenderingIntegrationTests {
 		using (manager.BeginBatch())
 			manager.RenderCMSItem(item);
 		Assert.That(File.ReadAllText(cmsPath), Does.Contain("Changed header").And.Not.Contain("Initial header"));
+	}
+
+	[TestCase(true, false)]
+	[TestCase(true, true)]
+	[TestCase(false, false)]
+	[TestCase(false, true)]
+	[NonParallelizable]
+	public async Task CliRenderRefreshesHostingArtifactsOnlyWhenNginxIsEnabled(bool nginxEnabled, bool existingMappings) {
+		// Registry deserialization populates the shared default settings instance.
+		using var nginxDefaults = PreserveNginxDefaults();
+		// Seed cached source and a renamed CMS output without contacting Notion.
+		var root = NewDirectory("cli-hosting");
+		var previousPath = Path.Combine(root, "cms", "previous-title.html");
+		var orphanPath = Path.Combine(root, "cms", "orphaned.html");
+		var sitemapPath = Path.Combine(root, "cms", "sitemap.xml");
+		var mappingPath = Path.Combine(root, ".localnotion", "nginx", "conf", NginxMappingsGenerator.MappingFileName);
+		const string staleMapping = "# Existing mappings must be refreshed only when hosting is enabled.";
+		const string staleSitemap = "Existing sitemap";
+		using (var repository = await CreateCmsRepository("cli-hosting", new NGinxSettings { Enabled = nginxEnabled, ReloadCommand = "synthetic-command-must-not-run" })) {
+			var page = AddPage(repository, "Current article", [Paragraph("Rendered by the CLI")], repository.CMSDatabaseID);
+			page.CMSProperties = new CMSProperties { PageType = CMSPageType.Page, CustomSlug = "services/ai", Status = CMSPageStatus.Published, Themes = [], Tags = [] };
+			repository.AddOrUpdateCMSItem(new CMSItem { ItemType = CMSItemType.Page, Slug = "services/ai", Title = "Current article", Parts = [page.ID], RenderPath = "cms/previous-title.html" });
+			File.WriteAllText(previousPath, "Previous render");
+			File.WriteAllText(orphanPath, "Unregistered render");
+			if (existingMappings) {
+				Directory.CreateDirectory(Path.GetDirectoryName(mappingPath));
+				File.WriteAllText(mappingPath, staleMapping);
+				File.WriteAllText(sitemapPath, staleSitemap);
+			}
+			await repository.SaveAsync();
+		}
+
+		// Exercise the real CLI render command, which reopens and saves the repository.
+		var result = await Program.ExecuteRenderCommandAsync(new Program.RenderCommandArguments {
+			Path = root,
+			RenderAll = true,
+			RenderOutput = RenderType.HTML,
+			RenderMode = CoreMode.ReadOnly,
+			FaultTolerant = false
+		}, CancellationToken.None);
+		Assert.That(result, Is.Zero);
+		using var reopened = await LocalNotionRepository.Open(root);
+		var item = reopened.CMSItems.Single(item => item.Slug == "services/ai");
+		var renderedPath = Path.GetFullPath(item.RenderPath, root);
+		Assert.That(File.ReadAllText(renderedPath), Does.Contain("Rendered by the CLI"));
+		Assert.That(item.RenderPath, Is.Not.EqualTo("cms/previous-title.html"));
+		Assert.That(File.Exists(previousPath), Is.False, "The renamed output must replace its previous render.");
+
+		// Hosting must follow final render paths; disabled hosting must retain independent files.
+		if (nginxEnabled) {
+			var mappings = File.ReadAllText(mappingPath);
+			Assert.That(mappings, Does.Contain("location = /services/ai {").And.Contain($"try_files \"/{item.RenderPath}\" =404;").And.Not.Contain(staleMapping));
+			Assert.That(File.ReadAllText(sitemapPath), Does.Contain("/services/ai").And.Not.Contain(staleSitemap));
+			Assert.That(File.Exists(orphanPath), Is.False, "Hosting generation must clean unregistered CMS renders.");
+		} else {
+			Assert.That(File.Exists(mappingPath), Is.EqualTo(existingMappings));
+			Assert.That(File.Exists(sitemapPath), Is.EqualTo(existingMappings));
+			if (existingMappings) {
+				Assert.That(File.ReadAllText(mappingPath), Is.EqualTo(staleMapping));
+				Assert.That(File.ReadAllText(sitemapPath), Is.EqualTo(staleSitemap));
+			}
+			Assert.That(File.Exists(orphanPath), Is.True);
+		}
+	}
+
+	[Test]
+	[NonParallelizable]
+	public async Task CliFaultTolerantRenderFailurePreservesExistingHostingArtifacts() {
+		// Registry deserialization populates the shared default settings instance.
+		using var nginxDefaults = PreserveNginxDefaults();
+		// A failed item reserves a new destination; old hosting must continue to target its existing HTML.
+		var root = NewDirectory("cli-hosting-failure");
+		var previousPath = Path.Combine(root, "cms", "previous-title.html");
+		var orphanPath = Path.Combine(root, "cms", "orphaned.html");
+		var sitemapPath = Path.Combine(root, "cms", "sitemap.xml");
+		var mappingPath = Path.Combine(root, ".localnotion", "nginx", "conf", NginxMappingsGenerator.MappingFileName);
+		const string previousHtml = "Existing published output";
+		const string orphanHtml = "Unregistered output must survive a failed render batch";
+		const string existingMappings = "location = /services/broken { try_files \"/cms/previous-title.html\" =404; }";
+		const string existingSitemap = "<urlset><url><loc>/services/broken</loc></url></urlset>";
+		using (var repository = await CreateCmsRepository("cli-hosting-failure", new NGinxSettings { Enabled = true })) {
+			var page = AddPage(repository, "Healthy article", [Paragraph("Healthy item still renders")], repository.CMSDatabaseID);
+			page.CMSProperties = new CMSProperties { PageType = CMSPageType.Page, CustomSlug = "services/healthy", Status = CMSPageStatus.Published, Themes = [], Tags = [] };
+			// Page items require exactly one part; this malformed cached item fails after destination reservation.
+			repository.AddOrUpdateCMSItem(new CMSItem { ItemType = CMSItemType.Page, Slug = "services/broken", Title = "Broken article", Parts = [], RenderPath = "cms/previous-title.html" });
+			repository.AddOrUpdateCMSItem(new CMSItem { ItemType = CMSItemType.Page, Slug = "services/healthy", Title = "Healthy article", Parts = [page.ID] });
+			Directory.CreateDirectory(Path.GetDirectoryName(mappingPath));
+			File.WriteAllText(mappingPath, existingMappings);
+			File.WriteAllText(sitemapPath, existingSitemap);
+			File.WriteAllText(previousPath, previousHtml);
+			File.WriteAllText(orphanPath, orphanHtml);
+			await repository.SaveAsync();
+		}
+
+		// Fault tolerance keeps its existing continue-and-return policy while hosting publication is withheld.
+		var result = await Program.ExecuteRenderCommandAsync(new Program.RenderCommandArguments {
+			Path = root,
+			RenderAll = true,
+			RenderOutput = RenderType.HTML,
+			RenderMode = CoreMode.ReadOnly,
+			FaultTolerant = true
+		}, CancellationToken.None);
+		Assert.That(result, Is.Zero);
+		Guid healthyPageID;
+		using (var reopened = await LocalNotionRepository.Open(root)) {
+			var broken = reopened.CMSItems.Single(item => item.Slug == "services/broken");
+			var healthy = reopened.CMSItems.Single(item => item.Slug == "services/healthy");
+			healthyPageID = Guid.Parse(healthy.Parts.Single());
+			Assert.That(broken.RenderPath, Is.EqualTo("cms/previous-title.html"), "A failed render must retain its last successfully published destination.");
+			Assert.That(File.ReadAllText(Path.GetFullPath(healthy.RenderPath, root)), Does.Contain("Healthy item still renders"), "Later items must still render under fault tolerance.");
+			Assert.That(File.ReadAllText(mappingPath), Is.EqualTo(existingMappings));
+			Assert.That(File.ReadAllText(sitemapPath), Is.EqualTo(existingSitemap));
+			Assert.That(File.ReadAllText(previousPath), Is.EqualTo(previousHtml));
+			Assert.That(File.ReadAllText(orphanPath), Is.EqualTo(orphanHtml));
+		}
+
+		// A later healthy targeted render must not publish a failed item's reserved placeholder.
+		var targetedResult = await Program.ExecuteRenderCommandAsync(new Program.RenderCommandArguments {
+			Path = root,
+			Objects = [healthyPageID],
+			RenderAll = false,
+			RenderOutput = RenderType.HTML,
+			RenderMode = CoreMode.ReadOnly,
+			FaultTolerant = false
+		}, CancellationToken.None);
+		Assert.That(targetedResult, Is.Zero);
+		Assert.That(File.ReadAllText(mappingPath), Is.EqualTo(existingMappings), "Targeted renders must retain hosting until a clean full render.");
+		Assert.That(File.ReadAllText(sitemapPath), Is.EqualTo(existingSitemap));
+		Assert.That(File.ReadAllText(previousPath), Is.EqualTo(previousHtml));
+		Assert.That(File.ReadAllText(orphanPath), Is.EqualTo(orphanHtml));
+	}
+
+	private static ActionScope PreserveNginxDefaults() {
+		var settings = NGinxSettings.Default;
+		var enabled = settings.Enabled;
+		var reloadCommand = settings.ReloadCommand;
+		return new ActionScope(() => {
+			settings.Enabled = enabled;
+			settings.ReloadCommand = reloadCommand;
+			NGinxSettings.Default = settings;
+		});
 	}
 
 	private async Task<CMSLocalNotionRepository> CreateCmsRepository(string name, NGinxSettings nginxSettings = null, LocalNotionPathProfile pathProfile = null) {

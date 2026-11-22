@@ -194,7 +194,12 @@ localnotion pull --all
 
 # Pull specific object by ID
 localnotion pull -o 33c6a405-2b1e-4bd6-82a0-236c820cc8a3
+
+# Download without rendering and stop on failures
+localnotion pull --all --render false --fault-tolerant false
 ```
+
+`pull` and `sync` accept `--render true|false`; `pull`, `sync`, and `render` accept `--fault-tolerant true|false`. Both options default to `true`, and a bare option also means `true`. The equivalent `--render=false` and `--fault-tolerant=false` forms are supported. Invalid boolean values are rejected before the command runs. Check the selected executable's command help for explicit `true or false` support when using an older installation.
 
 ### Sync (Auto-Backup)
 
@@ -232,6 +237,8 @@ localnotion render -o 33c6a405-2b1e-4bd6-82a0-236c820cc8a3
 # Re-render all content
 localnotion render --all
 ```
+
+When repository NGINX hosting is enabled, a successful full `render --all` refreshes URL mappings and the sitemap using the final rendered paths, then removes unregistered CMS output files. Hosting artifacts are prepared before optional Git publication. If an item fails under fault tolerance, hosting generation and cleanup are skipped with a warning. Targeted renders retain the previous hosting artifacts until a clean full render completes.
 
 ### Mermaid Diagrams
 
