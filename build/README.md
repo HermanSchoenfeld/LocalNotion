@@ -186,11 +186,12 @@ Docker still requires the clean Framework build prerequisite described above.
 
 ### Renderer package dependency
 
-LocalNotion builds the renderer from the same immutable Framework source pin
-used by native CI and Docker. Package mode uses the same exact Framework version
-and configured feed as the other Framework libraries. This workflow does not
-publish Framework packages. See [renderer integration](../docs/renderer.md).
-The renderer's version changes independently of LocalNotion's release version.
+LocalNotion builds the renderer from the same pinned Framework checkout as its other
+Framework dependencies. Native CI and Docker use `build/framework-source.ref` and
+include `src/Sphere10.Framework.Web.VisualRenderer` in the sparse checkout. The pin
+must be advanced to a published commit containing the migrated renderer before
+releasing this source. Local package builds select one exact clean Framework
+version, including the new renderer package. See [renderer integration](../docs/renderer.md).
 
 ### Validate an archive
 

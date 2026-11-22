@@ -10,12 +10,10 @@ process. For normal usage, see the [main README](README.md) and
 
 Install Git, the .NET SDK selected by [global.json](global.json), and PowerShell
 7.4 or later. Docker work also requires Docker Desktop in Linux containers mode
-or Docker Engine. Restore the `Sphere10.VisualRenderer` version pinned by
-`LocalNotion.Core/LocalNotion.Core.csproj` from an authorized NuGet source.
-
-VisualRenderer is a separately versioned proprietary binary dependency whose
-source and publishing workflow live in Sphere10 Commercial. LocalNotion's GPL
-linking permission is in [COPYING.EXCEPTION](COPYING.EXCEPTION).
+or Docker Engine. Use a clean Sphere10 Framework checkout containing
+`Sphere10.Framework.Web.VisualRenderer`, or a matching verified NuGet package set.
+See [renderer build modes](docs/renderer.md#building). The renderer and Framework
+are MIT-licensed; LocalNotion retains its GPL license and historical linking exception.
 
 Create a branch from `master`, follow [.editorconfig](.editorconfig), keep the
 change focused, and update NUnit tests when behavior changes. Before opening a

@@ -16,7 +16,8 @@ Herman Schoenfeld or Sphere 10 Software Pty Ltd. It does not grant permission
 on behalf of other copyright holders. Read its scope and conditions before
 distributing a combination.
 
-Sphere10.VisualRenderer is a proprietary binary dependency governed by the
-Sphere10 VisualRenderer License 1.0 supplied with its package and distribution.
+The current Sphere10.Framework.Web.VisualRenderer dependency is MIT-licensed
+and distributed as part of Sphere10 Framework. COPYING.EXCEPTION is retained
+for historical combinations; it does not replace the current renderer's MIT terms.
 Third-party components and assets retain their own licenses and notices.
 The GNU GPL notice above does not relicense those separately licensed materials.

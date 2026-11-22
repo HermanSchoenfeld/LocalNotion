@@ -12,5 +12,5 @@ HTML compares the content of `main`, excluding output asset addressing, with whi
 - The legacy unresolved `ln-color-{color}` list class is replaced by a concrete default color.
 - A numbered list explicitly carries its starting number; a start of one is equivalent to the old implicit default.
 
-The independent consumer and visual-model tests belong to Commercial/tests/Sphere10.VisualRenderer.Tests. This solution verifies LocalNotion integration against the compiled Sphere10.VisualRenderer package.
+The independent consumer and visual-model tests belong to Commercial/tests/Sphere10.Framework.Web.VisualRenderer.Tests. This solution verifies LocalNotion integration against the compiled Sphere10.Framework.Web.VisualRenderer package.
 

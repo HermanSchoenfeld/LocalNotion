@@ -1,6 +1,6 @@
 # Embedded themes and output assets
 
-`Sphere10.VisualRenderer` embeds the built-in theme templates, includes, configuration, and assets. Rendering does not create or populate a theme directory.
+`Sphere10.Framework.Web.VisualRenderer` embeds the built-in theme templates, includes, configuration, and assets as one ZIP generated at build time. Editable assets remain in its source `Themes/` folder without appearing individually in Visual Studio's project items. Rendering reads selected entries into memory; it does not create or populate a theme directory. LocalNotion extracts missing built-in files from that archive when opening or creating a repository, preserving existing overrides.
 
 ```csharp
 var renderer = new HtmlRenderer(new ThemeCatalog(new ThemeOptions {

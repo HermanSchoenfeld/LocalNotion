@@ -91,7 +91,8 @@ The command prints the new database ID and URL. It leaves zero active content ro
 ### Framework dependency and build modes
 
 LocalNotion has no Enterprise package, license activation, repository quota or
-page quota. It uses the MIT Framework application lifecycle and the MIT Sphere10.Framework.Web.VisualRenderer library.
+page quota. It uses the MIT Framework application lifecycle and the independently
+MIT Sphere10.Framework.Web.VisualRenderer library.
 
 The default build uses **post-DRM-extraction Framework source** from a sibling
 `../Framework` directory. Set `Sphere10FrameworkRoot` to use another checkout.
@@ -111,8 +112,8 @@ LocalNotion executables or publish a LocalNotion release.
 
 ### Build (CLI)
 
-From the repository root, with the clean Framework checkout (including
-`src/Sphere10.Framework.Web.VisualRenderer`) available:
+From the repository root, with the clean `../Framework` checkout containing
+`Sphere10.Framework.Web.VisualRenderer` available:
 
 ```bash
 dotnet build LocalNotion.sln -c Release -p:BuildNumber=0 -p:BuildRevision=0
@@ -121,8 +122,7 @@ dotnet test tests/LocalNotion.Core.Tests/LocalNotion.Core.Tests.csproj -c Releas
 
 For a different source location, add
 `-p:Sphere10FrameworkRoot=/absolute/path/to/Framework`. Explicit build numbers
-avoid incrementing the checkouts' local build counters. The renderer uses the same Framework root and package version. See [renderer build modes](docs/renderer.md#building)
-to select an explicitly versioned renderer package instead.
+avoid incrementing the checkouts' local build counters. See [renderer build modes](docs/renderer.md#building) for the shared Framework source/package configuration.
 
 Package mode restores a **separately produced and verified clean package set**
 from the private Gitea NuGet registry, without a Framework source checkout.
