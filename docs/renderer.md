@@ -88,8 +88,8 @@ This local installation is not a public **1.7.0.8** release. Public renderer, Lo
 
 ## Licensing and distribution
 
-Sphere10.Framework.Web.VisualRenderer is MIT-licensed, as declared in its project
-and included LICENSE.txt. Third-party components and assets retain their
+Sphere10.Framework.Web.VisualRenderer 3.1.3 is MIT-licensed, as declared in its public NuGet
+package and included LICENSE.txt. Third-party components and assets retain their
 own terms. Preserve those notices when redistributing the package's output.
 
 LocalNotion remains licensed under the [GNU GPL](../LICENSE). The historical

@@ -64,7 +64,11 @@ In the installed templates used for this guide, the generated Gallery card body 
 
 Check the gallery with all cards visible, one category selected and a category containing only one card. Open each card, inspect the image and Summary, and make sure its page gives visitors a clear route back.
 
-For deeply nested galleries on installed 1.5.0.12, inspect the card destination as well as the picture. Its older collection template can repeat the parent path when it uses a relative link containing the entry's full path. The staging examples correct `cms_gallery/gallery_card.html` to use a root-relative destination, `href="/{url}"`, then regenerate the site. The newer source resolver handles that URL differently, so review this override when upgrading rather than changing otherwise correct CMS routes.
+Inspect the rendered card destination as well as the picture. The current resolver supplies an already resolved `{url}`; the card template should consume it directly with `href="{url}"`. Prepending a slash can turn a root-relative `/tech/framework` into `//tech/framework`, which the browser interprets as a different host. Use a reusable theme override, regenerate the collection and test an actual card click.
+
+The older installed 1.5.0.12 template could repeat a deeply nested parent path, and earlier staging examples added a slash to compensate. That version-specific workaround must be reviewed when the resolver changes. Check the actual rendered URL before changing otherwise correct CMS routes.
+
+When customising a Gallery theme, treat each generated category class as one literal token. A category such as `.NET` can produce a class containing a dot; a filter built as `.{badge_name}` then has a different CSS meaning. The badge template can use `data-filter="[class~='{badge_name}']"` to match the exact token. Preserve the CMS category name, regenerate the collection and test the category after the Gallery has initialised.
 
 Very deep card pages can also exceed that version's native Breadcrumb limit. Use the explicit linked trail described in [routing](routing.md), then check the card page's return path.
 
