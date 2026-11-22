@@ -24,6 +24,54 @@ The built-in `default` theme supplies the tab templates; CMS inherits them autom
 
 This is a source-build capability as of 12 November 2026. An installed executable or public release must contain this updated client and renderer before it can import native tabs. The vendored SDK integrates upstream main while preserving the existing HTTP-client lifetime and JSON fixes; see [SDK provenance](../Notion.Client/UPSTREAM.md). The standard tab assets have been published to the Sphere10 CDN.
 
+## Mermaid code blocks
+
+### Author in Notion
+
+Insert a native **Code** block and select **Mermaid** from its language menu. Enter the diagram definition directly in the block, without surrounding Markdown fences. An optional caption describes the diagram beneath it.
+
+```mermaid
+flowchart LR
+    Notion["Notion CMS"] --> Pull["Local Notion pull"]
+    Pull --> HTML["HTML and runtime assets"]
+    HTML --> Host["Web server"]
+```
+
+The language selects diagram rendering. It does not require a new CLI command, a CMS Theme, an HTML block or an `{INJECT}` caption. LocalNotion's native projection maps the language to `CodeLanguage.Mermaid` and preserves its source and caption. See the [CMS guide](cms/index.md#add-mermaid-diagrams) for the authoring workflow.
+
+Use the normal commands, replacing `PAGE_ID` with the owning Notion Page's ID:
+
+```sh
+localnotion pull --path "./website" --objects PAGE_ID
+localnotion render --path "./website" --objects PAGE_ID
+```
+
+`pull` downloads the saved source and renders by default. `render` uses already downloaded content, for example after a theme change; it cannot fetch a recent Notion edit. These commands retain the repository's configured Git commit/push behavior.
+
+### Source controls and errors
+
+The figure contains an SVG display area, an optional caption and hidden encoded source for the runtime. The **Diagram source** disclosure remains commented out in `default/mermaid.html`; uncomment it to restore the optional control. Invalid definitions show an explanatory message while other diagrams continue rendering.
+
+Other Code languages keep their ordinary code presentation. Plain-text output returns Mermaid source rather than an image. Diagram rendering requires browser JavaScript; without it, the diagram remains unrendered and its source stays hidden.
+
+The pinned runtime uses Mermaid's strict security level, disables HTML labels and does not enable executable callbacks or click directives. Diagram-level settings cannot weaken those protections. The source is preserved verbatim, but Mermaid interprets and sanitizes diagram labels: HTML-like text is not a promise of literal label output. Prefer ordinary labels and Mermaid's supported escaping rather than embedded HTML.
+
+### Runtime and hosting
+
+The renderer bundles **Mermaid 11.12.0**, its initializer, stylesheet and license notices. It returns those assets locally in both online and offline mode, even when other website assets use a CDN. No remote diagram service, Node.js installation or server-side JavaScript renderer is required.
+
+LocalNotion writes returned assets beneath the repository's public `render-assets/` directory. Online mode generates hosted URLs; offline mode generates links relative to the rendered document. Publish or move that directory with the HTML, retaining its hashed subdirectories and licenses. Keep source templates, registry objects and credentials in the private `.localnotion` tree; do not expose it to repair asset links. See [asset publication and theme overrides](renderer-themes.md#publishing-the-result).
+
+An extracted `default/code.html` override does not suppress the dedicated `mermaid.html` template. Custom diagram templates must retain their runtime token and DOM hooks; see [Mermaid template overrides](renderer-themes.md#mermaid-template-overrides).
+
+### Availability
+
+Mermaid support is verified in the locally installed development build **LocalNotion 1.7.0.8**, using private renderer package **3.1.3-mermaid-test.20261025.2**, as of **25 October 2026**. The installed command rendered six Mermaid figures and emitted all five runtime files in an isolated repository.
+
+That installation predates the current source-reference build. The public **3.1.3** package does not contain these development features; current builds require the updated renderer source or a separately produced package containing it. See [building](#building) for explicit dependency selection without replacing the ordinary package cache.
+
+This local installation is not a public **1.7.0.8** release. Public renderer, LocalNotion GitHub and Docker releases remain pending separately. Check the selected executable and its release notes before relying on this feature on another machine or in a container.
+
 ## Licensing and distribution
 
 Sphere10.Framework.Web.VisualRenderer is MIT-licensed, as declared in its project

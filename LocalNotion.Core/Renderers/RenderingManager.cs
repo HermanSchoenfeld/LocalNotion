@@ -47,7 +47,7 @@ public class RenderingManager {
 
 	public ILogger Logger { get; set; }
 
-	public string AssetsDirectory => Path.Combine(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), Constants.DefaultRegistryFolderName, "render-assets");
+	public string AssetsDirectory => Path.Combine(Repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute), Constants.DefaultRenderAssetsFolderName);
 
 	protected ILocalNotionRepository Repository { get; }
 

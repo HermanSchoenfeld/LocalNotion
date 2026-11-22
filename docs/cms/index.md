@@ -440,6 +440,7 @@ Check the saved Notion row and body, downloaded source, generated Page, transfer
 | --- | --- |
 | Structure | Correct Page/Section composition, ordered child links, title and breadcrumb. |
 | Content | Complete copy, literal technical names, lists, badges and code examples. |
+| Diagrams | Correct Mermaid language, rendered SVG, hidden source and independent error handling. |
 | Layout | Desktop and narrow reading order, intrinsic image proportions, separators, forms and Footer spacing. |
 | Interaction | Actual destinations, keyboard focus, hover, zoom/Escape, carousel controls and motion. |
 | Metadata | Useful title, description and keywords; no broken technical-name fragments or unwanted URL destinations. |
@@ -456,6 +457,7 @@ Write a deliberate Summary on independently authored CMS rows. Where metadata is
 | A child link has the wrong name or destination | Real child Page title, containment, fetched owner graph and calculated route. |
 | A Theme has no apparent effect | Correct owner, required native block, installed definition, overlay order and available space. |
 | An image is stretched or overflows | Width/minimum/maximum rules, automatic height, source proportions and narrow layout. |
+| A Mermaid block stays as code or shows no diagram | Mermaid-enabled executable, native Code language, browser JavaScript, emitted public runtime URLs and any template override. If only one diagram fails, inspect its retained source. |
 | A separator has a seam or overlaps copy | Adjacent backgrounds, actual top/bottom geometry and reserved content clearance. |
 | A badge unexpectedly navigates | Actual source link annotation and the active link template; keep labels static unless intentionally linked. |
 | The public Page differs from Notion | Locate the first difference between source, cache, generation, transfer and active hosting. |

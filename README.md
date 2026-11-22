@@ -16,6 +16,7 @@ The official repository is [Sphere10/LocalNotion](https://github.com/Sphere10/Lo
 - **Local backups:** Download pages, databases, attachments, and underlying objects.
 - **Continuous synchronization:** Poll Notion for changes and update your local repository.
 - **HTML export:** Browse downloaded content without depending on Notion's renderer.
+- **Mermaid diagrams:** Render diagrams authored in native Notion Code blocks, with captions and independent error handling. Requires a [Mermaid-enabled build](docs/renderer.md#availability).
 - **Custom themes:** Control the appearance of exported pages and databases.
 - **Offline publications:** Create linked HTML for e-books, manuals, and other distributable content.
 - **Website content:** Use Notion as a CMS and generate HTML for a web server.
@@ -229,6 +230,14 @@ localnotion render -o 33c6a405-2b1e-4bd6-82a0-236c820cc8a3
 # Re-render all content
 localnotion render --all
 ```
+
+### Mermaid Diagrams
+
+In Notion, insert a native **Code** block and select **Mermaid** as its language. Write the diagram definition in that block and optionally add a caption. The normal `pull` and `render` commands generate the diagram; no extra command, CMS Theme selection or injected page script is required.
+
+The browser renders the diagram from source that stays hidden in the page. An invalid definition shows an explanatory message without stopping other diagrams. Diagrams require JavaScript, and without it a diagram stays unrendered with its source hidden. Include the generated public `render-assets/` directory when publishing or moving the HTML.
+
+See the [CMS authoring example](docs/cms/index.md#add-mermaid-diagrams) and [rendering and build requirements](docs/renderer.md#mermaid-code-blocks). Updated local builds and public GitHub/Docker releases have separate availability; check the documented renderer requirement for the executable you use.
 
 ### Available Commands
 

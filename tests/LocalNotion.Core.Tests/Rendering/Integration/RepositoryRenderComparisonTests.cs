@@ -24,7 +24,7 @@ public class RepositoryRenderComparisonTests {
 
 	private static string OriginalAssetUrl => "https://cdn.jsdelivr.net/gh/sphere10/cdn/local-notion/themes/default/resources/site.css";
 
-	private static string RelocatedAssetUrl => "/.localnotion/render-assets/assets/example/resources/site.css";
+	private static string RelocatedAssetUrl => "/render-assets/assets/example/resources/site.css";
 
 	[SetUp]
 	public void SetUp() {
@@ -109,10 +109,12 @@ public class RepositoryRenderComparisonTests {
 		Assert.That(Compare(before, after).EquivalentMatch, Is.False);
 	}
 
-	[Test]
-	public void RelocatedAssetsWithIdenticalBytesAreEquivalent() {
-		CreateAssets("p { color: blue; }", "p { color: blue; }");
-		var result = Compare("<link rel=\"stylesheet\" href=\"" + OriginalAssetUrl + "\">", "<link rel=\"stylesheet\" href=\"" + RelocatedAssetUrl + "\">");
+	[TestCase(false)]
+	[TestCase(true)]
+	public void RelocatedAssetsWithIdenticalBytesAreEquivalent(bool legacy) {
+		var relocatedUrl = legacy ? "/.localnotion" + RelocatedAssetUrl : RelocatedAssetUrl;
+		CreateAssets("p { color: blue; }", "p { color: blue; }", relocatedUrl);
+		var result = Compare("<link rel=\"stylesheet\" href=\"" + OriginalAssetUrl + "\">", "<link rel=\"stylesheet\" href=\"" + relocatedUrl + "\">");
 		Assert.That(result.ExactMatch, Is.False);
 		Assert.That(result.EquivalentMatch, Is.True);
 		Assert.That(result.EquivalentAssets, Is.EqualTo(1));
@@ -186,9 +188,9 @@ public class RepositoryRenderComparisonTests {
 		Assert.That(result.EquivalentAssets, Is.EqualTo(0));
 	}
 
-	private void CreateAssets(string beforeContent, string afterContent) {
+	private void CreateAssets(string beforeContent, string afterContent, string relocatedUrl = null) {
 		var beforeFile = Path.Combine(_beforeRoot, ".localnotion", "themes", "default", "resources", "site.css");
-		var afterFile = Path.Combine(_afterRoot, ".localnotion", "render-assets", "assets", "example", "resources", "site.css");
+		var afterFile = Path.GetFullPath((relocatedUrl ?? RelocatedAssetUrl).TrimStart('/'), _afterRoot);
 		Directory.CreateDirectory(Path.GetDirectoryName(beforeFile));
 		Directory.CreateDirectory(Path.GetDirectoryName(afterFile));
 		File.WriteAllText(beforeFile, beforeContent);

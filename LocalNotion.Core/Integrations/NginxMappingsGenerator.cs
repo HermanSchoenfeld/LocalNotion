@@ -64,6 +64,12 @@ public class NginxMappingsGenerator(ILocalNotionRepository localNotionRepository
 		        #     access_log off;  # Reduce disk I/O by disabling logging for assets
 		        # }
 		
+		        # Repository metadata and Git history must never be served as static content.
+		        location = /.localnotion { return 404; }
+		        location ^~ /.localnotion/ { return 404; }
+		        location = /.git { return 404; }
+		        location ^~ /.git/ { return 404; }
+
 		        include ln-urls.conf;
 		    }
 		}

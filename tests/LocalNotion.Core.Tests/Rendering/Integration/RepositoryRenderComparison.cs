@@ -16,6 +16,7 @@ using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using Newtonsoft.Json;
+using Sphere10.Framework;
 
 namespace LocalNotion.Core.Tests;
 
@@ -47,8 +48,8 @@ public class RepositoryRenderComparison {
 		var afterFile = Path.GetFullPath(AfterPath, rendered);
 		var beforeBytes = File.ReadAllBytes(beforeFile);
 		var afterBytes = File.ReadAllBytes(afterFile);
-		BeforeHash = Convert.ToHexString(SHA256.HashData(beforeBytes));
-		AfterHash = Convert.ToHexString(SHA256.HashData(afterBytes));
+		BeforeHash = SHA256.HashData(beforeBytes).ToHexString(true).ToUpperInvariant();
+		AfterHash = SHA256.HashData(afterBytes).ToHexString(true).ToUpperInvariant();
 		ExactMatch = beforeBytes.AsSpan().SequenceEqual(afterBytes);
 		var parser = new HtmlParser();
 		var before = parser.ParseDocument(File.ReadAllText(beforeFile));
@@ -113,14 +114,14 @@ public class RepositoryRenderComparison {
 	}
 
 	private static string NormalizeAssetUrl(string url, string root, HashSet<string> hashes) {
-		var match = Regex.Match(url, @"\A(?:https://cdn\.jsdelivr\.net/gh/sphere10/cdn/local-notion/themes/([^\s'""<>]+)|/\.localnotion/render-assets/([^\s'""<>]+))\z");
+		var match = Regex.Match(url, @"\A(?:https://cdn\.jsdelivr\.net/gh/sphere10/cdn/local-notion/themes/([^\s'""<>]+)|/((?:\.localnotion/)?render-assets/[^\s'""<>]+))\z");
 		if (!match.Success)
 			return url;
-		var relative = match.Groups[1].Success ? ".localnotion/themes/" + match.Groups[1].Value : ".localnotion/render-assets/" + match.Groups[2].Value;
+		var relative = match.Groups[1].Success ? ".localnotion/themes/" + match.Groups[1].Value : match.Groups[2].Value;
 		var path = Path.GetFullPath(Uri.UnescapeDataString(relative.Split('?', '#')[0]), root);
 		if (!path.StartsWith(Path.TrimEndingDirectorySeparator(Path.GetFullPath(root)) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
 			return url;
-		var hash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+		var hash = SHA256.HashData(File.ReadAllBytes(path)).ToHexString(true).ToUpperInvariant();
 		hashes.Add(hash);
 		var suffixIndex = url.IndexOfAny(['?', '#']);
 		return "asset-sha256:" + hash + (suffixIndex < 0 ? "" : url[suffixIndex..]);

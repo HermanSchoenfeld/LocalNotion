@@ -34,6 +34,8 @@ Check the complete affected route, its framing, section order, links, metadata, 
 
 Deployment is configured separately. A private Git receiver that updates a checked-out branch is one arrangement; copying an approved generated artifact is another. Verify target remote/branch and receiver state. Transfer all required HTML, assets, media and route mappings, not just the visible page file.
 
+Pages containing Mermaid definitions also need their emitted public `render-assets/` files, even when the rest of an online site uses CDN-hosted themes. Publish the HTML and its hashed runtime directory together, including license notices. Keep `.localnotion` inaccessible publicly; exposing private configuration is not an asset-hosting fix. Check a diagram and its runtime requests in the served page. See [Mermaid requirements](../renderer.md#mermaid-code-blocks).
+
 ## Nginx activation
 
 For a **new, empty repository folder**, choose hosting generation and the public base URL before its first initialization. For example, after creating the empty folder:

@@ -332,6 +332,56 @@ public class RenderingIntegrationTests {
 	}
 
 	[Test]
+	public async Task MermaidAssetsArePublishedOutsidePrivateRepositoryFolders([Values] bool online, [Values] bool cms) {
+		const string baseUrl = "https://example.invalid/site";
+		const string source = "flowchart LR\n    Author --> Website";
+		var profile = new LocalNotionPathProfile { Mode = online ? LocalNotionMode.Online : LocalNotionMode.Offline, BaseUrl = baseUrl };
+		using var repository = cms
+			? await CreateCmsRepository("mermaid-assets", pathProfile: profile)
+			: await LocalNotionRepository.CreateNew(NewDirectory("mermaid-assets"), pathProfile: profile);
+		var root = repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute);
+		var page = AddPage(repository, "Mermaid", [new global::Notion.Client.CodeBlock {
+			Id = ID(),
+			Code = new global::Notion.Client.CodeBlock.Info { Language = "mermaid", RichText = [Text(source)], Caption = [Text("Publication flow")] }
+		}], cms ? ((CMSLocalNotionRepository)repository).CMSDatabaseID : null);
+		var manager = new RenderingManager(repository);
+		string htmlPath;
+		if (cms) {
+			page.CMSProperties = new CMSProperties { PageType = CMSPageType.Page, Status = CMSPageStatus.Published, Themes = [], Tags = [] };
+			var item = new CMSItem { ItemType = CMSItemType.Page, Slug = "mermaid", Title = "Mermaid", Parts = [page.ID] };
+			((CMSLocalNotionRepository)repository).AddOrUpdateCMSItem(item);
+			manager.RenderCMSItem(item);
+			htmlPath = Path.GetFullPath(item.RenderPath, root);
+		} else {
+			htmlPath = manager.RenderLocalResource(page.ID, RenderType.HTML, CoreMode.ReadOnly);
+		}
+
+		// The renderer's local runtime must remain reachable while the private repository tree stays denied.
+		var document = new HtmlParser().ParseDocument(File.ReadAllText(htmlPath));
+		Assert.That(document.QuerySelector("[data-ln-mermaid] code").TextContent, Is.EqualTo(source));
+		Assert.That(manager.AssetsDirectory, Is.EqualTo(Path.Combine(root, "render-assets")));
+		Assert.That(Directory.Exists(Path.Combine(root, ".localnotion", "render-assets")), Is.False);
+		var urls = document.QuerySelectorAll("script[src],link[rel=stylesheet][href]")
+			.Select(element => element.GetAttribute(element.LocalName == "script" ? "src" : "href"))
+			.Where(url => url.Contains("/resources/mermaid/", StringComparison.Ordinal)).ToArray();
+		Assert.That(urls, Has.Length.EqualTo(3), "The document loads the stylesheet, pinned runtime and initializer.");
+		foreach (var url in urls) {
+			Assert.That(url, Does.Not.Contain(".localnotion"));
+			string assetPath;
+			if (online) {
+				Assert.That(url, Does.StartWith(baseUrl + "/render-assets/"));
+				assetPath = Path.GetFullPath(Uri.UnescapeDataString(url[(baseUrl.Length + 1)..]), root);
+			} else {
+				Assert.That(Uri.TryCreate(url, UriKind.Absolute, out _), Is.False);
+				assetPath = Path.GetFullPath(Uri.UnescapeDataString(url), Path.GetDirectoryName(htmlPath));
+			}
+			Assert.That(Path.GetRelativePath(manager.AssetsDirectory, assetPath), Does.Not.StartWith(".."));
+			var deployedSource = Path.Combine(repository.Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute), ".mermaid", "resources", "mermaid", Path.GetFileName(assetPath));
+			Assert.That(File.ReadAllBytes(assetPath), Is.EqualTo(File.ReadAllBytes(deployedSource)), "Published runtime bytes match the deployed renderer resource.");
+		}
+	}
+
+	[Test]
 	public async Task Cancellation_PreventsOrStopsPathReservation([Values] bool cancelDuringReservation) {
 		var rootValue = NewDirectory("cancellation");
 		using var repository = await LocalNotionRepository.CreateNew(rootValue);
@@ -516,9 +566,9 @@ public class RenderingIntegrationTests {
 		Assert.That(File.ReadAllText(cmsPath), Does.Contain("Changed header").And.Not.Contain("Initial header"));
 	}
 
-	private async Task<CMSLocalNotionRepository> CreateCmsRepository(string name) {
+	private async Task<CMSLocalNotionRepository> CreateCmsRepository(string name, NGinxSettings nginxSettings = null, LocalNotionPathProfile pathProfile = null) {
 		var databaseId = ID();
-		var repository = (CMSLocalNotionRepository)await LocalNotionRepository.CreateNew(NewDirectory(name), cmsDatabaseID: databaseId);
+		var repository = (CMSLocalNotionRepository)await LocalNotionRepository.CreateNew(NewDirectory(name), cmsDatabaseID: databaseId, nginxSettings: nginxSettings, pathProfile: pathProfile);
 		repository.AddObject(new Database { Id = databaseId, Title = [Text("CMS")], Description = [], Parent = new WorkspaceParent() });
 		repository.AddResourceGraph(new NotionObjectGraph { ObjectID = databaseId });
 		repository.AddResource(new LocalNotionDatabase { ID = databaseId, PrimaryDataSourceID = ID(), Name = "CMS", Title = "CMS", Keywords = [] });

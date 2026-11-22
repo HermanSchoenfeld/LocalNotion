@@ -52,6 +52,34 @@ public class NginxMappingsGeneratorTests {
 		}
 	}
 
+	[TestCase("=", "/.localnotion")]
+	[TestCase("^~", "/.localnotion/")]
+	[TestCase("=", "/.git")]
+	[TestCase("^~", "/.git/")]
+	public async Task GeneratedConfigurationDeniesPrivatePathsBeforeRouteMappings(string modifier, string privatePath) {
+		await _generator.GenerateNGinxFolder();
+		var configuration = await File.ReadAllTextAsync(Path.Combine(_generator.CalculateNGinxFolderPath(), "conf", "nginx.conf"));
+		var locationPattern = @"^\s*location\s+" + Regex.Escape(modifier) + @"\s+" + Regex.Escape(privatePath) + @"\s*\{\s*return\s+404;\s*\}";
+		var locations = Regex.Matches(configuration, locationPattern, RegexOptions.Multiline);
+		Assert.That(locations.Count, Is.EqualTo(1), "Both the directory itself and its contents must be denied.");
+		var mappingsInclude = configuration.IndexOf("include ln-urls.conf;", StringComparison.Ordinal);
+		Assert.That(mappingsInclude, Is.GreaterThan(locations[0].Index), "Private-directory restrictions belong before the generated route mappings.");
+	}
+
+	[Test]
+	public async Task GenerateNginxFolderPreservesExistingConfigurationAndMimeTypes() {
+		await _generator.GenerateNGinxFolder();
+		var configurationPath = Path.Combine(_generator.CalculateNGinxFolderPath(), "conf", "nginx.conf");
+		var mimeTypesPath = Path.Combine(_generator.CalculateNGinxFolderPath(), "conf", "mime.types");
+		const string customConfiguration = "# User-owned Nginx configuration\n";
+		const string customMimeTypes = "types { text/plain custom; }\n";
+		await File.WriteAllTextAsync(configurationPath, customConfiguration);
+		await File.WriteAllTextAsync(mimeTypesPath, customMimeTypes);
+		await _generator.GenerateNGinxFolder();
+		Assert.That(await File.ReadAllTextAsync(configurationPath), Is.EqualTo(customConfiguration));
+		Assert.That(await File.ReadAllTextAsync(mimeTypesPath), Is.EqualTo(customMimeTypes));
+	}
+
 	[TestCase("cms/keep.html")]
 	[TestCase("./cms/keep.html")]
 	[TestCase("cms/../cms/keep.html")]

@@ -59,6 +59,8 @@ Find the first boundary missing expected evidence: Notion save, pull, render, tr
 | Reload monitor fails | Check service, script, permissions, watch path and site target; test one harmless event. |
 | Reload reads old mappings | Individually mounted Docker files can retain old bindings after replacement. Compare bytes and activate appropriately. |
 | Missing styles/images | Deploy emitted assets/media; check base paths and online asset origins. |
+| Mermaid remains an ordinary code block | Check the native Code language and whether the selected executable includes the updated renderer. The earlier public 3.1.3 package alone does not establish support. |
+| Mermaid source is visible but no diagram appears | Check JavaScript and the emitted public `render-assets/` requests. Keep private `.localnotion` paths blocked. An explanatory message on one diagram indicates a source/render error; inspect that source before changing the whole page. |
 | Private URL accessible | `@Private` excludes sitemap entries; configure Authentication for access control. |
 | Protected URL accessible anonymously | Verify active authorization mappings and alternate file/media paths. |
 

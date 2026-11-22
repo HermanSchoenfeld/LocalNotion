@@ -190,7 +190,7 @@ public class RepositoryIntegrationTests {
 			foreach (var element in document.QuerySelectorAll("[src],[href]")) {
 				var url = element.GetAttribute("src") ?? element.GetAttribute("href") ?? "";
 				Assert.That(url.StartsWith("localnotion://", StringComparison.OrdinalIgnoreCase), Is.False, "Source handles must resolve before rendering.");
-				var marker = url.IndexOf(".localnotion/render-assets/", StringComparison.Ordinal);
+				var marker = url.IndexOf("render-assets/", StringComparison.Ordinal);
 				if (marker < 0)
 					continue;
 				var relative = Uri.UnescapeDataString(url[marker..]).Split('?', '#')[0];
@@ -222,7 +222,7 @@ public class RepositoryIntegrationTests {
 			}).OrderBy(filePath => filePath, StringComparer.Ordinal);
 
 	private static Dictionary<string, string> HashFiles(string root, IEnumerable<string> files) =>
-		files.ToDictionary(filePath => Path.GetRelativePath(root, filePath), filePath => Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(filePath))));
+		files.ToDictionary(filePath => Path.GetRelativePath(root, filePath), filePath => SHA256.HashData(File.ReadAllBytes(filePath)).ToHexString(true).ToUpperInvariant());
 
 	private sealed class RepositoryCopy : IDisposable {
 		private readonly string _sourceDirectory;
