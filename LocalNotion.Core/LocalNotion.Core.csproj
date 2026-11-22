@@ -4,8 +4,8 @@
 		<TargetFramework>net11.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>annotations</Nullable>
-		<!-- Uncomment to enable the optional AngleSharp formatting pass for CMS documents. -->
-		<!-- <DefineConstants>$(DefineConstants);CleanHTML</DefineConstants> -->
+		<!-- Format complete CMS documents; embedded themes can suppress this pass. -->
+		<DefineConstants>$(DefineConstants);CleanHTML</DefineConstants>
 	</PropertyGroup>
 
 	<ItemGroup>

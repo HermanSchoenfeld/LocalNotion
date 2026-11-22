@@ -11,12 +11,11 @@ using System;
 using System.Linq;
 using AngleSharp.Dom;
 using AngleSharp.Html;
-using AngleSharp.Text;
 
 namespace LocalNotion.Core;
 
 /// <summary>
-/// A version of <see cref="PrettyMarkupFormatter"/> that correctly handles pre-formatted tags.
+/// Formats structural markup while preserving mixed content and pre-formatted sources.
 /// </summary>
 internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 
@@ -26,8 +25,6 @@ internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 
 	private String _newLineString;
 
-	private Int32 _indentCount;
-
 	#endregion
 
 	#region ctor
@@ -36,7 +33,6 @@ internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 	/// Creates a new instance of the pretty markup formatter.
 	/// </summary>
 	public CleanHtmlFormatter() {
-		_indentCount = 0;
 		_indentString = "\t";
 		_newLineString = "\n";
 	}
@@ -61,102 +57,73 @@ internal class CleanHtmlFormatter : HtmlMarkupFormatter {
 		set => _newLineString = value;
 	}
 
-	protected bool ApplyFormatting { get; set; } = true;
-
 	#endregion
 
 	#region Methods
 
 	/// <inheritdoc />
 	public override String Comment(IComment comment) =>
-		IndentBefore() + base.Comment(comment);
+		(CanFormatChildren(comment.ParentElement) ? IndentBefore(comment) : String.Empty) + base.Comment(comment);
 
 	/// <inheritdoc />
 	public override String Doctype(IDocumentType doctype) {
 		var before = String.Empty;
 
 		if (doctype.ParentElement != null)
-			before = IndentBefore();
+			before = IndentBefore(doctype);
 
 		return before + base.Doctype(doctype) + NewLine;
 	}
 
 	/// <inheritdoc />
 	public override String Processing(IProcessingInstruction processing) =>
-		IndentBefore() + base.Processing(processing);
+		(CanFormatChildren(processing.ParentElement) ? IndentBefore(processing) : String.Empty) + base.Processing(processing);
 
 	/// <inheritdoc />
 	public override String Text(ICharacterData text) {
-		if (!ApplyFormatting)
-			return HtmlMarkupFormatter.EscapeText(text.Data);
-
-		var content = text.Data;
-		var before = String.Empty;
-		var singleLine = content.Replace(Symbols.LineFeed, Symbols.Space);
-
-		if (text.NextSibling is ICharacterData == false)
-			singleLine = singleLine.TrimEnd();
-
-		if (singleLine.Length > 0 && text.PreviousSibling is ICharacterData == false && singleLine[0].IsSpaceCharacter()) {
-			singleLine = singleLine.TrimStart();
-			before = IndentBefore();
-		}
-
-		return before + HtmlMarkupFormatter.EscapeText(singleLine);
+		// Reindent structural whitespace only. Inline code, prose and raw sources
+		// must retain their original text when the optional formatter is enabled.
+		return CanFormatChildren(text.ParentElement) && String.IsNullOrWhiteSpace(text.Data)
+			? String.Empty
+			: base.Text(text);
 	}
 
 	/// <inheritdoc />
 	public override String OpenTag(IElement element, Boolean selfClosing) {
-		if (!ApplyFormatting)
-			return base.OpenTag(element, selfClosing);
-
-		if (element.TagName == "PRE")
-			EncounteredPreformatBegin();
-		var before = String.Empty;
-		var previousSibling = element.PreviousSibling as IText;
-
-		if (element.ParentElement != null && (previousSibling is null || EndsWithSpace(previousSibling)))
-			before = IndentBefore();
-
-		_indentCount++;
-		return before + base.OpenTag(element, selfClosing) + (element.TagName == "CODE" ? this.NewLine : string.Empty);
+		var before = CanFormatChildren(element.ParentElement) ? IndentBefore(element) : String.Empty;
+		return before + base.OpenTag(element, selfClosing);
 	}
 
 	/// <inheritdoc />
 	public override String CloseTag(IElement element, Boolean selfClosing) {
-		if (!ApplyFormatting && element.TagName != "PRE")
-			return base.CloseTag(element, selfClosing);
-
-		_indentCount--;
-		var before = String.Empty;
-		var lastChild = element.LastChild as IText;
-
-		if (element.HasChildNodes && (lastChild is null || EndsWithSpace(lastChild)))
-			before = IndentBefore();
-
-		if (element.TagName == "PRE")
-			EncounteredPreformatEnd();
-
-		return before + base.CloseTag(element, selfClosing);
+		var close = base.CloseTag(element, selfClosing);
+		var before = close.Length > 0 && element.HasChildNodes && CanFormatChildren(element) ? IndentBefore(element) : String.Empty;
+		return before + close;
 	}
 
 	#endregion
 
 	#region Helpers
 
-	private static Boolean EndsWithSpace(ICharacterData text) {
-		var content = text.Data;
-		return content.Length > 0 && content[content.Length - 1].IsSpaceCharacter();
+	private static bool CanFormatChildren(IElement element) {
+		for (var current = element; current != null; current = current.ParentElement) {
+			if (!IsStructural(current.TagName) || current.ChildNodes.OfType<IText>().Any(text => !String.IsNullOrWhiteSpace(text.Data)))
+				return false;
+			if (current.Children.Any(child => IsInline(child.TagName)))
+				return false;
+		}
+		return element != null;
 	}
 
-	private String IndentBefore() => _newLineString + String.Join(String.Empty, Enumerable.Repeat(_indentString, _indentCount));
+	private static bool IsStructural(string name) => name is "HTML" or "HEAD" or "BODY" or "DIV" or "SECTION" or "ARTICLE" or "NAV" or "MAIN" or "HEADER" or "FOOTER" or "UL" or "OL" or "DL" or "TABLE" or "THEAD" or "TBODY" or "TFOOT" or "TR" or "COLGROUP";
 
-	private void EncounteredPreformatBegin() {
-		ApplyFormatting = false;
-	}
+	private static bool IsInline(string name) => name is "A" or "SPAN" or "CODE" or "STRONG" or "EM" or "B" or "I" or "SMALL" or "BR" or "WBR" or "IMG" or "INPUT" or "LABEL" or "BUTTON" or "SVG" or "SUP" or "SUB";
 
-	private void EncounteredPreformatEnd() {
-		ApplyFormatting = true;
+	private String IndentBefore(INode node) {
+		var depth = 0;
+		for (var parent = node.ParentElement; parent != null; parent = parent.ParentElement)
+			depth++;
+		return NewLine + String.Concat(Enumerable.Repeat(Indentation, depth));
 	}
 
 	#endregion

@@ -49,6 +49,38 @@ public class RenderingIntegrationTests {
 	}
 
 	[Test]
+	public async Task FormatsHeadWithoutChangingItsMetadataOrAssetOrder() {
+		const string source = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>A &amp; B</title><link rel='stylesheet' href='/motion.css'><script src='/app.js'></script></head><body><p>Body</p></body></html>";
+		var formatted = await FormatCmsDocument(source);
+		var document = new HtmlParser().ParseDocument(formatted);
+		Assert.That(formatted, Does.Contain("\n\t<head>\n\t\t<meta"));
+		Assert.That(document.Title, Is.EqualTo("A & B"));
+		Assert.That(document.Head.Children[2].GetAttribute("href"), Is.EqualTo("/motion.css"));
+		Assert.That(document.Head.Children[3].GetAttribute("src"), Is.EqualTo("/app.js"));
+	}
+
+	[Test]
+	public async Task PreservesCodeDiagramsRawTextAndInlineSpacing() {
+		const string source = """
+			<!DOCTYPE html><html><head><style>.x::before { content: "a  b"; }
+			.x { white-space: pre-wrap; }</style><script>const x = "a  b";
+			if (1 < 2) { console.log(x); }</script></head><body>
+			<p>Use <code>ObjectSpace</code> with <strong>care</strong>.</p>
+			<pre><code>if (x &lt; y) {
+			  Save("a  b");
+			}</code></pre><pre class="ln-mermaid-source">flowchart LR
+			  A["a  b"] --&gt; B
+			</pre><textarea>  first
+			  second</textarea></body></html>
+			""";
+		var parser = new HtmlParser();
+		var before = parser.ParseDocument(source);
+		var after = parser.ParseDocument(await FormatCmsDocument(source));
+		foreach (var selector in new[] { "style", "script", "p", "p code", "pre code", ".ln-mermaid-source", "textarea" })
+			Assert.That(after.QuerySelector(selector).TextContent, Is.EqualTo(before.QuerySelector(selector).TextContent), selector);
+	}
+
+	[Test]
 	public async Task Repository_RendersWithDeployedThemesAndOverrides([Values] bool objectFolders) {
 		var rootValue = NewDirectory("repository-" + objectFolders);
 		var profile = new LocalNotionPathProfile { UsePageIDFolders = objectFolders, UseDatabaseIDFolders = objectFolders };
@@ -148,12 +180,10 @@ public class RenderingIntegrationTests {
 			File.WriteAllText(Path.Combine(cmsTheme, ".config.json"), """{"type":"html","base":"default","traits":"suppress_formatting"}""");
 		new RenderingManager(repository).RenderCMSItem(item);
 		var html = File.ReadAllText(Path.GetFullPath(item.RenderPath, repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute)));
-#if CleanHTML
 		if (!suppressFormatting) {
 			Assert.That(html, Does.Contain("<tbody>").And.Contain("data-test=\"raw\""), "The optional formatter parses and normalizes complete CMS output.");
 			return;
 		}
-#endif
 		Assert.That(html, Does.Contain(rawMarkup).And.Not.Contain("<tbody>"), "Without the cleaning pass, generated markup must remain untouched.");
 	}
 
@@ -606,5 +636,18 @@ public class RenderingIntegrationTests {
 			Assert.That(File.Exists(pathValue), Is.True, "generated local CSS/JS exists: " + urlValue);
 			Assert.That(File.ReadAllBytes(pathValue), Is.Not.Empty, "generated asset is nonempty: " + urlValue);
 		}
+	}
+
+	private async Task<string> FormatCmsDocument(string source) {
+		using var repository = await CreateCmsRepository("format-preservation");
+		var page = AddPage(repository, "Formatting", [Paragraph("Body")], repository.CMSDatabaseID);
+		page.CMSProperties = new CMSProperties { PageType = CMSPageType.Page, CustomSlug = "formatting", Status = CMSPageStatus.Published, Themes = [], Tags = [] };
+		var item = new CMSItem { ItemType = CMSItemType.Page, Slug = "formatting", Title = "Formatting", Parts = [page.ID] };
+		repository.AddOrUpdateCMSItem(item);
+		var templates = Path.Combine(repository.Paths.GetInternalResourceFolderPath(InternalResourceType.Themes, FileSystemPathType.Absolute), "cms", "readonly");
+		Directory.CreateDirectory(templates);
+		File.WriteAllText(Path.Combine(templates, "page.offline.html"), source);
+		new RenderingManager(repository).RenderCMSItem(item);
+		return File.ReadAllText(Path.GetFullPath(item.RenderPath, repository.Paths.GetRepositoryPath(FileSystemPathType.Absolute)));
 	}
 }

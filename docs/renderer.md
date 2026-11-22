@@ -12,6 +12,14 @@ The public rendering API uses the Sphere10.Framework.Web.VisualRenderer namespac
 the authorized package's README for standalone usage. See
 [theme overrides](renderer-themes.md) for LocalNotion customization.
 
+## HTML source formatting
+
+Complete CMS documents use the existing `CleanHTML` formatting pass, enabled in
+`LocalNotion.Core.csproj`, to produce readable HTML including the document head.
+Themes with the `suppress_formatting` trait bypass this pass. Ordinary source
+resource rendering remains unchanged. Code, Mermaid source, script/style bodies
+and meaningful inline spacing must retain their semantics.
+
 ## Native Notion tab blocks
 
 LocalNotion supports Notion's native tabbed content blocks in the current source build. Author the tabs and their contents in Notion, then pull the owning page using the normal `localnotion pull --path "./website" --objects PAGE_ID` command. No CMS Tag, special Theme, HTML injection or new CLI command is required. A subsequent `render` uses downloaded content; it does not fetch edits from Notion.
