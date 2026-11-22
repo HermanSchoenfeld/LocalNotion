@@ -64,6 +64,6 @@ public class FossDependencyTests {
 		var attributes = typeof(Program).Assembly.GetCustomAttributesData().Select(x => x.AttributeType.Name).ToArray();
 		Assert.That(attributes, Does.Not.Contain("AssemblyProductApiAttribute"));
 		Assert.That(attributes, Does.Not.Contain("AssemblyProductLicenseAttribute"));
-		Assert.That(attributes, Does.Not.Contain("AssemblyProductSecretAttribute"));
+		Assert.That(attributes, Does.Not.Contain("AssemblyApplicationSecretAttribute"));
 	}
 }

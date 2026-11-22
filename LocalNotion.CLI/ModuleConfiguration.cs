@@ -23,7 +23,7 @@ public class ModuleConfiguration : Sphere10.Framework.Application.ModuleConfigur
 	public override void RegisterComponents(IServiceCollection serviceCollection) {
 		base.RegisterComponents(serviceCollection);
 		// LocalNotion does not track application usage or store encrypted quota data.
-		// Keep the standard lifecycle/settings services without requiring a product secret.
+		// Keep the standard lifecycle/settings services without requiring an application secret.
 		foreach (var registration in serviceCollection.Where(x =>
 			x.ServiceType == typeof(IProductUsageServices) ||
 			x.ImplementationType == typeof(StandardHelpServices) ||
