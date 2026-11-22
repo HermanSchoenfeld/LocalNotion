@@ -168,6 +168,7 @@ public sealed partial class NotionRenderModelBuilder {
 				global::Notion.Client.ToggleBlock item => new R.ToggleBlock { Text = MapRichText(context, item.Toggle?.RichText), Color = MapColor(item.Toggle?.Color), Children = OwnedChildren() },
 				BulletedListItemBlock item => new R.ListItemBlock { Text = MapRichText(context, item.BulletedListItem?.RichText), Color = MapColor(item.BulletedListItem?.Color), Children = OwnedChildren() },
 				NumberedListItemBlock item => new R.ListItemBlock { Text = MapRichText(context, item.NumberedListItem?.RichText), Color = MapColor(item.NumberedListItem?.Color), Children = OwnedChildren() },
+				global::Notion.Client.TabBlock => MapTabs(context, graph, depth),
 				global::Notion.Client.ColumnBlock => new R.ColumnBlock { Children = OwnedChildren() },
 				global::Notion.Client.ColumnListBlock => MapColumns(context, graph, depth),
 				global::Notion.Client.TableBlock item => MapTable(context, graph, item, depth),
@@ -194,6 +195,23 @@ public sealed partial class NotionRenderModelBuilder {
 		} finally {
 			context.Active.Remove(NormalizeID(graph.ObjectID));
 		}
+	}
+
+	private R.TabsBlock MapTabs(ProjectionContext context, NotionObjectGraph graph, int depth) {
+		var panels = (graph.Children ?? []).Select(child => {
+			var node = MapNode(context, child, depth + 1);
+			if (node is not R.ParagraphBlock paragraph)
+				return node; // Preserve unexpected source content rather than dropping it.
+			var source = FindObject(context, child.ObjectID) as global::Notion.Client.ParagraphBlock;
+			return (VisualNode)new R.TabBlock {
+				Metadata = paragraph.Metadata,
+				Text = paragraph.Text,
+				Color = paragraph.Color,
+				Icon = MapIcon(context, source?.Paragraph?.Icon),
+				Children = paragraph.Children
+			};
+		}).ToArray();
+		return new R.TabsBlock { Children = panels };
 	}
 
 	private R.ColumnListBlock MapColumns(ProjectionContext context, NotionObjectGraph graph, int depth) {

@@ -12,6 +12,18 @@ The public rendering API uses the Sphere10.Framework.Web.VisualRenderer namespac
 the authorized package's README for standalone usage. See
 [theme overrides](renderer-themes.md) for LocalNotion customization.
 
+## Native Notion tab blocks
+
+LocalNotion supports Notion's native tabbed content blocks in the current source build. Author the tabs and their contents in Notion, then pull the owning page using the normal `localnotion pull --path "./website" --objects PAGE_ID` command. No CMS Tag, special Theme, HTML injection or new CLI command is required. A subsequent `render` uses downloaded content; it does not fetch edits from Notion.
+
+The Notion API represents a tab group as a `tab` block. Its direct paragraph children supply panel labels and optional icons; the children of those paragraphs supply each panel's content. LocalNotion preserves the nested graph and projects it to the independent renderer's `TabsBlock` and `TabBlock` models. Uploaded label icons participate in ordinary attachment localization. Paragraphs outside a tab group retain their existing presentation.
+
+The generated website includes all panel contents as static HTML. Browser JavaScript adds keyboard-accessible tab controls; without JavaScript, all panels remain readable. Links to headings inside hidden panels reveal the containing tabs, including nested tabs. Plain-text output and print styles retain every panel. Tabs provide no privacy boundary and do not reduce the size of a generated page.
+
+The built-in `default` theme supplies the tab templates; CMS inherits them automatically. Tab styling and initialization are comment-separated sections of the existing `ln.css` and `ln.js`, so there are no additional tab CSS/JS requests or a separate tab theme. Online rendering uses those standard default-theme CDN assets; offline rendering emits local assets beneath `render-assets/`, which must be published with the HTML. Existing theme overlays can override `tabs.html` and `tab.html`, but must preserve their runtime and DOM hooks. See the renderer's [tabbed content reference](../../Framework/docs/visual-renderer/tabs.md) in a workspace checkout.
+
+This is a source-build capability as of 12 November 2026. An installed executable or public release must contain this updated client and renderer before it can import native tabs. The vendored SDK integrates upstream main while preserving the existing HTTP-client lifetime and JSON fixes; see [SDK provenance](../Notion.Client/UPSTREAM.md). The standard tab assets have been published to the Sphere10 CDN.
+
 ## Licensing and distribution
 
 Sphere10.Framework.Web.VisualRenderer is MIT-licensed, as declared in its project

@@ -40,6 +40,30 @@ public class NotionRenderModelBuilderTests {
 	}
 
 	[Test]
+	public void NativeTabsDeserializeAndProjectNestedContent([Values] ProjectionPurpose purpose) {
+		var resource = Resource("Tabs");
+		var page = new Page { Id = resource.ID };
+		var tabs = JsonConvert.DeserializeObject<IBlock>("{\"object\":\"block\",\"id\":\"tabs\",\"type\":\"tab\",\"has_children\":true,\"tab\":{}}");
+		var label = JsonConvert.DeserializeObject<IBlock>("{\"object\":\"block\",\"id\":\"panel\",\"type\":\"paragraph\",\"has_children\":true,\"paragraph\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"Overview\"}}],\"icon\":{\"type\":\"emoji\",\"emoji\":\"📋\"}}}");
+		var body = new global::Notion.Client.ParagraphBlock { Id = "body", Paragraph = new() { RichText = [Run("Panel content")] } };
+		var repository = Repository();
+		repository.ResourceMap[resource.ID] = resource;
+		var document = new NotionRenderModelBuilder(purpose == ProjectionPurpose.Text ? new UnavailableRepository() : repository).Build(resource,
+			Graph(page.Id, Graph(tabs.Id, Graph(label.Id, Graph(body.Id)))), Objects(page, tabs, label, body), Path.Combine(_fixtureRoot, "output"), purpose: purpose);
+		Assert.That(tabs, Is.TypeOf<global::Notion.Client.TabBlock>());
+		var group = (R.TabsBlock)document.Children.Single();
+		var panel = (R.TabBlock)group.Children.Single();
+		Assert.That(panel.Metadata.SourceId, Is.EqualTo("panel"));
+		Assert.That(panel.Children, Has.Length.EqualTo(1));
+		Assert.That(new TextRenderer().Render(document), Does.Contain("Overview").And.Contain("Panel content"));
+		Assert.That(((global::Notion.Client.ParagraphBlock)label).Paragraph.Icon, Is.TypeOf<EmojiPageIcon>());
+		if (purpose == ProjectionPurpose.Html) {
+			Assert.That(panel.Icon.Emoji, Is.EqualTo("📋"));
+			Assert.That(new HtmlRenderer().Render(document).Html, Does.Contain("data-ln-tabs").And.Contain("Panel content").And.Contain("Overview"));
+		}
+	}
+
+	[Test]
 	public void TextWithoutRepository() {
 		var resourceValue = Resource("Early text");
 		var pageValue = new Page { Id = resourceValue.ID };

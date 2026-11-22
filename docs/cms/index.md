@@ -226,6 +226,30 @@ An ordinary Callout is useful for an information or warning note. Use a concise 
 
 `callout_card` has a different contract: the Callout's own text is a destination URL, while its child blocks supply the visible content. Do not apply that modifier to a prose note unless it is intentionally being authored as a link card.
 
+### Add Tabbed Content
+
+Use a native Notion tabbed content block to present related content in labelled panels. Each tab's label and optional icon identify its contents; put headings, paragraphs and other blocks inside the panel. Pull the owning page normally. No CMS Tag or custom Theme is required.
+
+The standard renderer adds mouse and keyboard tab controls. Links into a hidden panel reveal it, including nested tabs. All content remains in the static page: without JavaScript it appears in sequence, and text exports and print styles retain all panels. Tabs do not hide private content or reduce the page's download size.
+
+Tab CSS and JavaScript are included in the default theme's existing `ln.css` and `ln.js`, without additional tab-specific requests. These shared files use the CDN online and the generated `render-assets/` directory offline. Native tabs require an updated executable and renderer; a source change is not a claim about the current installed executable or public release. See [native tab support and hosting](../renderer.md#native-notion-tab-blocks).
+
+### Add Mermaid Diagrams
+
+Use a native **Code** block for a flowchart, sequence diagram, class diagram or other Mermaid definition. Select **Mermaid** from the block's language menu and enter the definition directly, without surrounding Markdown fences. A caption can describe the diagram beneath it.
+
+```mermaid
+flowchart LR
+    Notion["Notion CMS"] --> Pull["Local Notion pull"]
+    Pull --> HTML["HTML and runtime assets"]
+    HTML --> Host["Web server"]
+```
+
+Save in Notion, then pull the owning Page with the normal Local Notion workflow. Mermaid definitions render as diagrams. Source is hidden by default; the optional disclosure remains commented out in the default template. Invalid definitions display an error without preventing the remaining diagrams from appearing. Other Code languages remain ordinary code.
+
+> [!NOTE]
+> Mermaid needs a build containing the updated renderer, browser JavaScript and the generated public `render-assets/` directory. It needs no special CMS Theme, injected HTML or new command. Without JavaScript, its diagram remains unrendered and source stays hidden. Strict rendering sanitizes HTML-like labels and disables executable callbacks. See [build availability and rendering requirements](../renderer.md#mermaid-code-blocks).
+
 ## 6. Compose a Reusable Theme
 
 ### Separate Base Design, Modifiers and Companions

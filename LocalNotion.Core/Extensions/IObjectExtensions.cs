@@ -92,6 +92,7 @@ public static class IObjectExtensions {
 			VideoBlock videoBlock => true,
 			PDFBlock pdfBlock => true,
 			CalloutBlock { Callout.Icon: CustomEmojiPageIcon or FilePageIcon } => true,
+			ParagraphBlock { Paragraph.Icon: CustomEmojiPageIcon or FilePageIcon } => true,
 			_ => false
 		};
 
@@ -106,6 +107,7 @@ public static class IObjectExtensions {
 			VideoBlock videoBlock => new WrappedNotionFile(videoBlock.Video),
 			PDFBlock pdfBlock => new WrappedNotionFile(pdfBlock.PDF),
 			CalloutBlock { Callout.Icon: CustomEmojiPageIcon or FilePageIcon } calloutBlock => new WrappedNotionFile(calloutBlock.Callout.Icon),
+			ParagraphBlock { Paragraph.Icon: CustomEmojiPageIcon or FilePageIcon } paragraphBlock => new WrappedNotionFile(paragraphBlock.Paragraph.Icon),
 			_ => default
 		};
 
