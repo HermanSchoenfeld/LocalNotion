@@ -1057,6 +1057,10 @@
         {
           "name": "@Private",
           "color": "gray"
+        },
+        {
+          "name": "@HideEmbeddedPages",
+          "color": "default"
         }
       ]
     }

@@ -1,6 +1,6 @@
 # CMS tag reference
 
-The canonical Tags multi-select presets these twelve exact strings in this order. Colors label choices in Notion, not website styling.
+The canonical Tags multi-select presets these thirteen exact strings in this order. Colors label choices in Notion, not website styling.
 
 Put flags on ordinary content. Header, NavBar, Footer and Internal have Tags/Summary cleared during CMS parsing, so tagging a framing row itself does not control its route as expected.
 
@@ -18,6 +18,9 @@ Put flags on ordinary content. Header, NavBar, Footer and Internal have Tags/Sum
 | `@UseThumbnailAsFeature` | gray | Uses the image thumbnail/icon as the feature candidate; an emoji is not an image URL. |
 | `@UseFirstImageAsFeature` | purple | Prefers the first image block, then cover and thumbnail. |
 | `@Private` | gray | Excludes the route and descendants from the generated sitemap; does not deny direct access. |
+| `@HideEmbeddedPages` | default | Omits automatic embedded Page widgets from the containing document. Independent destinations and authored links remain available. |
+
+Every Tag starts with one `@` followed by PascalCase, including `@HideEmbeddedPages`. Select the exact spelling. Existing databases need their old `hide_embedded_pages` or interim `HideEmbeddedPages` Tag renamed to `@HideEmbeddedPages`; neither old spelling has a runtime alias. See [the renderer contract](../renderer-themes.md#hiding-embedded-page-references) for migration from the obsolete development Theme.
 
 ## Feature-image precedence
 
@@ -31,4 +34,4 @@ The Private check walks route ancestors. It remains a sitemap rule, not access c
 
 ## Custom tags
 
-Additional tags are metadata unless code, themes or customization consume them. Some website CMS schemas include `@ContactFormNoAnimate`; it is outside the canonical twelve and no built-in semantics are promised here. Document its consumer and test output before depending on a custom name.
+Additional tags are metadata unless code, themes or customization consume them. Some website CMS schemas include `@ContactFormNoAnimate`; it is outside the canonical thirteen and no built-in semantics are promised here. Document its consumer and test output before depending on a custom name.

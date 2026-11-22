@@ -81,6 +81,7 @@ public sealed partial class NotionRenderModelBuilder {
 			Icon = purpose == ProjectionPurpose.Html ? MapThumbnail(resource, resource.Thumbnail, outputDirectory) : null,
 			CoverUrl = purpose == ProjectionPurpose.Html ? ResolveUrl(resource, resource.Cover, outputDirectory) : null,
 			TitleOnCover = tags.Contains(Constants.TagShowTitleOnBanner) || isSubPage && tags.Contains(Constants.TagShowChildPageTitleOnBanner),
+			HideEmbeddedPages = tags.Contains(Constants.TagHideEmbeddedPages),
 			Themes = purpose == ProjectionPurpose.Html ? _repository.DefaultThemes?.ToArray() ?? ["default"] : [],
 			Children = children,
 			PlainTextOverride = root is Database ? string.Empty : null
@@ -175,8 +176,8 @@ public sealed partial class NotionRenderModelBuilder {
 				global::Notion.Client.CodeBlock item => MapCode(context, item),
 				global::Notion.Client.EquationBlock item => new R.EquationBlock { Expression = item.Equation?.Expression ?? string.Empty },
 				global::Notion.Client.DividerBlock => new R.DividerBlock(),
-				Page item => new R.ReferenceBlock { Reference = Reference(context, item.Id, true), PlainTextOverride = Environment.NewLine },
-				ChildPageBlock item => new R.ReferenceBlock { Reference = Reference(context, item.Id, true), PlainTextOverride = Environment.NewLine },
+				Page item => new R.ReferenceBlock { Reference = Reference(context, item.Id, true), IsEmbeddedPage = true, PlainTextOverride = Environment.NewLine },
+				ChildPageBlock item => new R.ReferenceBlock { Reference = Reference(context, item.Id, true), IsEmbeddedPage = true, PlainTextOverride = Environment.NewLine },
 				LinkToPageBlock item => new R.ReferenceBlock { Reference = Reference(context, item.LinkToPage?.GetId(), false), PlainTextOverride = Environment.NewLine },
 				Database item => MapDatabase(context, item, graph),
 				global::Notion.Client.BreadcrumbBlock => MapBreadcrumb(context),

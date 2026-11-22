@@ -96,3 +96,11 @@ Know the previous deployable state. Host-only rollback can be overwritten by the
 ## Clean rebuild and optional outage test
 
 See [Rebuild a staging website from scratch](rebuilding.md) for a complete recovery-copy, empty-publication and fresh-pull workflow. It explains how to retain private configuration, custom themes and Git history while clearing local resource indexes, keep automatic Git disabled during generation, inspect logs and output, then publish and verify the replacement. Publishing an empty payload deliberately causes downtime and is an optional staging test, not a routine update requirement.
+
+## Embedded detail pages
+
+Keep related detail content in a native child Page when it belongs to a Section but needs its own destination. Leave **Custom Slug** unset: LocalNotion calculates the child address from the parent and title. Link an overview menu to the saved Heading 1 block inside that Page; preserve its block ID when editing the heading.
+
+To omit the child Page's inline widget from the overview, select `@HideEmbeddedPages` on the containing Section in **Tags**. It is a behavior control, not a Theme; LocalNotion projects it to `DocumentBlock.HideEmbeddedPages` without changing the Theme selection. The child still publishes normally. This setting does not provide privacy or authentication. See [the renderer contract](../renderer-themes.md#hiding-embedded-page-references) for scope, migration from the mistaken development Theme, and the separate `embedded_page_themes` Internal setting for real presentation packages.
+
+After moving an existing datasource Page into a native Page, verify its saved parent and title-only properties, then pull and check the calculated route. A cached `custom_slug` value can be calculated output; it is not evidence of an authored Custom Slug. Verify existing content, heading IDs and menu references, then inspect the published desktop and mobile destinations and the overview independently.

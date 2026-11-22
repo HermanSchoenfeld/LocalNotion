@@ -530,7 +530,7 @@ Header, NavBar, Footer and Internal are selected as shared framing independently
 
 ### A.4 Use Tags for Behavior
 
-These are the twelve canonical Tags. Put them on ordinary content, and select exact names rather than inventing a similar one.
+These are the thirteen canonical Tags. Every Tag starts with one `@` followed by PascalCase, including `@HideEmbeddedPages`. Put them on ordinary content, and select exact names rather than inventing a similar one.
 
 | Tag | When to use it and its limit |
 | --- | --- |
@@ -546,6 +546,7 @@ These are the twelve canonical Tags. Put them on ordinary content, and select ex
 | `@UseThumbnailAsFeature` | Use an image thumbnail/icon as the feature candidate. |
 | `@Private` | Exclude the route and descendants from the sitemap. This does not prevent direct access. |
 | `@ContactForm` | A preset custom choice, without established built-in form behavior. It does not provide a form or submission backend by itself. |
+| `@HideEmbeddedPages` | Omit automatic embedded Page widgets in this document while preserving independent destinations and authored links. |
 
 Choose one feature-source Tag; if several are present, the current preference is first-image, then cover, then thumbnail. Additional custom tags are metadata unless a theme or program explicitly consumes them. Some site-specific palettes contain other names; that does not make them canonical or universally implemented.
 

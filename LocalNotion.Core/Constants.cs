@@ -65,6 +65,7 @@ public static class Constants {
 	public const string TagHideNavBar = "@HideNavBar";
 	public const string TagHideFooter = "@HideFooter";
 	public const string TagHideInternal = "@HideInternal";
+	public const string TagHideEmbeddedPages = "@HideEmbeddedPages";
 	public const string TagUseCoverAsFeature = "@UseCoverAsFeature";
 	public const string TagUseThumbnailAsFeature = "@UseThumbnailAsFeature";
 	public const string TagUseFirstImageAsFeature = "@UseFirstImageAsFeature";

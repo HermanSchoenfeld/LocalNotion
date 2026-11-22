@@ -381,6 +381,42 @@ public class NotionRenderModelBuilderTests {
 		Assert.That(((ReferenceValue)projected.Rows[1].Cells[4]).References.Length, Is.EqualTo(0), "null relation entries remain harmless");
 	}
 
+	[TestCase("@HideEmbeddedPages", true)]
+	[TestCase("HideEmbeddedPages", false)]
+	[TestCase("hide_embedded_pages", false)]
+	[TestCase("hideEmbeddedPages", false)]
+	[TestCase("", false)]
+	public void HideEmbeddedPagesSuppressesNativePageWidgetsAndRetainsAuthoredLinks(string tagName, bool hideEmbeddedPages) {
+		// Native child ownership is distinct from a link to an independently published page.
+		var repository = Repository();
+		var source = Resource("Source");
+		source.CMSProperties = new CMSProperties { Tags = tagName.Length > 0 ? [tagName] : [] };
+		var sourcePage = new Page { Id = source.ID };
+		var first = Resource("First destination");
+		var second = Resource("Second destination");
+		foreach (var target in new[] { first, second }) {
+			target.Renders[RenderType.HTML] = new() { LocalPath = $"pages/{target.ID}/target.html", Slug = target.Name };
+			repository.ResourceMap[target.ID] = target;
+		}
+		var page = new Page { Id = first.ID };
+		var child = new ChildPageBlock { Id = second.ID, ChildPage = new() { Title = second.Title } };
+		var link = new LinkToPageBlock { Id = ID(), LinkToPage = new LinkPageToPage { PageId = first.ID } };
+		var paragraph = new global::Notion.Client.ParagraphBlock { Id = ID(), Paragraph = new() { RichText = [
+			new RichTextText { Text = new() { Content = "Authored heading menu", Link = new() { Url = "/p/" + first.ID + "#heading" } } }
+		] } };
+		var document = new NotionRenderModelBuilder(repository).Build(source,
+			Graph(source.ID, Graph(page.Id), Graph(child.Id), Graph(link.Id), Graph(paragraph.Id)), Objects(sourcePage, page, child, link, paragraph), _fixtureRoot);
+		Assert.That(document.HideEmbeddedPages, Is.EqualTo(hideEmbeddedPages));
+		Assert.That(document.Themes, Is.EqualTo(new[] { "default" }), "Control Tags must not be injected into the presentation Theme selection.");
+		Assert.That(document.Children.OfType<R.ReferenceBlock>().Select(reference => reference.IsEmbeddedPage), Is.EqualTo(new[] { true, true, false }));
+		var html = new R.HtmlRenderer().Render(document with { RenderFrame = false, ShowPageHeader = false }).Html;
+		var parsed = new AngleSharp.Html.Parser.HtmlParser().ParseDocument(html);
+		Assert.That(parsed.QuerySelectorAll("a[href]"), Has.Length.EqualTo(hideEmbeddedPages ? 2 : 4));
+		Assert.That(html, Does.Contain("Authored heading menu").And.Contain("First destination"));
+		Assert.That(html.Contains("Second destination"), Is.EqualTo(!hideEmbeddedPages));
+		Assert.That(document.Children, Has.Length.EqualTo(4), "The behavior control must not delete source nodes or affect publication ownership.");
+	}
+
 	[Test]
 	public void RenderingAfterSourceUnavailable() {
 		var repositoryValue = Repository();
