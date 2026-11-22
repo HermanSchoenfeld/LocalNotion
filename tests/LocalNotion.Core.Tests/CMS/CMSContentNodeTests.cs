@@ -20,6 +20,36 @@ namespace LocalNotion.Core.Tests;
 [Parallelizable(ParallelScope.Children)]
 public class CMSContentNodeTests {
 	[Test]
+	public void SectionsUseSectionedPageRegardlessOfCount([Values(1, 2)] int sectionCount, [Values(false, true)] bool includeFraming) {
+		var node = new CMSContentNode { Slug = "services/engineering" };
+		for (var index = 0; index < sectionCount; index++)
+			node.Content.Add(CreateResource(CMSPageType.Section, []));
+		if (includeFraming) {
+			node.Content.Add(CreateResource(CMSPageType.Header, []));
+			node.Content.Add(CreateResource(CMSPageType.Footer, []));
+		}
+
+		Assert.That(node.Type, Is.EqualTo(CMSContentType.SectionedPage), "The first downloaded Section needs the same renderer theme as the complete group.");
+	}
+
+	[Test]
+	public void SingleStandalonePageRetainsPageType([Values(CMSPageType.Page, CMSPageType.Gallery)] CMSPageType pageType) {
+		var node = new CMSContentNode();
+		node.Content.Add(CreateResource(pageType, []));
+
+		Assert.That(node.Type, Is.EqualTo(CMSContentType.Page));
+	}
+
+	[Test]
+	public void OrdinaryPageAndSectionAtSameSlugRemainInvalid([Values(false, true)] bool sectionFirst) {
+		var node = new CMSContentNode { Slug = "services/engineering" };
+		node.Content.Add(CreateResource(sectionFirst ? CMSPageType.Section : CMSPageType.Page, []));
+		node.Content.Add(CreateResource(sectionFirst ? CMSPageType.Page : CMSPageType.Section, []));
+
+		Assert.That(node.Type, Is.EqualTo(CMSContentType.None), "A colliding ordinary Page must be retired before its replacement Section group can be published.");
+	}
+
+	[Test]
 	public void FramingPropertyParsingRetainsNativeTags(
 		[Values(CMSPageType.Header, CMSPageType.NavBar, CMSPageType.Footer, CMSPageType.Internal)] CMSPageType pageType
 	) {

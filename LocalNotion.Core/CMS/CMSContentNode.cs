@@ -19,10 +19,11 @@ public class CMSContentNode {
 			var rawContent = NonFramingContent.ToArray(); // filter out menus/footers
 			if (rawContent.Length == 0 && !Children.Any()) 
 				return CMSContentType.None;
-			if (rawContent.Length == 1 && rawContent.Single().Type == LocalNotionResourceType.Page)
-				return CMSContentType.Page;
+			// A Section keeps its section renderer even before its siblings are downloaded.
 			if (rawContent.Any() && rawContent.All(x => x.CMSProperties.PageType == CMSPageType.Section))
 				return CMSContentType.SectionedPage;
+			if (rawContent.Length == 1 && rawContent.Single().Type == LocalNotionResourceType.Page)
+				return CMSContentType.Page;
 			if (Children.Any() && Children.All(x => x.NonFramingContent.Any() && x.NonFramingContent.All(y => y.CMSProperties.PageType == CMSPageType.Gallery)))
 				return CMSContentType.Gallery;
 			if (Children.Any())
