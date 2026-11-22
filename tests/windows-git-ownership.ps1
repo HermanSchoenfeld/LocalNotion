@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'Run this regression on Windows with Git for Windows installed.' }
 if ([string]::IsNullOrWhiteSpace($CliPath)) {
-    $CliPath = Join-Path $PSScriptRoot '..\LocalNotion.CLI\bin\Release\net10.0\localnotion.dll'
+    $CliPath = Join-Path $PSScriptRoot '..\LocalNotion.CLI\bin\Release\net11.0\localnotion.dll'
 }
 $CliPath = [IO.Path]::GetFullPath($CliPath)
 if (-not (Test-Path -LiteralPath $CliPath -PathType Leaf)) {

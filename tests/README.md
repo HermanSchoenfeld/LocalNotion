@@ -2,7 +2,7 @@
 
 The LocalNotion .NET test project uses Sphere10.Framework's NUnit conventions: discoverable fixtures, parameterized cases, and constraint assertions through `Assert.That(...)`. Tests appear in the IDE test explorer and run through `dotnet test`. The shared package references live in `tests/Directory.Build.props` and use stable NUnit, adapter, and test SDK releases.
 
-Use the .NET SDK selected by `global.json`: 10.0.400, with stable patch updates allowed. The first build may need NuGet restore; the default tests require no Notion credentials or network access to source content.
+Use the .NET SDK selected by `global.json`: 11.0.100, with stable patch updates allowed. The first build may need NuGet restore; the default tests require no Notion credentials or network access to source content.
 
 | Project | Folders and coverage |
 | --- | --- |
