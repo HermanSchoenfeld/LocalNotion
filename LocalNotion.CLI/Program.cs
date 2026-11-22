@@ -792,6 +792,7 @@ $@"Local Notion Status:
 			var client = CreateNotionClient(apiKey);
 
 			var syncOrchestrator = new NotionSyncOrchestrator(client, repo);
+			using var pullSession = syncOrchestrator.BeginPull();
 
 			// If pulling all, add all objects into list of objects to pull
 			if (arguments.PullAll) {

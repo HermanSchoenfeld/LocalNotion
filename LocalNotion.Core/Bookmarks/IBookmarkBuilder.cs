@@ -11,6 +11,6 @@ namespace LocalNotion.Core;
 
 public interface IBookmarkBuilder {
 
-	public Task<LocalNotionBookmark> Build(string url);
+	public Task<LocalNotionBookmark> Build(string url, CancellationToken cancellationToken = default);
 
 }

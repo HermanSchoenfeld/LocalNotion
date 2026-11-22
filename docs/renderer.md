@@ -69,3 +69,7 @@ Native CI and Docker use the one immutable `build/framework-source.ref` commit.
 That pin must identify a published Framework revision containing the renderer before
 a release can succeed. A local build or locally packed NuGet file does not establish
 public package availability or update installed executables.
+
+## Web bookmark previews
+
+During pull, `WebBookmarkBuilder` parses destination HTML using HtmlAgilityPack. Open Graph, Twitter Card and HTML fallbacks populate persisted `LocalNotionBookmark` data. Requests are reused only within that pull; the next pull refreshes them. `NotionRenderModelBuilder` maps stored data into `BookmarkBlock`, so render uses no destination requests or cache. See [bookmark rendering and metadata rules](../../Framework/docs/visual-renderer/bookmarks.md).

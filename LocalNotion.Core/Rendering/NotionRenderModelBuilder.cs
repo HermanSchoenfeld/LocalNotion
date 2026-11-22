@@ -17,7 +17,6 @@ using System.Threading.Tasks;
 using Sphere10.Framework.Web.VisualRenderer;
 using Notion.Client;
 using Sphere10.Framework;
-using BookmarkBlock = Notion.Client.BookmarkBlock;
 using R = Sphere10.Framework.Web.VisualRenderer;
 
 namespace LocalNotion.Core;
@@ -188,6 +187,7 @@ public sealed partial class NotionRenderModelBuilder {
 				PDFBlock item => MapMedia(context, item.PDF, R.MediaType.Pdf) with { PlainTextOverride = PlainText(item.PDF?.Caption) + $"PDF: {item.PDF}" },
 				VideoBlock item => MapVideo(context, item),
 				EmbedBlock item => MapEmbed(context, item),
+				global::Notion.Client.BookmarkBlock item => MapBookmark(context, item),
 				User item => new R.ParagraphBlock { Text = [new PersonInline { Person = MapPerson(item) }], PlainTextOverride = PersonText(item) },
 				_ => Unsupported(source)
 			};
@@ -195,6 +195,19 @@ public sealed partial class NotionRenderModelBuilder {
 		} finally {
 			context.Active.Remove(NormalizeID(graph.ObjectID));
 		}
+	}
+
+	private R.BookmarkBlock MapBookmark(ProjectionContext context, global::Notion.Client.BookmarkBlock block) {
+		var url = block.Bookmark?.Url ?? string.Empty;
+		var bookmark = context.Resource.Bookmarks?.FirstOrDefault(item => item.Url == url);
+		return new R.BookmarkBlock {
+			Url = url,
+			Title = bookmark?.Title ?? url,
+			Description = bookmark?.Summary ?? string.Empty,
+			ImageUrl = bookmark?.ImageUrl ?? string.Empty,
+			IconUrl = bookmark?.IconUrl ?? string.Empty,
+			Caption = MapRichText(context, block.Bookmark?.Caption)
+		};
 	}
 
 	private R.TabsBlock MapTabs(ProjectionContext context, NotionObjectGraph graph, int depth) {
@@ -268,7 +281,7 @@ public sealed partial class NotionRenderModelBuilder {
 	private static R.UnsupportedBlock Unsupported(object source) => new() {
 		Type = source?.GetType().Name ?? "missing",
 		Diagnostic = Diagnostic(source),
-		PlainTextOverride = source is BookmarkBlock ? Environment.NewLine + Environment.NewLine : Environment.NewLine
+		PlainTextOverride = Environment.NewLine
 	};
 
 	private IObject FindObject(ProjectionContext context, string id) {

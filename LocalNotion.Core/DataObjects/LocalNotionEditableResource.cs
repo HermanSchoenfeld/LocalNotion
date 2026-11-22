@@ -28,6 +28,9 @@ public abstract class LocalNotionEditableResource : LocalNotionResource {
 	[JsonProperty("keywords", NullValueHandling = NullValueHandling.Ignore)]
 	public string[] Keywords { get; set; }
 
+	[JsonProperty("bookmarks", NullValueHandling = NullValueHandling.Ignore)]
+	public LocalNotionBookmark[] Bookmarks { get; set; }
+
 	[JsonProperty("cms", NullValueHandling = NullValueHandling.Ignore)]
 	public CMSProperties CMSProperties { get; set; } = null;
 

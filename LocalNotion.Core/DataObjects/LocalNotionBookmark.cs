@@ -6,10 +6,7 @@
 //
 // This notice must not be removed when duplicating this file or its contents, in whole or in part.
 
-using System.Runtime.CompilerServices;
-using Sphere10.Framework;
 using Newtonsoft.Json;
-using Notion.Client;
 
 namespace LocalNotion.Core;
 
@@ -26,6 +23,9 @@ public class LocalNotionBookmark {
 
 	[JsonProperty("image_url", NullValueHandling = NullValueHandling.Ignore)]
 	public string ImageUrl { get; set; }
+
+	[JsonProperty("icon_url", NullValueHandling = NullValueHandling.Ignore)]
+	public string IconUrl { get; set; }
 
 	[JsonProperty("thumbnail")]
 	public LocalNotionThumbnail Thumbnail { get; set; } = LocalNotionThumbnail.None;

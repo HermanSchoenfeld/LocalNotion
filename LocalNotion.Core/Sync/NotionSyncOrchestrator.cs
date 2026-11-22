@@ -10,6 +10,7 @@
 
 using System.Text;
 using System.Xml.Schema;
+using Newtonsoft.Json.Linq;
 using Sphere10.Framework;
 using Sphere10.Framework.Application;
 using LocalNotion.Core.DataObjects;
@@ -18,13 +19,16 @@ using Notion.Client;
 namespace LocalNotion.Core;
 
 public class NotionSyncOrchestrator {
+	private readonly IBookmarkBuilder _bookmarkBuilder;
+	private Dictionary<string, LocalNotionBookmark> _pullBookmarks;
 
-	public NotionSyncOrchestrator(INotionClient notionClient, ILocalNotionRepository repository) {
+	public NotionSyncOrchestrator(INotionClient notionClient, ILocalNotionRepository repository, IBookmarkBuilder bookmarkBuilder = null) {
 		Guard.ArgumentNotNull(notionClient, nameof(notionClient));
 		Guard.ArgumentNotNull(repository, nameof(repository));
 		NotionClient = notionClient;
 		Repository = repository;
 		Logger = Repository.Logger ?? new NoOpLogger();
+		_bookmarkBuilder = bookmarkBuilder ?? new WebBookmarkBuilder();
 	}
 
 	protected ILogger Logger { get; }
@@ -32,6 +36,14 @@ public class NotionSyncOrchestrator {
 	protected INotionClient NotionClient { get; }
 
 	protected ILocalNotionRepository Repository { get; }
+
+	/// <summary>Shares fetched bookmark metadata across the sequential roots of one pull; disposal discards it.</summary>
+	public ActionScope BeginPull() {
+		if (_pullBookmarks != null)
+			return new ActionScope(() => { });
+		_pullBookmarks = new Dictionary<string, LocalNotionBookmark>(StringComparer.Ordinal);
+		return new ActionScope(() => _pullBookmarks = null);
+	}
 
 	/// <summary>
 	/// Downloads and renders pages from a CMSDatabase Database.
@@ -42,6 +54,7 @@ public class NotionSyncOrchestrator {
 	/// <param name="cancellationToken">Task cancellation token</param>
 	/// <returns>All updated resources. Will be empty if nothing was synced.</returns>
 	public async Task<LocalNotionResource[]> DownloadDatabaseAsync(string databaseID, DateTime? knownNotionLastEditTime = null, DownloadOptions options = null, CancellationToken cancellationToken = default) {
+		using var pull = BeginPull();
 		Guard.ArgumentNotNull(databaseID, nameof(databaseID));
 		options ??= DownloadOptions.Default;
 		databaseID = LocalNotionHelper.SanitizeObjectID(databaseID);
@@ -269,6 +282,7 @@ public class NotionSyncOrchestrator {
 	}
 
 	public async Task<LocalNotionResource[]> DownloadPageAsync(string pageID, DateTime? knownNotionLastEditTime = null, DownloadOptions options = null, CancellationToken cancellationToken = default) {
+		using var pull = BeginPull();
 		Guard.ArgumentNotNull(pageID, nameof(pageID));
 		options ??= DownloadOptions.Default;
 		var downloadedResources = new List<LocalNotionResource>();
@@ -532,6 +546,19 @@ public class NotionSyncOrchestrator {
 				#endregion
 			}
 
+			// Destination metadata can change without a Notion edit. Refresh once per URL in this pull,
+			// then persist the data on the page so a subsequent render needs neither a cache nor HTTP.
+			var bookmarks = await FetchBookmarks(pageObjects.Values, options, cancellationToken);
+			if (!JToken.DeepEquals(JToken.FromObject(localPage.Bookmarks ?? []), JToken.FromObject(bookmarks))) {
+				// Keep repository change notifications detached from the stored instance.
+				var updatedPage = Tools.Object.Clone(localPage);
+				updatedPage.Bookmarks = bookmarks;
+				Repository.UpdateResource(updatedPage);
+				localPage = updatedPage;
+				if (!downloadedResources.Any(resource => resource.ID == localPage.ID))
+					downloadedResources.Add(localPage);
+			}
+
 			#region Download any child pages
 
 			foreach (var childPage in childPages) {
@@ -642,6 +669,52 @@ public class NotionSyncOrchestrator {
 		}
 	}
 
+	/// <summary>
+	/// Remove articles and folders from file system that no longer link to a page in Notion
+	/// </summary>
+	/// <returns></returns>
+	public async Task PruneDeletedDatabasePagesAsync(CancellationToken cancellationToken = default) {
+		// TODO: implement this
+		throw new NotImplementedException();
+	}
+
+	public async Task<Database> FetchDatabaseHeader(string databaseID, CancellationToken cancellationToken = default) {
+		return await NotionClient.Databases.RetrieveAsync(databaseID, cancellationToken);
+	}
+
+	public async Task<DataSource> FetchDatasourceHeader(string datasourceID, CancellationToken cancellationToken = default) {
+		return await NotionClient.DataSources.RetrieveAsync(datasourceID, cancellationToken);
+	}
+
+
+	public IAsyncEnumerable<Page> FetchDatabasePagesAsync(string dataSourceID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
+		Logger.Info($"Fetching updated pages from datasource {dataSourceID} {(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
+		return NotionClient.DataSources.EnumerateAsync(
+			dataSourceID,
+			new QueryDataSourceRequest { Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null, },
+			cancellationToken
+		);
+	}
+
+	private async Task<LocalNotionBookmark[]> FetchBookmarks(IEnumerable<IObject> objects, DownloadOptions options, CancellationToken cancellationToken) {
+		var bookmarks = new List<LocalNotionBookmark>();
+		foreach (var url in objects.OfType<BookmarkBlock>().Select(block => block.Bookmark?.Url).Where(url => !string.IsNullOrWhiteSpace(url)).Distinct(StringComparer.Ordinal)) {
+			cancellationToken.ThrowIfCancellationRequested();
+			if (!_pullBookmarks.TryGetValue(url, out var bookmark)) {
+				try {
+					bookmark = await _bookmarkBuilder.Build(url, cancellationToken);
+				} catch (Exception error) when (!cancellationToken.IsCancellationRequested && options.FaultTolerant) {
+					Logger.Warning("Unable to retrieve bookmark preview; using its authored URL.");
+					Logger.Exception(error);
+					bookmark = new LocalNotionBookmark { Url = url, Title = url };
+				}
+				_pullBookmarks.Add(url, bookmark);
+			}
+			bookmarks.Add(bookmark);
+		}
+		return bookmarks.ToArray();
+	}
+
 	private async Task<LocalNotionFile> DownloadFileInternalAsync(string url, string parentResourceID, bool force, CancellationToken cancellationToken) {
 		Guard.ArgumentNotNull(url, nameof(url));
 		await using (Repository.EnterUpdateScope()) {
@@ -681,33 +754,6 @@ public class NotionSyncOrchestrator {
 			
 			return file;
 		}
-	}
-
-	/// <summary>
-	/// Remove articles and folders from file system that no longer link to a page in Notion
-	/// </summary>
-	/// <returns></returns>
-	public async Task PruneDeletedDatabasePagesAsync(CancellationToken cancellationToken = default) {
-		// TODO: implement this
-		throw new NotImplementedException();
-	}
-
-	public async Task<Database> FetchDatabaseHeader(string databaseID, CancellationToken cancellationToken = default) {
-		return await NotionClient.Databases.RetrieveAsync(databaseID, cancellationToken);
-	}
-
-	public async Task<DataSource> FetchDatasourceHeader(string datasourceID, CancellationToken cancellationToken = default) {
-		return await NotionClient.DataSources.RetrieveAsync(datasourceID, cancellationToken);
-	}
-
-
-	public IAsyncEnumerable<Page> FetchDatabasePagesAsync(string dataSourceID, DateTime? updatedOnOrAfter = null, CancellationToken cancellationToken = default) {
-		Logger.Info($"Fetching updated pages from datasource {dataSourceID} {(updatedOnOrAfter.HasValue ? $" (updated on or after {updatedOnOrAfter:yyyy-MM-dd HH:mm:ss.fff}" : string.Empty)}");
-		return NotionClient.DataSources.EnumerateAsync(
-			dataSourceID,
-			new QueryDataSourceRequest { Filter = updatedOnOrAfter.HasValue ? new TimestampLastEditedTimeFilter(onOrAfter: updatedOnOrAfter) : null, },
-			cancellationToken
-		);
 	}
 
 	private bool ShouldDownloadFile(string url)

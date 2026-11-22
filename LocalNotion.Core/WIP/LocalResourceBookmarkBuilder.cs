@@ -20,7 +20,7 @@ public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 	public ILocalNotionRepository Repository { get; }
 	public ILinkGenerator Resolver { get; }
 
-	public async Task<LocalNotionBookmark> Build(string url) {
+	public async Task<LocalNotionBookmark> Build(string url, CancellationToken cancellationToken = default) {
 		var pageID = url;  // url is the resource ID
 
 		var localNotionPage = Repository.GetPage(pageID);
@@ -28,7 +28,7 @@ public class LocalResourceBookmarkBuilder : IBookmarkBuilder {
 		var pageGraph = Repository.GetEditableResourceGraph(pageID);
 
 		// LoadAsync the page objects
-		var pageObjects = await Task.Run(() => Repository.LoadObjects(pageGraph));
+		var pageObjects = await Task.Run(() => Repository.LoadObjects(pageGraph), cancellationToken);
 
 
 		var page = pageObjects[pageGraph.ObjectID] as Page;
