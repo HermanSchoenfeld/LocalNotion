@@ -35,6 +35,16 @@ Sections at the same base path compose one route, ordered by Sequence. For a cus
 
 For the older installed renderer, verify the actual rendered anchor before sharing a precise section link. Its outer Section element uses the compact Notion page UUID, and its inner title anchor is derived separately from the resource name. An invented Custom Slug fragment does not create either ID.
 
+## Sitemap URLs
+
+Local Notion writes `cms/sitemap.xml` when it generates Nginx hosting files. Every entry uses a fully qualified HTTP or HTTPS URL, including the homepage. Google cannot accept relative paths such as `/cases/telstra` in a sitemap.
+
+An absolute `paths.base_url` in `.localnotion/registry.json` supplies the public origin and optional path prefix. If the base URL is relative (normally `/`), the CMS database title supplies the domain, for example `sphere10.com`; HTTPS is assumed unless the title includes `http://` or `https://`. The sanitized database filesystem name is not a domain. A relative prefix such as `/Docs/` is retained, including its case.
+
+Unicode paths are UTF-8 percent-encoded in sitemap URLs. Private routes and descendants remain excluded, and each entry retains the latest modification date of its source pages. This fixes sitemap addresses without changing article slugs or website links.
+
+Run `localnotion render --all --path <repository>` to regenerate the sitemap from stored content when Nginx hosting is enabled. This also renders pages and regenerates hosting mappings, and can commit or push according to the repository's Git settings. For a sitemap-only correction, render an isolated copy with Git disabled, validate the XML, and publish only `cms/sitemap.xml`. Compare its route set with the previous sitemap before deployment, then verify the public `/sitemap.xml` response and resubmit it in Search Console.
+
 ## Galleries
 
 Each Gallery row supplies a card and the page it opens. Root groups the cards into a gallery, and the Item title supplies the card page's path. Category1–Category5 become badges/filter values, not nested path segments.

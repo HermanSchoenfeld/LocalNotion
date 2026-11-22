@@ -14,19 +14,23 @@ public class SitemapGenerator {
 	
 	public SitemapXml Generate(CMSLocalNotionRepository repo) {
 		var database = repo.GetDatabase(repo.CMSDatabaseID);
-		
-		
-		var rootUrl = database.Name.ToLowerInvariant().TrimEnd('/');
-		if (!rootUrl.StartsWith("http://") && !rootUrl.StartsWith("https://")) {
-			rootUrl = "https://" + rootUrl;
+		var baseUrl = repo.Paths.GetRemoteHostedBaseUrl();
+		if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var rootUrl) || (rootUrl.Scheme != Uri.UriSchemeHttp && rootUrl.Scheme != Uri.UriSchemeHttps)) {
+			// Relative website links still require an absolute origin in the sitemap. The CMS
+			// title retains the domain; its filesystem name may have replaced dots with hyphens.
+			var domain = database.Title.Trim();
+			if (!domain.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !domain.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+				domain = "https://" + domain;
+			rootUrl = new Uri(domain.TrimEnd('/') + "/" + baseUrl.Trim('/'));
 		}
+		rootUrl = new Uri(rootUrl.AbsoluteUri.TrimEnd('/') + "/");
 
 		var siteMapXml = new SitemapXml();
 		foreach(var cmsItem in repo.CMSItems) {
 			// Never generate sitemap entries for private content (self or ancestor tagged @Private)
 			if (repo.CMSDatabase.TryGetContent(cmsItem.Slug, out var contentNode) && contentNode.IsPrivate)
 				continue;
-			var absUrl = !cmsItem.Slug.IsNullOrWhiteSpace() ? "/" + LocalNotionHelper.SanitizeSlug(cmsItem.Slug) : cmsItem.Slug;
+			var absUrl = new Uri(rootUrl, LocalNotionHelper.SanitizeSlug(cmsItem.Slug ?? string.Empty)).AbsoluteUri;
 			DateTime? lastModified = cmsItem.Parts.Any() ? cmsItem.Parts.Max(x => repo.GetPage(x).LastEditedOn) : null;
 			siteMapXml.Add(absUrl, lastModified);
 		}
