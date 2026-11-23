@@ -10,9 +10,9 @@ process. For normal usage, see the [main README](README.md) and
 
 Install Git, the .NET SDK selected by [global.json](global.json), and PowerShell
 7.4 or later. Docker work also requires Docker Desktop in Linux containers mode
-or Docker Engine. Use a clean Sphere10 Framework checkout containing
-`Sphere10.Framework.Web.VisualRenderer`, or a matching verified NuGet package set.
-See [renderer build modes](docs/renderer.md#building). The renderer and Framework
+or Docker Engine. Builds restore the public Sphere10 Framework packages from
+NuGet.org; add `-p:UseSphere10FrameworkSource=true` to build against a clean
+Framework checkout instead. See [renderer build modes](docs/renderer.md#building). The renderer and Framework
 are MIT-licensed; LocalNotion retains its GPL license and historical linking exception.
 
 Create a branch from `master`, follow [.editorconfig](.editorconfig), keep the

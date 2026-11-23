@@ -20,6 +20,7 @@ on:
       - 'global.json'
       - 'Version.props'
       - 'Directory.Build.*'
+      - 'NuGet.Config'
       - 'Dockerfile'
       - '.dockerignore'
       - 'docker/**'
@@ -43,8 +44,7 @@ jobs:
       tag: ${{ steps.version.outputs.tag }}
       build_number: ${{ steps.version.outputs.build_number }}
       sha: ${{ steps.version.outputs.sha }}
-      framework_repository: ${{ steps.version.outputs.framework_repository }}
-      framework_revision: ${{ steps.version.outputs.framework_revision }}
+      framework_version: ${{ steps.version.outputs.framework_version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
       publish: ${{ steps.version.outputs.publish }}
       matrix: ${{ steps.version.outputs.matrix }}
@@ -58,7 +58,7 @@ jobs:
           ./tests/release-command-resolution.ps1
           ./tests/release-draft-discovery.ps1
           ./tests/release-launcher-package.ps1
-          ./tests/release-framework-pin.ps1
+          ./tests/release-framework-package.ps1
       - name: Resolve one version and build number
         id: version
         env:
@@ -85,24 +85,10 @@ jobs:
       SOURCE_REVISION: ${{ needs.metadata.outputs.sha }}
       TARGET_RUNTIME: ${{ matrix.rid }}
       ARCHIVE_EXTENSION: ${{ matrix.archiveExtension }}
-      Sphere10FrameworkRoot: ${{ github.workspace }}/.dependencies/Framework
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Checkout pinned clean Framework
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ needs.metadata.outputs.framework_repository }}
-          ref: ${{ needs.metadata.outputs.framework_revision }}
-          path: .dependencies/Framework
-          persist-credentials: false
-          sparse-checkout: |
-            src/Sphere10.Framework
-            src/Sphere10.Framework.Data
-            src/Sphere10.Framework.Application
-            src/Sphere10.Framework.Web.VisualRenderer
-            resources/branding
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: 'global.json'

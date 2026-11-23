@@ -2,6 +2,7 @@
 
 ## 1.7.0 (unreleased)
 
+- Build on the public Sphere10 Framework 3.2.0 NuGet packages by default, including the visual renderer, instead of a pinned Framework source commit. `-p:UseSphere10FrameworkSource=true` still builds against a Framework checkout.
 - Keep old page and file addresses as redirects. The repository registry records an address, with the date, whenever a page, section page, gallery card, category, raw export or file moves, and drops it when the address is used again. Nginx generation serves them from `ln-redirects.conf` as 301 (hard) or 302 (soft) with the query string, and the new `redirects` command lists, adds and removes them.
 
 - Generate absolute sitemap URLs, including the homepage, from the configured public base URL or CMS database domain title. Preserve path prefixes, encode Unicode URLs, and retain private-route exclusions and modification dates.

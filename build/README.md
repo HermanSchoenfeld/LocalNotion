@@ -31,18 +31,18 @@ Publication starts when a maintainer pushes a `v*` release tag (normally through
 
 The build system lives in this repository. It does not require `Y:\builds`, the old SP10 PowerShell module, external attachment folders, signing certificates, or developer-machine paths. Build outputs, temporary packaging directories, and smoke-test extractions are kept under the Git-ignored `publish/` directory.
 
-## Clean Framework prerequisite
+## Framework packages
 
-The source build now defaults to a sibling clean post-DRM-extraction Framework
-checkout, or `Sphere10FrameworkRoot`. It has no Enterprise dependency or private
-feed requirement. See [the source-build availability boundary](../README.md#framework-dependency-and-build-modes).
-Public Framework.Application 3.1.2 still contains DRM; a clean public 3.1.3 package
-or public source commit has not been verified. Do not publish this source change
-through the existing checkout-only CI/Docker workflow until a reproducible clean
-Framework source/package set is supplied and those release paths are tested.
-Local source build/test evidence is not a release, Docker build or public-package
-verification. Explicit package mode needs all three matching clean packages and
-an exact Sphere10FrameworkVersion; it never falls back to Enterprise or 3.1.2.
+Every build, including CI, Docker and the local packaging scripts, restores the
+public Sphere10 Framework packages from NuGet.org at the exact
+`Sphere10FrameworkVersion` in [Directory.Build.props](../Directory.Build.props),
+currently `3.2.0`. No Framework checkout, private feed or Enterprise package is
+needed. To move Local Notion to a newer Framework release, change that version,
+run the build and tests, and commit it with the release; the release metadata job
+rejects a missing, inexact or source-mode default. Pass
+`-p:UseSphere10FrameworkSource=true` only for local work against a Framework
+checkout, as the [main README](../README.md#framework-dependency-and-build-modes)
+describes. Public Framework.Application 3.1.2 still contains DRM and is rejected.
 
 ## Requirements
 
@@ -182,16 +182,12 @@ supports the eight current targets; Linux and macOS SDK hosts do not produce
 Windows ReadyToRun output. See Microsoft's [ReadyToRun platform support](https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run#cross-platformarchitecture-restrictions).
 Building an artifact does not prove that it runs on its target. Execute archive
 smoke tests on a compatible host, as the release matrix does; ARM32 uses QEMU.
-Docker still requires the clean Framework build prerequisite described above.
+Docker restores the same Framework packages from NuGet.org.
 
 ### Renderer package dependency
 
-LocalNotion builds the renderer from the same pinned Framework checkout as its other
-Framework dependencies. Native CI and Docker use `build/framework-source.ref` and
-include `src/Sphere10.Framework.Web.VisualRenderer` in the sparse checkout. The pin
-must be advanced to a published commit containing the migrated renderer before
-releasing this source. Local package builds select one exact clean Framework
-version, including the new renderer package. See [renderer integration](../docs/renderer.md).
+The renderer is the `Sphere10.Framework.Web.VisualRenderer` package, restored at the
+same exact version as the other Framework packages. See [renderer integration](../docs/renderer.md).
 
 ### Validate an archive
 

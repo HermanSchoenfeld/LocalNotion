@@ -8,13 +8,14 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
-$frameworkPin = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'framework-source.ref') -Raw
-if ($frameworkPin -cnotmatch '\AHermanSchoenfeld/Sphere10\.Framework (?<revision>[0-9a-f]{40})(?:\r?\n)?\z') {
-    throw 'framework-source.ref must contain HermanSchoenfeld/Sphere10.Framework and one lowercase 40-character commit ID.'
-}
-$frameworkRevision = $Matches.revision
-if ($frameworkRevision -ceq ('0' * 40)) { throw 'Replace the pending Framework source pin with a verified public clean commit before building a release.' }
-$frameworkRepository = 'HermanSchoenfeld/Sphere10.Framework'
+# Releases restore the exact public Framework package that Directory.Build.props selects.
+[xml]$buildProperties = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props') -Raw
+$frameworkNodes = @($buildProperties.SelectNodes('/Project/PropertyGroup/Sphere10FrameworkVersion'))
+$sourceNodes = @($buildProperties.SelectNodes('/Project/PropertyGroup/UseSphere10FrameworkSource'))
+if ($frameworkNodes.Count -ne 1 -or $sourceNodes.Count -ne 1) { throw 'Directory.Build.props must declare one Sphere10FrameworkVersion and one UseSphere10FrameworkSource default.' }
+if ($sourceNodes[0].InnerText.Trim() -cne 'false') { throw 'Releases build against the public Framework packages; keep UseSphere10FrameworkSource false by default.' }
+$frameworkVersion = $frameworkNodes[0].InnerText.Trim()
+if ($frameworkVersion -cnotmatch '\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?\z') { throw 'Sphere10FrameworkVersion must be one exact Framework package version.' }
 
 [xml]$configuration = Get-Content -LiteralPath (Join-Path $root 'Version.props') -Raw
 $configuredVersion = $configuration.SelectSingleNode('/Project/PropertyGroup/ReleaseVersion').InnerText.Trim()
@@ -42,8 +43,7 @@ $result = [ordered]@{
     tag = "v$Version"
     build_number = $BuildNumber
     sha = $sha
-    framework_repository = $frameworkRepository
-    framework_revision = $frameworkRevision
+    framework_version = $frameworkVersion
     prerelease = $Version.Contains('-').ToString().ToLowerInvariant()
     publish = $Publish.IsPresent.ToString().ToLowerInvariant()
     matrix = ($matrix | ConvertTo-Json -Depth 5 -Compress)

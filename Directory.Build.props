@@ -1,10 +1,11 @@
 <Project>
 	<PropertyGroup>
-		<!-- Public Framework 3.1.2 still bundles DRM; use the clean source by default. -->
-		<UseSphere10FrameworkSource Condition="'$(UseSphere10FrameworkSource)' == ''">true</UseSphere10FrameworkSource>
-		<Sphere10FrameworkRoot Condition="'$(Sphere10FrameworkRoot)' == ''">$(MSBuildThisFileDirectory)../Framework</Sphere10FrameworkRoot>
+		<!-- Builds restore this exact public NuGet.org Framework release by default. -->
+		<UseSphere10FrameworkSource Condition="'$(UseSphere10FrameworkSource)' == ''">false</UseSphere10FrameworkSource>
+		<Sphere10FrameworkVersion Condition="'$(Sphere10FrameworkVersion)' == ''">3.2.0</Sphere10FrameworkVersion>
 
-		<!-- Package mode requires an explicitly supplied, separately verified clean version. -->
+		<!-- -p:UseSphere10FrameworkSource=true builds against a clean Framework checkout instead. -->
+		<Sphere10FrameworkRoot Condition="'$(Sphere10FrameworkRoot)' == ''">$(MSBuildThisFileDirectory)../Framework</Sphere10FrameworkRoot>
 	</PropertyGroup>
   <!-- The vendored Notion.Client keeps its upstream version and package identity. -->
   <PropertyGroup>

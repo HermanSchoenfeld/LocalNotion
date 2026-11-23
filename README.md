@@ -27,7 +27,7 @@ Workspace restore is listed as **coming soon** on the [Local Notion product page
 
 ## Standalone renderer
 
-LocalNotion uses the MIT-licensed Sphere10.Framework.Web.VisualRenderer library. Workspace builds use its updated source; package builds require an explicitly selected compatible version. See [rendering integration](docs/renderer.md).
+LocalNotion uses the MIT-licensed Sphere10.Framework.Web.VisualRenderer library from the public Sphere10 Framework NuGet packages. See [rendering integration](docs/renderer.md).
 
 ## Native downloads
 
@@ -97,55 +97,40 @@ LocalNotion has no Enterprise package, license activation, repository quota or
 page quota. It uses the MIT Framework application lifecycle and the independently
 MIT Sphere10.Framework.Web.VisualRenderer library.
 
-The default build uses **post-DRM-extraction Framework source** from a sibling
-`../Framework` directory. Set `Sphere10FrameworkRoot` to use another checkout.
-It must contain `src/Sphere10.Framework`, `src/Sphere10.Framework.Data` and
-`src/Sphere10.Framework.Application`, with the DRM implementation removed from
-Application. No Enterprise checkout, private package feed or product key is needed.
+By default every build restores the public Sphere10 Framework packages from
+[NuGet.org](https://www.nuget.org/packages/Sphere10.Framework) at the one exact
+version that [Directory.Build.props](Directory.Build.props) selects in
+`Sphere10FrameworkVersion` (currently **3.2.0**). `Sphere10.Framework`,
+`Sphere10.Framework.Data`, `Sphere10.Framework.Application` and
+`Sphere10.Framework.Web.VisualRenderer` always use that same version.
+[NuGet.Config](NuGet.Config) restores every package from NuGet.org, so no Framework
+checkout, private feed, Enterprise package or product key is needed. Framework.Application
+3.1.2 still contains legacy DRM and is rejected; the version must be 3.1.3 or later.
 
-The clean Framework source, including the visual renderer, is public in
-[HermanSchoenfeld/Sphere10.Framework](https://github.com/HermanSchoenfeld/Sphere10.Framework).
-The exact tested commit is recorded in [build/framework-source.ref](build/framework-source.ref).
-Use that pin when reproducing the source build. Framework.Application 3.1.2 still
-contains legacy DRM and is not supported. Package builds require one exact,
-tested clean Framework version for all references. See the
-[Framework publishing guide](https://github.com/HermanSchoenfeld/Sphere10.Framework/blob/master/docs/nuget-publishing.md)
-for stable and prerelease installation. Source changes do not update installed
-LocalNotion executables or publish a LocalNotion release.
+To try another published Framework build, such as a CI prerelease, pass its exact
+version: `-p:Sphere10FrameworkVersion=3.2.1-ci.<run>.<id>.<attempt>`. To build against
+Framework source instead, for example while changing Framework and Local Notion
+together, pass `-p:UseSphere10FrameworkSource=true`. Source mode uses a sibling
+`../Framework` checkout, or the one named by `-p:Sphere10FrameworkRoot=/absolute/path/to/Framework`.
+That checkout must contain `src/Sphere10.Framework`, `src/Sphere10.Framework.Data`,
+`src/Sphere10.Framework.Application` and `src/Sphere10.Framework.Web.VisualRenderer`,
+with the DRM implementation removed from Application. The public source is
+[HermanSchoenfeld/Sphere10.Framework](https://github.com/HermanSchoenfeld/Sphere10.Framework);
+each NuGet release is built from its `v<version>` tag. Releases and CI always build
+in package mode.
 
 ### Build (CLI)
 
-From the repository root, with the clean `../Framework` checkout containing
-`Sphere10.Framework.Web.VisualRenderer` available:
+From the repository root:
 
 ```bash
 dotnet build LocalNotion.sln -c Release -p:BuildNumber=0 -p:BuildRevision=0
 dotnet test tests/LocalNotion.Core.Tests/LocalNotion.Core.Tests.csproj -c Release -p:BuildNumber=0 -p:BuildRevision=0
 ```
 
-For a different source location, add
-`-p:Sphere10FrameworkRoot=/absolute/path/to/Framework`. Explicit build numbers
-avoid incrementing the checkouts' local build counters. See [renderer build modes](docs/renderer.md#building) for the shared Framework source/package configuration.
-
-Package mode restores a **separately produced and verified clean package set**
-from the private Gitea NuGet registry, without a Framework source checkout.
-Configure its service-index URL and credentials in your user-level NuGet
-configuration under the source name `sphere10-gitea-private`. Keep credentials
-outside this repository. [NuGet.Config](NuGet.Config) maps Framework packages to
-that source and third-party packages to NuGet.org; source builds still need no
-private feed.
-
-Select one exact clean Framework version explicitly for restore, build and test:
-
-```bash
-dotnet build LocalNotion.sln -c Release -p:BuildNumber=0 -p:BuildRevision=0 -p:UseSphere10FrameworkSource=false -p:Sphere10FrameworkVersion=3.2.0-ci.160.43660265392.1
-dotnet test tests/LocalNotion.Core.Tests/LocalNotion.Core.Tests.csproj -c Release -p:BuildNumber=0 -p:BuildRevision=0 -p:UseSphere10FrameworkSource=false -p:Sphere10FrameworkVersion=3.2.0-ci.160.43660265392.1
-```
-
-The version must be 3.1.3 or later and provide all four matching Framework
-packages, including the visual renderer. No default version, Enterprise/DRM
-dependency or fallback to 3.1.2 is supplied. Package availability and compatibility
-must be verified independently of source-mode builds.
+Add `-p:UseSphere10FrameworkSource=true` to either command to use Framework source.
+Explicit build numbers avoid incrementing the checkout's local build counter. See
+[renderer build modes](docs/renderer.md#building) for the shared Framework source/package configuration.
 
 ### Run
 

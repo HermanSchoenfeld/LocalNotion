@@ -1,12 +1,12 @@
 # Only application source and the entrypoint belong in the build context.
 **
 !global.json
+!NuGet.Config
 !Version.props
 !Directory.Build.props
 !Directory.Build.targets
 !build/
 !build/Sphere10.Framework.References.targets
-!build/framework-source.ref
 !LICENSE
 !COPYRIGHT
 !COPYING.EXCEPTION

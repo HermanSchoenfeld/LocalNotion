@@ -90,8 +90,8 @@ Browser screenshots are a separate diagnostic step using the retained copies. NU
 
 ## Renderer package integration
 
-LocalNotion consumes `Sphere10.Framework.Web.VisualRenderer` from Framework source
-or its matching NuGet package. Renderer tests live in Framework's
+LocalNotion consumes `Sphere10.Framework.Web.VisualRenderer` from its NuGet package,
+or from Framework source when built with `-p:UseSphere10FrameworkSource=true`. Renderer tests live in Framework's
 `tests/Sphere10.Framework.Web.VisualRenderer.Tests` project. Tests in this solution
 verify Notion projection, persistence and repository rendering.
 
