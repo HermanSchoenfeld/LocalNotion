@@ -5,11 +5,11 @@
 Publishes a committed Local Notion release through the official GitHub workflow.
 
 .DESCRIPTION
-Validates the release version, clean checkout, official origin, and master ancestry.
+Validates the release version, clean checkout, official remote, and master ancestry.
 Updates and commits only Version.props when necessary, then creates an annotated tag
 and atomically pushes the current HEAD to master together with that tag.
 
-Use -WhatIf to preview the release. The preview may query origin and fetch master,
+Use -WhatIf to preview the release. The preview may query the remote and fetch master,
 but does not edit source files, create commits or tags, or push anything.
 
 .EXAMPLE
@@ -20,12 +20,19 @@ but does not edit source files, create commits or tags, or push anything.
 
 .EXAMPLE
 .\build\release.ps1 -Version 1.6.0-rc.1
+
+.EXAMPLE
+.\build\release.ps1 -Version 1.7.0 -Remote gh_origin
 #>
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
-    [string] $Version
+    [string] $Version,
+
+    # The Git remote that points at the official Sphere10/LocalNotion repository.
+    [ValidatePattern('\A[A-Za-z0-9._-]+\z')]
+    [string] $Remote = 'origin'
 )
 
 Set-StrictMode -Version Latest
@@ -95,10 +102,10 @@ $officialOrigins = @(
 foreach ($direction in @('fetch', 'push')) {
     $urlArguments = @('remote', 'get-url', '--all')
     if ($direction -eq 'push') { $urlArguments += '--push' }
-    $urlArguments += 'origin'
+    $urlArguments += $Remote
     $originUrls = (Invoke-ReleaseGit -GitArguments $urlArguments).Output
     if ($originUrls.Count -ne 1 -or $originUrls[0] -cnotin $officialOrigins) {
-        throw "origin must have exactly one official Sphere10/LocalNotion $direction URL (HTTPS or SSH)."
+        throw "$Remote must have exactly one official Sphere10/LocalNotion $direction URL (HTTPS or SSH)."
     }
 }
 
@@ -132,15 +139,15 @@ $localTag = Invoke-ReleaseGit -GitArguments @('show-ref', '--verify', '--quiet',
 if ($localTag.ExitCode -eq 0) {
     throw "Local tag $tag already exists. Existing release tags are never moved or overwritten."
 }
-$remoteTag = Invoke-ReleaseGit -Network -GitArguments @('ls-remote', '--exit-code', '--tags', 'origin', $tagReference) -AllowedExitCodes @(0, 2)
+$remoteTag = Invoke-ReleaseGit -Network -GitArguments @('ls-remote', '--exit-code', '--tags', $Remote, $tagReference) -AllowedExitCodes @(0, 2)
 if ($remoteTag.ExitCode -eq 0) {
     throw "Remote tag $tag already exists. Choose a new release version."
 }
 
-$null = Invoke-ReleaseGit -Network -GitArguments @('fetch', '--no-tags', 'origin', 'refs/heads/master:refs/remotes/origin/master')
-$ancestry = Invoke-ReleaseGit -GitArguments @('merge-base', '--is-ancestor', 'refs/remotes/origin/master', 'HEAD') -AllowedExitCodes @(0, 1)
+$null = Invoke-ReleaseGit -Network -GitArguments @('fetch', '--no-tags', $Remote, "refs/heads/master:refs/remotes/$Remote/master")
+$ancestry = Invoke-ReleaseGit -GitArguments @('merge-base', '--is-ancestor', "refs/remotes/$Remote/master", 'HEAD') -AllowedExitCodes @(0, 1)
 if ($ancestry.ExitCode -ne 0) {
-    throw 'Current HEAD does not descend from origin/master. Integrate origin/master into this branch before releasing.'
+    throw "Current HEAD does not descend from $Remote/master. Integrate $Remote/master into this branch before releasing."
 }
 $head = ((Invoke-ReleaseGit -GitArguments @('rev-parse', 'HEAD')).Output -join '').Trim()
 $updateVersion = $currentVersionText -cne $Version
@@ -176,12 +183,12 @@ if ($updateVersion) {
     $updatedVersionText = $versionText.Substring(0, $valueGroup.Index) + $Version + $versionText.Substring($valueGroup.Index + $valueGroup.Length)
     $hasUtf8Bom = $versionBytes.Length -ge 3 -and $versionBytes[0] -eq 0xEF -and $versionBytes[1] -eq 0xBB -and $versionBytes[2] -eq 0xBF
     [IO.File]::WriteAllText($versionPath, $updatedVersionText, [Text.UTF8Encoding]::new($hasUtf8Bom))
-    $null = Invoke-ReleaseGit -GitArguments @('commit', '--only', '-m', "Release Local Notion $Version", '--', 'Version.props')
+    $null = Invoke-ReleaseGit -GitArguments @('commit', '--only', '-m', "Build: Release Local Notion $Version", '-m', "- Set ReleaseVersion in Version.props to $Version", '--', 'Version.props')
 }
 
 $null = Invoke-ReleaseGit -GitArguments @('tag', '--annotate', $tag, '--message', "Local Notion $Version")
 try {
-    $push = Invoke-ReleaseGit -Network -GitArguments @('push', '--atomic', '--no-follow-tags', 'origin', 'HEAD:refs/heads/master', "$($tagReference):$tagReference")
+    $push = Invoke-ReleaseGit -Network -GitArguments @('push', '--atomic', '--no-follow-tags', $Remote, 'HEAD:refs/heads/master', "$($tagReference):$tagReference")
     $push.Output | ForEach-Object { Write-Host $_ }
 } catch {
     throw "The atomic push did not complete successfully. Inspect the remote state before retrying; the local release commit and tag have been retained. $($_.Exception.Message)"

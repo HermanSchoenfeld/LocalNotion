@@ -1,8 +1,10 @@
 # Changelog
 
-## 1.7.0 (unreleased)
+## 1.7.0
 
 - Build on the public Sphere10 Framework 3.2.0 NuGet packages by default, including the visual renderer, instead of a pinned Framework source commit. `-p:UseSphere10FrameworkSource=true` still builds against a Framework checkout.
+- Add a CI workflow that builds and tests every push to `master` and every pull request on Linux and Windows and smoke-tests the Docker image. A `v*` tag publishes the native archives, the Docker launcher bundle and the `ghcr.io/sphere10/local-notion` image, and moves `latest` to a newer stable release.
+
 - Keep old page and file addresses as redirects. The repository registry records an address, with the date, whenever a page, section page, gallery card, category, raw export or file moves, and drops it when the address is used again. Nginx generation serves them from `ln-redirects.conf` as 301 (hard) or 302 (soft) with the query string, and the new `redirects` command lists, adds and removes them.
 
 - Generate absolute sitemap URLs, including the homepage, from the configured public base URL or CMS database domain title. Preserve path prefixes, encode Unicode URLs, and retain private-route exclusions and modification dates.
@@ -33,4 +35,4 @@
 - Apply shared ReadyToRun publishing defaults across native archives, Docker and local deployment, with bundle compression disabled for the local Windows deployment to reduce startup allocation.
 - Expand the CMS guide with schema, page composition, themes, media, hosting and clean rebuild procedures; document Git configuration and update native and Docker installation examples.
 
-The release packaging is configured to produce eight self-contained native archives, the Windows Docker launcher bundle, SHA-256 checksums and release metadata. The official Docker image targets `linux/amd64`. Public GitHub and Docker publication remains pending; the locally installed development build is separate. Check the metadata for a published release's build number, source revision and immutable container digest.
+The release contains eight self-contained native archives, the Windows Docker launcher bundle, SHA-256 checksums and release metadata. The official Docker image targets `linux/amd64`. Check the metadata for the release's build number, source revision and immutable container digest.

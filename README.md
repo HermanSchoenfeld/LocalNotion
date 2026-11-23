@@ -145,6 +145,25 @@ dotnet run --project LocalNotion.CLI/LocalNotion.CLI.csproj -c Debug -p:BuildNum
 3. Build with **Build > Build Solution**.
 4. Run with **Debug > Start Without Debugging**.
 
+### Continuous integration and releases
+
+GitHub Actions builds and publishes Local Notion; the scripts it runs also work locally.
+
+| Workflow | Runs on | What it does |
+| --- | --- | --- |
+| [CI](.github/workflows/ci.yml) | Every push to `master`, every pull request, manual runs | Runs the release script regressions, builds and tests the solution on Linux and Windows against the public Framework packages, and builds and smoke-tests the Docker image without publishing it. |
+| [Build and release Local Notion](.github/workflows/release.yml) | `v*` tags, pull requests that change the build, manual runs | Builds and tests the eight native archives and the Docker image. On a tag it publishes the GitHub release, pushes `ghcr.io/sphere10/local-notion:<version>` and `:sha-<commit>`, and moves `:latest` to a newer stable release. |
+| [Retry release publication](.github/workflows/release-retry.yml) | Manual runs | Republishes a tagged run's original tested artifacts after a failed publication step. |
+
+To release, update `Version.props` and the [changelog](CHANGELOG.md), commit, and run
+[build/release.ps1](build/release.ps1) from a clean checkout of `master`. It creates the
+annotated `v<version>` tag and pushes it atomically with `master`, which starts the
+release workflow. Pass `-Remote <name>` when the official remote is not called `origin`,
+and `-WhatIf` to preview. Package one platform locally with `publish-win-x64.bat` (or
+`build/package.ps1 -Runtime <rid>`), all eight with `publish-all.bat`, and install the
+Windows build into Program Files with `deploy-locally.ps1`. The
+[build and release guide](build/README.md) describes each script.
+
 ## Usage
 
 Local Notion is operated via a command-line interface that works similarly to Git.

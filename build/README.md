@@ -16,7 +16,7 @@ Publication starts when a maintainer pushes a `v*` release tag (normally through
    .\build\release.ps1 -Version 1.7.1 -WhatIf
    ```
 
-   Review the proposed version, commit, and tag. This checks the release plan and may fetch remote branch information; it does not build, edit files, commit, tag, or push. For a full CI rehearsal, use [Run workflow](https://github.com/Sphere10/LocalNotion/actions/workflows/release.yml) with **publish disabled** and wait for the tests to pass.
+   Add `-Remote <name>` to this and the next command when your remote for the official repository is not called `origin`. Review the proposed version, commit, and tag. This checks the release plan and may fetch remote branch information; it does not build, edit files, commit, tag, or push. For a full CI rehearsal, use [Run workflow](https://github.com/Sphere10/LocalNotion/actions/workflows/release.yml) with **publish disabled** and wait for the tests to pass.
 
 4. **When ready, start publishing:**
 
@@ -249,6 +249,8 @@ Native archives support portable use with all extracted files kept together. Win
 
 ## How the CI/CD pipeline runs
 
+The [CI workflow](../.github/workflows/ci.yml) checks every push to `master` and every pull request: it runs the release script regressions and the metadata resolution, builds and tests the solution on Linux and Windows against the public Framework packages, and builds and smoke-tests the Docker image without pushing it. It never publishes.
+
 The [release workflow](../.github/workflows/release.yml) has four stages:
 
 1. **Resolve metadata.** The metadata job reads `Version.props`, checks the requested version or tag, resolves the exact commit, and assigns the workflow run number. It supplies one immutable identity and the matrix from `platforms.json` to all downstream jobs.
@@ -260,7 +262,8 @@ The [release workflow](../.github/workflows/release.yml) has four stages:
 
 | Trigger | Behavior |
 | --- | --- |
-| Pull request changing workflow, build, Docker, or application files | Build and test; upload preview artifacts; no publication |
+| Push to `master`, any pull request | CI workflow: build, test and Docker smoke test; no publication |
+| Pull request changing workflow, build, Docker, or application files | Release workflow: build and test all packages; upload preview artifacts; no publication |
 | Manual **Run workflow**, `publish: false` | Build and test the selected ref; optional version override; no publication |
 | Push of a `v*` tag | Publish only in `Sphere10/LocalNotion`, with a matching `Version.props` and a commit on the official default branch |
 | Manual **Run workflow**, `publish: true` | Publication is allowed only in `Sphere10/LocalNotion` from its default branch; the version and existing-release checks still apply |

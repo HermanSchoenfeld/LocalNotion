@@ -1,0 +1,88 @@
+name: CI
+run-name: Local Notion CI - ${{ github.event_name == 'pull_request' && format('PR {0}', github.event.number) || github.ref_name }}
+on:
+  push:
+    branches: ['master']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: pwsh
+jobs:
+  release-scripts:
+    name: Release script regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Release command, draft, launcher and Framework package regressions
+        run: |
+          ./tests/release-command-resolution.ps1
+          ./tests/release-draft-discovery.ps1
+          ./tests/release-launcher-package.ps1
+          ./tests/release-framework-package.ps1
+      - name: Resolve release metadata
+        run: ./build/ci-metadata.ps1 -BuildNumber 0
+  test:
+    name: Build and test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: 'global.json'
+      # The default build restores the exact public Framework packages selected in Directory.Build.props.
+      - name: Build and test against the public Framework packages
+        run: |
+          dotnet test LocalNotion.sln -c Release -p:BuildNumber=0 -p:BuildRevision=0 --logger "trx;LogFilePrefix=ci" --results-directory ./TestResults
+          if ($LASTEXITCODE -ne 0) { throw 'NUnit tests failed.' }
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-test-results-${{ matrix.os }}
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+          retention-days: 7
+  docker:
+    name: Build and smoke-test Docker
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: Build image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: local-notion:ci
+          build-args: |
+            VCS_REF=${{ github.sha }}
+      - name: Smoke-test image
+        run: |
+          $version = & docker run --rm --network none local-notion:ci --version 2>&1
+          if ($LASTEXITCODE -ne 0) { throw ($version -join [Environment]::NewLine) }
+          $version
+          $help = & docker run --rm --network none local-notion:ci --help 2>&1
+          if ($LASTEXITCODE -notin @(0,254) -or ($help -join [Environment]::NewLine) -notmatch '\bpull\b') { throw 'Docker help smoke test failed.' }
