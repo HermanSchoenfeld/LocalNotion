@@ -21,7 +21,7 @@ public class LocalNotionFile : LocalNotionResource {
 		localNotionFile = new() {
 			ID = resourceID,
 			LastSyncedOn = DateTime.UtcNow,
-			MimeType = mimeType ?? (Tools.Network.TryGetMimeType(filename, out var mt) ? mt : "application/octet-stream"),
+			MimeType = mimeType ?? (Tools.FileSystem.TryGetMimeType(filename, out var mt) ? mt : "application/octet-stream"),
 			Title = filename,
 			ParentResourceID = parentResourceID
 		};

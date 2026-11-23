@@ -100,7 +100,7 @@ MIT Sphere10.Framework.Web.VisualRenderer library.
 By default every build restores the public Sphere10 Framework packages from
 [NuGet.org](https://www.nuget.org/packages/Sphere10.Framework) at the one exact
 version that [Directory.Build.props](Directory.Build.props) selects in
-`Sphere10FrameworkVersion` (currently **3.2.0**). `Sphere10.Framework`,
+`Sphere10FrameworkVersion` (currently **3.2.0-ci.168.45166918016.1**, the Framework master CI prerelease, until Framework 3.2.0 is released). `Sphere10.Framework`,
 `Sphere10.Framework.Data`, `Sphere10.Framework.Application` and
 `Sphere10.Framework.Web.VisualRenderer` always use that same version.
 [NuGet.Config](NuGet.Config) restores every package from NuGet.org, so no Framework

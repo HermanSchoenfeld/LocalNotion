@@ -36,7 +36,7 @@ The build system lives in this repository. It does not require `Y:\builds`, the 
 Every build, including CI, Docker and the local packaging scripts, restores the
 public Sphere10 Framework packages from NuGet.org at the exact
 `Sphere10FrameworkVersion` in [Directory.Build.props](../Directory.Build.props),
-currently `3.2.0`. No Framework checkout, private feed or Enterprise package is
+currently `3.2.0-ci.168.45166918016.1`, a Framework master CI prerelease, until Framework 3.2.0 is released. No Framework checkout, private feed or Enterprise package is
 needed. To move Local Notion to a newer Framework release, change that version,
 run the build and tests, and commit it with the release; the release metadata job
 rejects a missing, inexact or source-mode default. Pass
