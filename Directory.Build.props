@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<!-- Builds restore this exact public NuGet.org Framework release by default. -->
 		<UseSphere10FrameworkSource Condition="'$(UseSphere10FrameworkSource)' == ''">false</UseSphere10FrameworkSource>
-		<Sphere10FrameworkVersion Condition="'$(Sphere10FrameworkVersion)' == ''">3.2.0-ci.168.45166918016.1</Sphere10FrameworkVersion>
+		<Sphere10FrameworkVersion Condition="'$(Sphere10FrameworkVersion)' == ''">3.2.0</Sphere10FrameworkVersion>
 
 		<!-- -p:UseSphere10FrameworkSource=true builds against a clean Framework checkout instead. -->
 		<Sphere10FrameworkRoot Condition="'$(Sphere10FrameworkRoot)' == ''">$(MSBuildThisFileDirectory)../Framework</Sphere10FrameworkRoot>
