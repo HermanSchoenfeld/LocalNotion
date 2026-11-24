@@ -490,6 +490,9 @@ $@"Local Notion Status:
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 
+		// Set by sync between polls: pulling all objects then reads only those edited since, newest first.
+		public DateTime? EditedSince { get; set; }
+
 	}
 
 	[Verb("sync", HelpText = "Synchronizes a Local Notion repository with Notion (until process manually terminated)")]
@@ -749,7 +752,7 @@ $@"Local Notion Status:
 			// List workspace level
 			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
 			var searchParameters = new SearchRequest { Query = arguments.Filter };
-			var results = client.EnumerateAllWorkspaceObjectsAsync(searchParameters, cancellationToken);
+			var results = client.EnumerateAllWorkspaceObjectsAsync(searchParameters, cancellationToken: cancellationToken);
 			if (!arguments.All)
 				results = results.Where(IsWorkspaceRoot);
 
@@ -831,7 +834,7 @@ $@"Local Notion Status:
 					// EnumerateAllWorkspaceObjectsAsync resolves each DataSource back to its parent Database
 					// and yields both, which restores those roots.
 					var visibleObjects = await client
-						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), cancellationToken)
+						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), arguments.EditedSince, cancellationToken)
 						.Where(x => x is Database or Page)
 						.ToArrayAsync(cancellationToken);
 
@@ -963,20 +966,22 @@ $@"Local Notion Status:
 	}
 
 	public static async Task<int> ExecuteSyncCommandAsync(SyncRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
-		// NOTE: FilterLastUpdateOn not requied since SyncOrchestrator intelligently determines 
-		// what to fetch
-
 		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
 		Console.WriteLine($"Synchronizing every {arguments.PollFrequency} seconds (send Break or CTRL-C to stop)");
+		DateTime? previousPollStart = null;
 		while (true) {
 			Console.WriteLine($"Synchronizing Updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-			//arguments.FilterLastUpdatedOn = DateTime.Now;
+			// The first poll reads the whole workspace; later polls read only what was edited since the previous successful poll began.
+			// Notion reports edit times to the minute, so the window reaches two minutes further back.
+			var pollStart = DateTime.UtcNow;
+			arguments.EditedSince = previousPollStart?.AddMinutes(-2);
 			var result = await ExecutePullCommandAsync(arguments, cancellationToken);
 			if (result != Constants.ERRORCODE_OK && !arguments.FaultTolerant)
 				return result;
+			if (result == Constants.ERRORCODE_OK)
+				previousPollStart = pollStart;
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
-			//arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
 		}
