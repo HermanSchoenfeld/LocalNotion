@@ -92,10 +92,12 @@ jobs:
             VCS_REF=${{ github.sha }}
       - name: Smoke-test image
         run: |
+          # The CLI prints --version and --help to stderr; keep that redirected output from stopping the step.
+          $ErrorActionPreference = 'Continue'
           # Report failures as error annotations, which show the container's output without signing in to read the log.
           function Write-SmokeFailure([string] $Check, [int] $ExitCode, [object[]] $Output) {
-            $text = ($Output -join "`n") -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
-            Write-Output "::error title=Docker $Check smoke test (exit $ExitCode)::$text"
+            $text = (@($Output | ForEach-Object { "$_" }) -join "`n") -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            Write-Host "::error title=Docker $Check smoke test (exit $ExitCode)::$text"
             exit 1
           }
           $version = & docker run --rm --network none local-notion:ci --version 2>&1
