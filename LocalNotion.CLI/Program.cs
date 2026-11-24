@@ -617,17 +617,8 @@ $@"Local Notion Status:
 			ApacheSettings.Default;
 
 		// Create git repo if required
-		if (gitSettings.Enabled) {
-			var gitSentry = new GitSentry(arguments.Path);
-			if (!await gitSentry.Init(cancellationToken)) {
-				consoleLogger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
-				throw new InvalidOperationException("Unable to create git repository");
-			}
-
-			var gitIgnoreFile = Path.Combine(arguments.Path, ".gitignore");
-			// Local Notion's own state stays out of git; themes and rendered content are kept.
-			await File.WriteAllTextAsync(gitIgnoreFile, GitIgnoreGenerator.Generate(pathProfile), cancellationToken);
-		}
+		if (gitSettings.Enabled)
+			await RepositoryGit.InitializeAsync(arguments.Path, pathProfile, consoleLogger, cancellationToken);
 
 
 		await using var repo = await LocalNotionRepository.CreateNew(
@@ -643,7 +634,7 @@ $@"Local Notion Status:
 			logger: consoleLogger
 		);
 
-		if (gitSettings.Enabled && !await ProcessChangeControl(repo, consoleLogger, cancellationToken))
+		if (gitSettings.Enabled && !await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken))
 			return Constants.ERRORCODE_FAIL;
 
 		consoleLogger.Info("Location Notion repository has been created");
@@ -666,7 +657,7 @@ $@"Local Notion Status:
 
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
-			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+			await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
 		}
 
 
@@ -710,7 +701,7 @@ $@"Local Notion Status:
 
 			// Do git processing if available
 			if (repo.GitSettings.Enabled) {
-				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+				await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
 			}
 
 		} else {
@@ -951,7 +942,7 @@ $@"Local Notion Status:
 
 			// Do git processing if available
 			if (repo.GitSettings.Enabled) {
-				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+				await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
 			}
 		}
 		return 0;
@@ -1044,7 +1035,7 @@ $@"Local Notion Status:
 
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
-			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
+			await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
 		}
 
 		return Constants.ERRORCODE_OK;
@@ -1192,41 +1183,6 @@ $@"Local Notion Status:
 		if (Path.IsPathFullyQualified(userEnteredPath))
 			return Path.GetRelativePath(repoPath, userEnteredPath); ;
 		return Path.GetRelativePath(repoPath, Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory));
-	}
-
-	private static async Task<bool> ProcessChangeControl(ILocalNotionRepository repo, ILogger logger, CancellationToken cancellationToken = default) {
-		Guard.Ensure(repo.GitSettings.Enabled, "Git tracking is not enabled on this repository");
-		var gitSentry = new GitSentry(repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute));
-		if (!await gitSentry.TestGitInstalled(cancellationToken)) {
-			logger.Error("Unable to track changes as git is not installed");
-			return false;
-		}
-
-		logger.Info("Adding changes to git");
-		if (!await gitSentry.AddAll(cancellationToken)) {
-			logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
-			return false;
-		}
-
-		logger.Info("Committing changes to git");
-		if (!await gitSentry.Commit($"Content updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}", cancellationToken)) {
-			if (gitSentry.Output.Contains("nothing to commit", StringComparison.OrdinalIgnoreCase)) {
-				logger.Info("No git changes to commit");
-				return true;
-			}
-			logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
-			return false;
-		}
-
-		if (repo.GitSettings.Push) {
-			logger.Info("Pushing git changes to default remote");
-			if (!await gitSentry.Push()) {
-				logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
-				return false;
-			}
-		}
-
-		return true;
 	}
 
 	private static INotionClient CreateNotionClient(string apiKey)
