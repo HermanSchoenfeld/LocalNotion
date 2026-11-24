@@ -48,9 +48,79 @@ Each unified release includes release notes, [SHA-256 checksums](https://github.
 
 See the [changelog](CHANGELOG.md) for command, CMS and packaging changes in version 1.7.0.
 
-Extract the complete archive and keep native libraries and supporting files beside the executable. Run `.\localnotion.exe --help` on Windows or `./localnotion --help` on Linux/macOS for portable use. A separate .NET installation is not required.
+To run Local Notion in a container instead, see [Get started with Docker](#get-started-with-docker).
 
-For installation under your user account, run `.\install.bat` on Windows or `sh ./install.sh` on Linux/macOS from the extracted directory. Windows supports `-InstallRoot` and `-NoPath`; Unix supports `--prefix`. The included README explains the version directories and PATH setup. These helpers retain earlier installations. macOS archives are unsigned and are not notarized by Apple.
+Extract the complete archive and keep native libraries and supporting files beside the executable. Run `.\localnotion.exe --help` on Windows or `./localnotion --help` on Linux/macOS for portable use. A separate .NET installation is not required. macOS archives are unsigned and are not notarized by Apple.
+
+### Install for your user
+
+The installers keep earlier installations, and the README included in each archive explains the version directories and PATH setup.
+
+**Windows.** From the extracted directory, run:
+
+```powershell
+.\install.bat
+```
+
+`-InstallRoot <directory>` selects another installation folder, and `-NoPath` leaves your user PATH unchanged:
+
+```powershell
+.\install.bat -InstallRoot "D:\Apps\LocalNotion" -NoPath
+```
+
+**Linux and macOS.** From the extracted directory, run:
+
+```sh
+sh ./install.sh
+```
+
+`--prefix <directory>` installs somewhere other than `~/.local`:
+
+```sh
+sh ./install.sh --prefix /opt/localnotion
+```
+
+## Get started with Docker
+
+Use Docker to run Local Notion as a normal command or a background synchronization service. On Windows, start Docker Desktop in **Linux containers** mode. The official image targets **linux/amd64**.
+
+### Run the image
+
+The official stable image is `ghcr.io/sphere10/local-notion:latest`. Native archives and the Docker launcher bundle are published together on [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases). Newer stable releases update `latest` automatically.
+
+```powershell
+docker pull ghcr.io/sphere10/local-notion:latest
+docker run --rm ghcr.io/sphere10/local-notion:latest --version
+```
+
+For repeatable deployments, select an explicit published image version such as `ghcr.io/sphere10/local-notion:1.7.0`, or the immutable image digest recorded in that release's metadata.
+
+### Install the Windows `localnotion` command
+
+The Docker launcher gives Windows a `localnotion` command that runs the image. Download the [Docker launcher installer](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), extract the entire ZIP, and run this from its directory:
+
+```powershell
+.\install.bat
+```
+
+The installer pulls the image version recorded in the bundle, installs the launcher for your user, and adds it to your user PATH. The bundle includes the launcher source and scripts; no repository checkout or separate .NET SDK is required. Open a new terminal, then run:
+
+```powershell
+localnotion --version
+localnotion --help
+```
+
+The command uses your current folder, or the folder selected by `--path`. The background service keeps a separate repository under `.docker/data`. The [Docker guide](docker/README.md) covers both modes, token setup, importing data, updates, and Git authentication.
+
+### Build the image from source
+
+From a source checkout, build and install the local image:
+
+```powershell
+.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage
+```
+
+The **Other > Docker** solution folder contains the Docker configuration and Windows launcher source, scripts, and guide. These are solution items for browsing and editing. Use the [launcher installer](docker/README.md#how-the-windows-launcher-is-built) to build and install the Docker-backed Windows command; a normal solution build builds the application projects.
 
 ## Screenshots
 
@@ -345,33 +415,3 @@ The [VisualRenderer linking exception](COPYING.EXCEPTION) grants additional perm
 **Website:** [https://sphere10.com/products/localnotion](https://sphere10.com/products/localnotion)
 
 **Copyright:** © Herman Schoenfeld 2018 - Present. All rights reserved.
-
-## Get started with Docker
-
-Use Docker to run Local Notion as a normal command or a background synchronization service. On Windows, start Docker Desktop in **Linux containers** mode. The official image targets **linux/amd64**.
-
-The official stable image is `ghcr.io/sphere10/local-notion:latest`. Native archives and the Docker launcher bundle are published together on [GitHub Releases](https://github.com/Sphere10/LocalNotion/releases). Newer stable releases update `latest` automatically.
-
-```powershell
-docker pull ghcr.io/sphere10/local-notion:latest
-docker run --rm ghcr.io/sphere10/local-notion:latest --version
-```
-
-For a Windows `localnotion` command, download the [Docker launcher installer](https://github.com/Sphere10/LocalNotion/releases/latest/download/localnotion-docker-windows.zip), extract the entire ZIP, and run this from its directory:
-
-```powershell
-.\install.bat
-```
-
-The installer pulls the image version recorded in the bundle, installs the launcher for your user, and adds it to your user PATH. The bundle includes the launcher source and scripts; no repository checkout or separate .NET SDK is required. Open a new terminal, then run:
-
-```powershell
-localnotion --version
-localnotion --help
-```
-
-For repeatable deployments, select an explicit published image version such as `ghcr.io/sphere10/local-notion:1.7.0`, or the immutable image digest recorded in that release's metadata. From a source checkout, `.\docker\install-cli.ps1 -Image local-notion:latest -BuildImage` builds and installs the local image.
-
-The command uses your current folder, or the folder selected by `--path`. The background service keeps a separate repository under `.docker/data`. The [Docker guide](docker/README.md) covers both modes, token setup, importing data, updates, and Git authentication.
-
-The **Other > Docker** solution folder contains the Docker configuration and Windows launcher source, scripts, and guide. These are solution items for browsing and editing. Use the [launcher installer](docker/README.md#how-the-windows-launcher-is-built) to build and install the Docker-backed Windows command; a normal solution build builds the application projects.
