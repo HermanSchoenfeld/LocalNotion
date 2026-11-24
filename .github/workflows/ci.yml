@@ -105,3 +105,5 @@ jobs:
           $version
           $help = & docker run --rm --network none local-notion:ci --help 2>&1
           if ($LASTEXITCODE -notin @(0,254) -or ($help -join [Environment]::NewLine) -notmatch '\bpull\b') { Write-SmokeFailure 'help' $LASTEXITCODE $help }
+          # --help exits 254 by design; without this, the shell would end the step with that exit code.
+          exit 0
