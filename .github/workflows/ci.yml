@@ -57,6 +57,11 @@ jobs:
         run: |
           $runtime = if ($IsWindows) { 'win-x64' } else { 'linux-x64' }
           ./build/package.ps1 -Runtime $runtime -BuildNumber 0 -OutputDirectory ./publish/ci-package
+          # Run the packaged executable through the release's own archive checks.
+          [xml] $versionProperties = Get-Content -LiteralPath Version.props -Raw
+          $version = $versionProperties.SelectSingleNode('/Project/PropertyGroup/ReleaseVersion').InnerText.Trim()
+          $archive = Get-ChildItem -LiteralPath ./publish/ci-package -File | Select-Object -First 1
+          ./build/test-package.ps1 -ArchivePath $archive.FullName -Runtime $runtime -Version $version -BuildNumber 0 -SourceRevisionId (git rev-parse HEAD) -ExtractDirectory ./publish/ci-package-test
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -87,8 +92,14 @@ jobs:
             VCS_REF=${{ github.sha }}
       - name: Smoke-test image
         run: |
+          # Report failures as error annotations, which show the container's output without signing in to read the log.
+          function Write-SmokeFailure([string] $Check, [int] $ExitCode, [object[]] $Output) {
+            $text = ($Output -join "`n") -replace '%', '%25' -replace "`r", '%0D' -replace "`n", '%0A'
+            Write-Output "::error title=Docker $Check smoke test (exit $ExitCode)::$text"
+            exit 1
+          }
           $version = & docker run --rm --network none local-notion:ci --version 2>&1
-          if ($LASTEXITCODE -ne 0) { throw ($version -join [Environment]::NewLine) }
+          if ($LASTEXITCODE -ne 0) { Write-SmokeFailure 'version' $LASTEXITCODE $version }
           $version
           $help = & docker run --rm --network none local-notion:ci --help 2>&1
-          if ($LASTEXITCODE -notin @(0,254) -or ($help -join [Environment]::NewLine) -notmatch '\bpull\b') { throw 'Docker help smoke test failed.' }
+          if ($LASTEXITCODE -notin @(0,254) -or ($help -join [Environment]::NewLine) -notmatch '\bpull\b') { Write-SmokeFailure 'help' $LASTEXITCODE $help }
