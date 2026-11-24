@@ -252,7 +252,7 @@ Native archives support portable use with all extracted files kept together. Win
 
 ## How the CI/CD pipeline runs
 
-The [CI workflow](../.github/workflows/ci.yml) checks every push to `master` and every pull request: it runs the release script regressions and the metadata resolution, builds and tests the solution on Linux and Windows against the public Framework packages, and builds and smoke-tests the Docker image without pushing it. It never publishes.
+The [CI workflow](../.github/workflows/ci.yml) checks every push to `master` and every pull request: it runs the release script regressions and the metadata resolution, builds and tests the solution on Linux and Windows against the public Framework packages, packages each runner's self-contained CLI (`linux-x64`, `win-x64`) with `build/package.ps1` as the release does, and builds and smoke-tests the Docker image without pushing it. It never publishes.
 
 The [release workflow](../.github/workflows/release.yml) has four stages:
 

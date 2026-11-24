@@ -51,6 +51,12 @@ jobs:
         run: |
           dotnet test LocalNotion.sln -c Release -p:BuildNumber=0 -p:BuildRevision=0 --logger "trx;LogFilePrefix=ci" --results-directory ./TestResults
           if ($LASTEXITCODE -ne 0) { throw 'NUnit tests failed.' }
+      # Releases package a self-contained single-file CLI per platform; packaging this runner's one on every push
+      # catches publish failures before a tag, with compiler errors shown as annotations.
+      - name: Package this runner's CLI as the release does
+        run: |
+          $runtime = if ($IsWindows) { 'win-x64' } else { 'linux-x64' }
+          ./build/package.ps1 -Runtime $runtime -BuildNumber 0 -OutputDirectory ./publish/ci-package
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

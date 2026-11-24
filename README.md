@@ -151,7 +151,7 @@ GitHub Actions builds and publishes Local Notion; the scripts it runs also work 
 
 | Workflow | Runs on | What it does |
 | --- | --- | --- |
-| [CI](.github/workflows/ci.yml) | Every push to `master`, every pull request, manual runs | Runs the release script regressions, builds and tests the solution on Linux and Windows against the public Framework packages, and builds and smoke-tests the Docker image without publishing it. |
+| [CI](.github/workflows/ci.yml) | Every push to `master`, every pull request, manual runs | Runs the release script regressions, builds and tests the solution on Linux and Windows against the public Framework packages, packages the self-contained CLI for each runner as the release does, and builds and smoke-tests the Docker image without publishing it. |
 | [Build and release Local Notion](.github/workflows/release.yml) | `v*` tags, pull requests that change the build, manual runs | Builds and tests the eight native archives and the Docker image. On a tag it publishes the GitHub release, pushes `ghcr.io/sphere10/local-notion:<version>` and `:sha-<commit>`, and moves `:latest` to a newer stable release. |
 | [Retry release publication](.github/workflows/release-retry.yml) | Manual runs | Republishes a tagged run's original tested artifacts after a failed publication step. |
 
