@@ -13,7 +13,9 @@ COPY assets/branding/local-notion.ico assets/branding/
 COPY LocalNotion.CLI/LocalNotion.CLI.csproj LocalNotion.CLI/
 COPY LocalNotion.Core/LocalNotion.Core.csproj LocalNotion.Core/
 COPY Notion.Client/Notion.Client.csproj Notion.Client/
-RUN env -u VERSION dotnet restore LocalNotion.CLI/LocalNotion.CLI.csproj -r linux-x64 -p:Configuration=Release -p:BuildRevision=0
+# "restore -r" sets RuntimeIdentifiers, not the RuntimeIdentifier that switches on the CLI's ReadyToRun publish default,
+# so request ReadyToRun explicitly or the restore omits the Crossgen2 pack that the --no-restore publish needs.
+RUN env -u VERSION dotnet restore LocalNotion.CLI/LocalNotion.CLI.csproj -r linux-x64 -p:Configuration=Release -p:PublishReadyToRun=true -p:BuildRevision=0
 COPY LocalNotion.CLI/ LocalNotion.CLI/
 COPY LocalNotion.Core/ LocalNotion.Core/
 COPY Notion.Client/ Notion.Client/
