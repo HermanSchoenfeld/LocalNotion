@@ -20,7 +20,7 @@ $head = '89abcdef0123456789abcdef0123456789abcdef'
 $previousOutput = $env:GITHUB_OUTPUT
 
 function Test-FrameworkPackage {
-    param([string] $Scenario, [string] $Properties, [string] $Expected)
+    param([string] $Scenario, [string] $Properties, [string] $Expected, [switch] $Untagged)
 
     $outputPath = Join-Path $testDirectory "$Scenario.outputs"
     $env:GITHUB_OUTPUT = $outputPath
@@ -39,7 +39,9 @@ function Test-FrameworkPackage {
 
     $failure = $null
     $result = $null
-    try { $result = & (Join-Path $fixtureBuild 'ci-metadata.ps1') -BuildNumber 17 -Tag v1.7.0 }
+    # A master or pull-request build passes no tag; a release build passes its v* tag.
+    $release = if ($Untagged) { @{} } else { @{ Tag = 'v1.7.0' } }
+    try { $result = & (Join-Path $fixtureBuild 'ci-metadata.ps1') -BuildNumber 17 @release }
     catch { $failure = $_.Exception.Message }
     if ($Expected) {
         if ($failure) { throw "Valid Framework package '$Scenario' was rejected: $failure" }
@@ -68,7 +70,8 @@ try {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'build/ci-metadata.ps1'), (Join-Path $repoRoot 'build/platforms.json') -Destination $fixtureBuild
     [IO.File]::WriteAllText((Join-Path $testDirectory 'Version.props'), '<Project><PropertyGroup><ReleaseVersion>1.7.0</ReleaseVersion></PropertyGroup></Project>', [Text.UTF8Encoding]::new($false))
     Test-FrameworkPackage -Scenario 'stable' -Properties (New-Properties '3.2.0') -Expected '3.2.0'
-    Test-FrameworkPackage -Scenario 'ci-prerelease' -Properties (New-Properties '3.2.0-ci.163.43664782937.1') -Expected '3.2.0-ci.163.43664782937.1'
+    Test-FrameworkPackage -Scenario 'ci-prerelease-on-master' -Properties (New-Properties '3.2.0-ci.163.43664782937.1') -Expected '3.2.0-ci.163.43664782937.1' -Untagged
+    Test-FrameworkPackage -Scenario 'ci-prerelease-release' -Properties (New-Properties '3.2.0-ci.163.43664782937.1') -Expected ''
     Test-FrameworkPackage -Scenario 'surrounding-whitespace' -Properties (New-Properties ' 3.2.0 ') -Expected '3.2.0'
     Test-FrameworkPackage -Scenario 'source-default' -Properties (New-Properties '3.2.0' 'true') -Expected ''
     Test-FrameworkPackage -Scenario 'missing-version' -Properties '<UseSphere10FrameworkSource>false</UseSphere10FrameworkSource>' -Expected ''

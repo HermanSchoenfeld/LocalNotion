@@ -25,6 +25,8 @@ if ($Tag) {
     if ($Version -cne $configuredVersion) { throw 'The release tag must match Version.props. Use build/release.ps1 to publish a new version.' }
 }
 if (-not $Version) { $Version = $configuredVersion }
+# Master and pull-request builds may use a Framework CI prerelease; a released Local Notion must build on a released Framework package.
+if (($Tag -or $Publish) -and $frameworkVersion.Contains('-')) { throw "Releases build on a released Framework package, not the prerelease $frameworkVersion. Tag Framework, then set Sphere10FrameworkVersion in Directory.Build.props to that release." }
 if ($Version -notmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$') { throw 'Use a semantic version such as 1.5.0 or 1.5.0-rc.1, without build metadata.' }
 if ($Version.Length -gt 128) { throw 'The release version exceeds the Docker tag limit.' }
 $numeric = [version]($Version.Split('-')[0])

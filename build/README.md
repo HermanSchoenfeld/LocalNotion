@@ -39,7 +39,10 @@ public Sphere10 Framework packages from NuGet.org at the exact
 currently `3.2.0-ci.168.45166918016.1`, a Framework master CI prerelease, until Framework 3.2.0 is released. No Framework checkout, private feed or Enterprise package is
 needed. To move Local Notion to a newer Framework release, change that version,
 run the build and tests, and commit it with the release; the release metadata job
-rejects a missing, inexact or source-mode default. Pass
+rejects a missing, inexact or source-mode default. A master or pull-request build may
+use a Framework CI prerelease, but a release may not: the metadata job fails a `v*` tag
+or published run whose Framework version is a prerelease, and `build/release.ps1`
+refuses to create the tag. Tag Framework and move to its release first. Pass
 `-p:UseSphere10FrameworkSource=true` only for local work against a Framework
 checkout, as the [main README](../README.md#framework-dependency-and-build-modes)
 describes. Public Framework.Application 3.1.2 still contains DRM and is rejected.

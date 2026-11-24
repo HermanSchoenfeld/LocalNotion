@@ -133,6 +133,17 @@ if ($requestedVersion.CompareTo($currentVersion) -lt 0) {
     throw "Version $Version is older than the checked-in release version $currentVersionText. Releases cannot downgrade."
 }
 
+# The tagged release workflow rejects a Framework prerelease, so refuse before creating a tag it would fail on.
+[xml] $buildProperties = [IO.File]::ReadAllText((Join-Path $repositoryPath 'Directory.Build.props'))
+$frameworkVersions = @($buildProperties.SelectNodes('/Project/PropertyGroup/Sphere10FrameworkVersion'))
+if ($frameworkVersions.Count -ne 1) {
+    throw 'Directory.Build.props must declare exactly one Sphere10FrameworkVersion.'
+}
+$frameworkVersion = $frameworkVersions[0].InnerText.Trim()
+if ($frameworkVersion.Contains('-')) {
+    throw "Sphere10FrameworkVersion is the prerelease $frameworkVersion. Tag Framework, set Sphere10FrameworkVersion in Directory.Build.props to that release and commit it before releasing."
+}
+
 $tag = "v$Version"
 $tagReference = "refs/tags/$tag"
 $localTag = Invoke-ReleaseGit -GitArguments @('show-ref', '--verify', '--quiet', $tagReference) -AllowedExitCodes @(0, 1)
