@@ -625,16 +625,8 @@ $@"Local Notion Status:
 			}
 
 			var gitIgnoreFile = Path.Combine(arguments.Path, ".gitignore");
-			// Create .gitignore files
-			const string GitIgnoreContents =
-				"""
-				# Local Notion logs
-				.localnotion/logs
-
-				# NGINX logs
-				.localnotion/nginx/logs
-				""";
-			await File.WriteAllTextAsync(gitIgnoreFile, GitIgnoreContents, cancellationToken);
+			// Local Notion's own state stays out of git; themes and rendered content are kept.
+			await File.WriteAllTextAsync(gitIgnoreFile, GitIgnoreGenerator.Generate(pathProfile), cancellationToken);
 		}
 
 
