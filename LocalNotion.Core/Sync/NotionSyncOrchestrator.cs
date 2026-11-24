@@ -776,6 +776,12 @@ public class NotionSyncOrchestrator {
 			var tmpFile = Tools.FileSystem.GetTempFileName();
 			try {
 				var mimeType = await Tools.Web.Downloader.DownloadFileAsync(url, tmpFile, verifySSLCert: false, cancellationToken);
+				// A server that takes the request for a bot answers with an HTML page (a sign-in or cookie banner) instead of the file;
+				// that page is not the file, so the original url is kept.
+				if (IsUnexpectedHtml(filename, mimeType)) {
+					Logger.Warning($"'{url}' returned an HTML page ({mimeType}) instead of the file '{filename}'; keeping its original url.");
+					return null;
+				}
 				file = LocalNotionFile.Parse(resourceID, filename, parentResourceID, mimeType);
 				file.ParentResourceID = CalculateResourceParent(file.ID);
 				Repository.AddResource(file);
@@ -791,6 +797,16 @@ public class NotionSyncOrchestrator {
 			
 			return file;
 		}
+	}
+
+	/// <summary>True when a download answered with an HTML page although the file is not an HTML document.</summary>
+	public static bool IsUnexpectedHtml(string filename, string mimeType) {
+		var mediaType = (mimeType ?? string.Empty).Split(';')[0].Trim();
+		if (!mediaType.Equals("text/html", StringComparison.OrdinalIgnoreCase) && !mediaType.Equals("application/xhtml+xml", StringComparison.OrdinalIgnoreCase))
+			return false;
+		var extension = Path.GetExtension(filename ?? string.Empty);
+		return !(extension.Equals(".html", StringComparison.OrdinalIgnoreCase) || extension.Equals(".htm", StringComparison.OrdinalIgnoreCase)
+			|| extension.Equals(".xhtml", StringComparison.OrdinalIgnoreCase));
 	}
 
 	private bool ShouldDownloadFile(string url)
