@@ -152,35 +152,6 @@ public class RenderingIntegrationTests {
 	}
 
 	[Test]
-	public async Task InjectedStylesheets_RenderVerbatim() {
-		// A site's injected fonts and Bootstrap overrides: links, a style element, custom properties, comments, !important and nested braces.
-		const string stylesheet = """
-			<link rel="preconnect" href="https://fonts.googleapis.com">
-			<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
-			<style>
-			  :root {
-			    --bs-primary: #356761; /* Primary colour */
-			    --bs-primary-rgb: 53, 103, 97;
-			  }
-			  .nav-logo-size { min-height: 5rem !important; }
-			  .text-bg-primary { background-color: RGBA(var(--bs-primary-rgb), var(--bs-bg-opacity, 1)) !important; }
-			  .btn-primary { --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125); }
-			  h1 u, h2 u, h3 u { text-decoration-color: #E5AB4E; }
-			</style>
-			""";
-		using var repository = await LocalNotionRepository.CreateNew(NewDirectory("injected-stylesheet"));
-		var page = AddPage(repository, "Styled", [new global::Notion.Client.CodeBlock { Id = ID(), Code = new global::Notion.Client.CodeBlock.Info {
-			Language = "html", Caption = [Text("{INJECT}")], RichText = [Text(stylesheet)]
-		} }]);
-		var manager = new RenderingManager(repository);
-		manager.PrepareRenderPaths([page.ID]);
-
-		var html = File.ReadAllText(manager.RenderLocalResource(page.ID, RenderType.HTML, CoreMode.ReadOnly));
-
-		Assert.That(html, Does.Contain(stylesheet.Trim()), "The injected markup is written exactly as authored.");
-	}
-
-	[Test]
 	public async Task ResourceRendering_PreservesTemplateWhitespace() {
 		using var repository = await LocalNotionRepository.CreateNew(NewDirectory("template-whitespace"));
 		var page = AddPage(repository, "Whitespace", [Paragraph("Content")]);

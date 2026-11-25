@@ -10,7 +10,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Sphere10.Framework;
 
-namespace LocalNotion.Core;
+namespace LocalNotion.CLI;
 
 public class GitSentry : ProcessSentry {
 

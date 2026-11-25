@@ -19,7 +19,7 @@ public class CliMetadataTests {
 
 	[Test]
 	public void CompiledCopyrightPreservesCopyrightSymbol() {
-		var copyright = typeof(Program).Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>();
+		var copyright = typeof(GitSentry).Assembly.GetCustomAttribute<AssemblyCopyrightAttribute>();
 		Assert.That(copyright, Is.Not.Null);
 		Assert.That(copyright.Copyright, Does.Contain("\u00A9").And.Not.Contain("\uFFFD"));
 	}

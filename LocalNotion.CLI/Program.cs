@@ -490,9 +490,6 @@ $@"Local Notion Status:
 		[Option('v', "verbose", HelpText = $"Display debug information in console output")]
 		public bool Verbose { get; set; } = false;
 
-		// Set by sync between polls: pulling all objects then reads only those edited since, newest first.
-		public DateTime? EditedSince { get; set; }
-
 	}
 
 	[Verb("sync", HelpText = "Synchronizes a Local Notion repository with Notion (until process manually terminated)")]
@@ -617,8 +614,25 @@ $@"Local Notion Status:
 			ApacheSettings.Default;
 
 		// Create git repo if required
-		if (gitSettings.Enabled)
-			await RepositoryGit.InitializeAsync(arguments.Path, pathProfile, consoleLogger, cancellationToken);
+		if (gitSettings.Enabled) {
+			var gitSentry = new GitSentry(arguments.Path);
+			if (!await gitSentry.Init(cancellationToken)) {
+				consoleLogger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+				throw new InvalidOperationException("Unable to create git repository");
+			}
+
+			var gitIgnoreFile = Path.Combine(arguments.Path, ".gitignore");
+			// Create .gitignore files
+			const string GitIgnoreContents =
+				"""
+				# Local Notion logs
+				.localnotion/logs
+
+				# NGINX logs
+				.localnotion/nginx/logs
+				""";
+			await File.WriteAllTextAsync(gitIgnoreFile, GitIgnoreContents, cancellationToken);
+		}
 
 
 		await using var repo = await LocalNotionRepository.CreateNew(
@@ -634,7 +648,7 @@ $@"Local Notion Status:
 			logger: consoleLogger
 		);
 
-		if (gitSettings.Enabled && !await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken))
+		if (gitSettings.Enabled && !await ProcessChangeControl(repo, consoleLogger, cancellationToken))
 			return Constants.ERRORCODE_FAIL;
 
 		consoleLogger.Info("Location Notion repository has been created");
@@ -657,7 +671,7 @@ $@"Local Notion Status:
 
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
-			await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
+			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
 		}
 
 
@@ -701,7 +715,7 @@ $@"Local Notion Status:
 
 			// Do git processing if available
 			if (repo.GitSettings.Enabled) {
-				await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
+				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
 			}
 
 		} else {
@@ -735,7 +749,7 @@ $@"Local Notion Status:
 			// List workspace level
 			Console.WriteLine($"Listing workspace {$"filtering by '{arguments.Filter}'".AsAmendmentIf(!string.IsNullOrWhiteSpace(arguments.Filter))}{"(use --all switch to include child objects)".AsAmendmentIf(!arguments.All)}");
 			var searchParameters = new SearchRequest { Query = arguments.Filter };
-			var results = client.EnumerateAllWorkspaceObjectsAsync(searchParameters, cancellationToken: cancellationToken);
+			var results = client.EnumerateAllWorkspaceObjectsAsync(searchParameters, cancellationToken);
 			if (!arguments.All)
 				results = results.Where(IsWorkspaceRoot);
 
@@ -817,7 +831,7 @@ $@"Local Notion Status:
 					// EnumerateAllWorkspaceObjectsAsync resolves each DataSource back to its parent Database
 					// and yields both, which restores those roots.
 					var visibleObjects = await client
-						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), arguments.EditedSince, cancellationToken)
+						.EnumerateAllWorkspaceObjectsAsync(new SearchRequest(), cancellationToken)
 						.Where(x => x is Database or Page)
 						.ToArrayAsync(cancellationToken);
 
@@ -942,29 +956,27 @@ $@"Local Notion Status:
 
 			// Do git processing if available
 			if (repo.GitSettings.Enabled) {
-				await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
+				await ProcessChangeControl(repo, consoleLogger, cancellationToken);
 			}
 		}
 		return 0;
 	}
 
 	public static async Task<int> ExecuteSyncCommandAsync(SyncRepositoryCommandArguments arguments, CancellationToken cancellationToken) {
+		// NOTE: FilterLastUpdateOn not requied since SyncOrchestrator intelligently determines 
+		// what to fetch
+
 		var consoleLogger = new ConsoleLogger { Options = arguments.Verbose ? LogOptions.VerboseProfile : LogOptions.UserDisplayProfile };
 
 		Console.WriteLine($"Synchronizing every {arguments.PollFrequency} seconds (send Break or CTRL-C to stop)");
-		DateTime? previousPollStart = null;
 		while (true) {
 			Console.WriteLine($"Synchronizing Updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-			// The first poll reads the whole workspace; later polls read only what was edited since the previous successful poll began.
-			// Notion reports edit times to the minute, so the window reaches two minutes further back.
-			var pollStart = DateTime.UtcNow;
-			arguments.EditedSince = previousPollStart?.AddMinutes(-2);
+			//arguments.FilterLastUpdatedOn = DateTime.Now;
 			var result = await ExecutePullCommandAsync(arguments, cancellationToken);
 			if (result != Constants.ERRORCODE_OK && !arguments.FaultTolerant)
 				return result;
-			if (result == Constants.ERRORCODE_OK)
-				previousPollStart = pollStart;
 			await Task.Delay(TimeSpan.FromSeconds(arguments.PollFrequency), cancellationToken);
+			//arguments.FilterLastUpdatedOn = DateTime.UtcNow;
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
 		}
@@ -1035,7 +1047,7 @@ $@"Local Notion Status:
 
 		// Do git processing if available
 		if (repo.GitSettings.Enabled) {
-			await RepositoryGit.CommitChangesAsync(repo, consoleLogger, cancellationToken);
+			await ProcessChangeControl(repo, consoleLogger, cancellationToken);
 		}
 
 		return Constants.ERRORCODE_OK;
@@ -1183,6 +1195,41 @@ $@"Local Notion Status:
 		if (Path.IsPathFullyQualified(userEnteredPath))
 			return Path.GetRelativePath(repoPath, userEnteredPath); ;
 		return Path.GetRelativePath(repoPath, Path.GetFullPath(userEnteredPath, Environment.CurrentDirectory));
+	}
+
+	private static async Task<bool> ProcessChangeControl(ILocalNotionRepository repo, ILogger logger, CancellationToken cancellationToken = default) {
+		Guard.Ensure(repo.GitSettings.Enabled, "Git tracking is not enabled on this repository");
+		var gitSentry = new GitSentry(repo.Paths.GetRepositoryPath(FileSystemPathType.Absolute));
+		if (!await gitSentry.TestGitInstalled(cancellationToken)) {
+			logger.Error("Unable to track changes as git is not installed");
+			return false;
+		}
+
+		logger.Info("Adding changes to git");
+		if (!await gitSentry.AddAll(cancellationToken)) {
+			logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+			return false;
+		}
+
+		logger.Info("Committing changes to git");
+		if (!await gitSentry.Commit($"Content updates: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}", cancellationToken)) {
+			if (gitSentry.Output.Contains("nothing to commit", StringComparison.OrdinalIgnoreCase)) {
+				logger.Info("No git changes to commit");
+				return true;
+			}
+			logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+			return false;
+		}
+
+		if (repo.GitSettings.Push) {
+			logger.Info("Pushing git changes to default remote");
+			if (!await gitSentry.Push()) {
+				logger.Error($"git failed with error:{Environment.NewLine}{gitSentry.Output.Tabbify()}");
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	private static INotionClient CreateNotionClient(string apiKey)

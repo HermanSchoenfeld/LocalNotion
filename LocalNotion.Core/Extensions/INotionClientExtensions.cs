@@ -51,22 +51,11 @@ public static class INotionClientExtensions {
 		return new NotionObjectQualification(default, default, false);
 	}
 
-	/// <summary>Enumerates the pages and data sources Search can see, with each data source's database before it.</summary>
-	/// <remarks>
-	/// With <paramref name="editedOnOrAfter"/>, Search returns the most recently edited objects first and the enumeration stops at the
-	/// first one edited before it, so a sync poll reads what changed since the previous poll instead of the whole workspace.
-	/// </remarks>
-	public static async IAsyncEnumerable<IObject> EnumerateAllWorkspaceObjectsAsync(this INotionClient client, SearchRequest request = null, DateTime? editedOnOrAfter = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
+	public static async IAsyncEnumerable<IObject> EnumerateAllWorkspaceObjectsAsync(this INotionClient client, SearchRequest request = null, [EnumeratorCancellation] CancellationToken cancellationToken = default) {
 		var seenDatabases = new HashSet<string>();
-		if (editedOnOrAfter.HasValue) {
-			request ??= new SearchRequest();
-			request.Sort = new SearchSort { Direction = SearchDirection.Descending, Timestamp = "last_edited_time" };
-		}
 
 		// Step 1: Enumerate all Pages and DataSources from Search
 		await foreach (var obj in client.Search.EnumerateAsync(request, cancellationToken)) {  // Use 'request' parameter
-			if (editedOnOrAfter.HasValue && obj.GetLastEditedDate() < editedOnOrAfter)
-				yield break;
 
 			// Step 2: If it's a DataSource, fetch its parent Database (if not already seen)
 			if (obj is DataSource dataSource) {
